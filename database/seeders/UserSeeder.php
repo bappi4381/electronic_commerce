@@ -15,7 +15,7 @@ class UserSeeder extends Seeder
     {
         $faker = Faker::create('bn_BD'); // Bengali (Bangladesh) locale for more realistic names
         
-        for ($i = 0; $i < 50000000; $i++) {
+        for ($i = 0; $i < 20; $i++) {
             User::create([
                 'name' => $faker->name,
                 'email' => $faker->unique()->safeEmail,
