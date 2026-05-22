@@ -20,7 +20,7 @@
     </div>
 </div>
 
-<section class="py-24 bg-slate-50">
+<section class="pt-24 pb-44 bg-slate-50">
     <div class="max-w-7xl mx-auto px-4">
         @if(session('error'))
             <div class="mb-8 p-4 bg-red-50 border border-red-100 text-red-700 rounded-2xl flex items-center gap-3 animate-fade-in-down">

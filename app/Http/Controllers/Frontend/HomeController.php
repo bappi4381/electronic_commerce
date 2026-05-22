@@ -37,12 +37,15 @@ class HomeController extends Controller
         // Get user wishlist IDs if logged in
         $wishlistIds = Auth::check() ? Wishlist::where('user_id', Auth::id())->pluck('product_id')->toArray() : [];
 
+        // Get Flash Deal products (products specifically marked as flash deals)
+        $flashDealProducts = Product::where('is_flash_deal', true)->with('images')->latest()->take(6)->get();
+
         // Get banners
         $heroBanner = \App\Models\Banner::where('type', 'hero')->where('status', true)->orderBy('order', 'asc')->first();
         $subBanners = \App\Models\Banner::where('type', 'sub_banner')->where('status', true)->orderBy('order', 'asc')->take(2)->get();
         $promoBanners = \App\Models\Banner::where('type', 'promo')->where('status', true)->orderBy('order', 'asc')->get();
 
-        return view('frontend.pages.home', compact('latestProducts', 'bestSellers', 'featuredProducts', 'arrivalCategories', 'articles', 'wishlistIds', 'heroBanner', 'subBanners', 'promoBanners'));
+        return view('frontend.pages.home', compact('latestProducts', 'bestSellers', 'featuredProducts', 'arrivalCategories', 'articles', 'wishlistIds', 'heroBanner', 'subBanners', 'promoBanners', 'flashDealProducts'));
     }
     public function products(Request $request)
     {
@@ -86,7 +89,7 @@ class HomeController extends Controller
                 break;
         }
 
-        $products = $products->paginate(10);
+        $products = $products->paginate(12);
 
         return view('frontend.pages.products', compact('categories', 'products'));
     }
@@ -188,8 +191,8 @@ class HomeController extends Controller
     
     public function flashDeals()
     {
-        // Fetch products with discount > 0 or whatever logic
-        $products = Product::whereNotNull('discount')->orWhere('discount', '>', 0)->with('images')->paginate(12);
+        // Fetch all products with actual discounts (discount > 0)
+        $products = Product::where('discount', '>', 0)->with('images')->latest()->paginate(12);
         return view('frontend.pages.flash-deals', compact('products'));
     }
 

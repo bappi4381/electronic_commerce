@@ -11,12 +11,12 @@
         </div>
     </div>
 
-    <div class="card border-0 shadow-sm overflow-hidden bg-white min-h-[500px] flex flex-col relative">
+    <div class="card border-0 shadow-sm overflow-hidden bg-white min-h-[500px] sm:min-h-[600px] flex flex-col relative">
         <!-- Chat Area -->
-        <div class="flex-1 p-6 overflow-y-auto space-y-4 max-h-[400px]" id="chatBox">
+        <div class="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 max-h-[55vh] sm:max-h-[500px]" id="chatBox">
             <template x-for="msg in messages" :key="msg.id">
                 <div :class="msg.is_admin ? 'flex justify-start' : 'flex justify-end'">
-                    <div :class="msg.is_admin ? 'bg-slate-100 text-slate-900 rounded-tr-2xl' : 'bg-primary text-white rounded-tl-2xl'" class="px-6 py-4 rounded-b-2xl max-w-sm shadow-sm">
+                    <div :class="msg.is_admin ? 'bg-slate-100 text-slate-900 rounded-tr-2xl' : 'bg-primary text-white rounded-tl-2xl'" class="px-4 sm:px-6 py-3 sm:py-4 rounded-b-2xl max-w-[85%] sm:max-w-sm shadow-sm">
                         <p class="text-sm font-medium" x-text="msg.message"></p>
                         <span class="text-[10px] opacity-70 mt-2 block" x-text="formatDate(msg.created_at)"></span>
                     </div>
@@ -31,11 +31,12 @@
         </div>
 
         <!-- Input Area -->
-        <div class="p-6 border-t border-slate-100 bg-slate-50">
-            <form @submit.prevent="sendMessage" class="flex gap-4">
-                <input type="text" x-model="newMessage" class="flex-1 px-6 py-4 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium text-sm" placeholder="Type your message here..." required>
-                <button type="submit" class="px-8 py-4 bg-primary text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all">
-                    Send
+        <div class="p-4 sm:p-6 border-t border-slate-100 bg-slate-50">
+            <form @submit.prevent="sendMessage" class="flex gap-3">
+                <input type="text" x-model="newMessage" class="flex-1 px-4 sm:px-6 py-3 sm:py-4 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium text-sm" placeholder="Type your message..." required>
+                <button type="submit" class="px-5 sm:px-8 py-3 sm:py-4 bg-primary text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap">
+                    <span class="hidden sm:inline">Send</span>
+                    <i class="bi bi-send-fill"></i>
                 </button>
             </form>
         </div>

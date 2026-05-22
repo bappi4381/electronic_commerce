@@ -37,6 +37,42 @@
         </div>
     @endif
 
+    <!-- Flash Deal Campaign Manager Card -->
+    <div class="bg-gradient-to-r from-red-500 via-rose-500 to-orange-500 p-8 sm:p-10 rounded-[3.5rem] text-white shadow-2xl shadow-red-500/20 relative overflow-hidden group">
+        <!-- Background shapes -->
+        <div class="absolute -top-12 -right-12 w-60 h-60 bg-white/10 rounded-full blur-3xl"></div>
+        <div class="absolute -bottom-20 -left-20 w-80 h-80 bg-orange-400/20 rounded-full blur-[100px]"></div>
+
+        <div class="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
+            <div class="max-w-md space-y-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md">
+                        <i class="bi bi-lightning-charge-fill text-yellow-300 text-lg animate-pulse"></i>
+                    </div>
+                    <span class="text-[9px] font-black uppercase tracking-[0.3em] text-rose-100">Live Campaign Manager</span>
+                </div>
+                <h2 class="text-xl sm:text-2xl font-black uppercase tracking-tight italic">Flash Deals Scheduler</h2>
+                <p class="text-[10px] sm:text-xs text-rose-100 font-medium leading-relaxed">Professionally schedule the global flash sales timing and campaign title. Add any product to this campaign below by entering a discount percentage greater than 0% and checking the flash deal box.</p>
+            </div>
+
+            <!-- Form -->
+            <form action="{{ route('admin.settings.update') }}" method="POST" class="w-full lg:w-auto flex flex-col md:flex-row items-end gap-5">
+                @csrf
+                <div class="space-y-1.5 w-full md:w-64">
+                    <label class="text-[9px] font-black uppercase tracking-widest text-rose-100 ml-1">Campaign Banner Title</label>
+                    <input type="text" name="flash_deal_title" value="{{ \App\Models\Setting::get('flash_deal_title', 'Flash Deals') }}" placeholder="e.g. Eid Flash Sale" class="w-full bg-white/10 border border-white/20 rounded-2xl px-5 py-4 text-xs font-bold text-white placeholder:text-white/40 focus:bg-white/20 focus:ring-0 outline-none transition-all" required>
+                </div>
+                <div class="space-y-1.5 w-full md:w-64">
+                    <label class="text-[9px] font-black uppercase tracking-widest text-rose-100 ml-1">Campaign Expiry Time</label>
+                    <input type="datetime-local" name="flash_deal_end_time" value="{{ \App\Models\Setting::get('flash_deal_end_time') ? date('Y-m-d\TH:i', strtotime(\App\Models\Setting::get('flash_deal_end_time'))) : '' }}" class="w-full bg-white/10 border border-white/20 rounded-2xl px-5 py-4 text-xs font-bold text-white focus:bg-white/20 focus:ring-0 outline-none transition-all cursor-pointer">
+                </div>
+                <button type="submit" class="w-full md:w-auto bg-slate-900 text-white hover:bg-white hover:text-red-600 px-8 py-4.5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-black/10 hover:scale-105 active:scale-95 transition-all whitespace-nowrap flex items-center justify-center gap-2">
+                    <i class="bi bi-calendar-check text-base"></i> Sync Schedule
+                </button>
+            </form>
+        </div>
+    </div>
+
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-10">
         
         {{-- Section 1: Coupon Management --}}
@@ -121,16 +157,21 @@
         {{-- Section 2: Global Product Discount Controller --}}
         <div class="space-y-8">
             <div class="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden h-full flex flex-col">
-                <div class="flex items-center justify-between mb-8">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
                     <div class="flex items-center gap-4">
                         <div class="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center text-red-600">
                             <i class="bi bi-percent text-xl"></i>
                         </div>
                         <div>
                             <h4 class="text-xs font-black uppercase tracking-[0.2em] text-slate-700">Inventory Sale Controller</h4>
-                            <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest">Apply Global Discounts</p>
+                            <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest">Apply Global Discounts & Flash Deals</p>
                         </div>
                     </div>
+                    <!-- Small search form -->
+                    <form action="{{ route('marketing.index') }}" method="GET" class="flex items-center gap-2">
+                        <input type="text" name="search" value="{{ request('search') }}" placeholder="Search products..." class="bg-slate-50 border-none rounded-xl px-4 py-2 text-[10px] font-bold focus:ring-2 focus:ring-red-500/20 outline-none w-44">
+                        <button type="submit" class="w-8 h-8 bg-slate-900 text-white rounded-xl flex items-center justify-center hover:bg-red-500 transition-colors"><i class="bi bi-search text-xs"></i></button>
+                    </form>
                 </div>
 
                 <div class="flex-grow divide-y divide-slate-50">
@@ -157,6 +198,10 @@
                             
                             <form action="{{ route('marketing.updateDiscount', $product) }}" method="POST" class="flex items-center gap-2">
                                 @csrf
+                                <div class="flex flex-col items-center mr-2">
+                                    <label class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Flash Deal</label>
+                                    <input type="checkbox" name="is_flash_deal" value="1" {{ $product->is_flash_deal ? 'checked' : '' }} class="w-4 h-4 text-red-500 bg-slate-100 border-slate-300 rounded focus:ring-red-500 focus:ring-2 cursor-pointer">
+                                </div>
                                 <div class="relative w-20">
                                     <input type="number" name="discount" value="{{ $product->discount }}" placeholder="0" 
                                            class="w-full bg-slate-50 border-none rounded-lg px-3 py-3 text-[11px] font-black focus:ring-2 focus:ring-red-500/20 outline-none transition-all pr-8">

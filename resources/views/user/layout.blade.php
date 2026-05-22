@@ -166,12 +166,12 @@
         </header>
 
         <!-- Page Content -->
-        <main class="p-8 lg:p-12">
+        <main class="p-4 sm:p-8 lg:p-12 pb-24 lg:pb-12">
             @yield('content')
         </main>
 
         <!-- Footer -->
-        <footer class="mt-auto py-8 px-12 border-t border-slate-100 bg-white">
+        <footer class="mt-auto py-8 px-12 border-t border-slate-100 bg-white hidden lg:block">
             <div class="flex flex-col md:flex-row justify-between items-center gap-4">
                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                     &copy; 2026 <span class="text-slate-900">ONEMALL</span>. All rights reserved.
@@ -183,6 +183,48 @@
             </div>
         </footer>
     </div>
+
+    <!-- Mobile Bottom Navigation Bar (visible on < lg) -->
+    @php
+        $mobileCurrentRoute = Route::currentRouteName();
+    @endphp
+    <nav class="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-100 shadow-2xl lg:hidden" style="padding-bottom: env(safe-area-inset-bottom);">
+        <div class="grid grid-cols-5 h-16">
+
+            <!-- Dashboard -->
+            <a href="{{ route('user.dashboard') }}" class="flex flex-col items-center justify-center gap-1 transition-colors {{ $mobileCurrentRoute === 'user.dashboard' ? 'text-primary' : 'text-slate-400 hover:text-slate-700' }}">
+                <i class="bi bi-grid-1x2-fill text-lg"></i>
+                <span class="text-[8px] font-black uppercase tracking-widest">Home</span>
+            </a>
+
+            <!-- Orders -->
+            <a href="{{ route('user.orders.index') }}" class="flex flex-col items-center justify-center gap-1 transition-colors {{ $mobileCurrentRoute === 'user.orders.index' || $mobileCurrentRoute === 'user.orders.details' ? 'text-primary' : 'text-slate-400 hover:text-slate-700' }}">
+                <i class="bi bi-bag-fill text-lg"></i>
+                <span class="text-[8px] font-black uppercase tracking-widest">Orders</span>
+            </a>
+
+            <!-- Track (centre accent) -->
+            <a href="{{ route('user.orders.track') }}" class="flex flex-col items-center justify-center gap-1 -mt-4">
+                <span class="w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl shadow-primary/30 transition-all {{ $mobileCurrentRoute === 'user.orders.track' ? 'bg-primary-dark scale-95' : 'bg-primary hover:bg-primary-dark' }}">
+                    <i class="bi bi-geo-alt-fill text-white text-xl"></i>
+                </span>
+                <span class="text-[8px] font-black uppercase tracking-widest mt-0.5 {{ $mobileCurrentRoute === 'user.orders.track' ? 'text-primary' : 'text-slate-400' }}">Track</span>
+            </a>
+
+            <!-- Messages -->
+            <a href="{{ route('user.messages.index') }}" class="flex flex-col items-center justify-center gap-1 transition-colors {{ $mobileCurrentRoute === 'user.messages.index' ? 'text-primary' : 'text-slate-400 hover:text-slate-700' }}">
+                <i class="bi bi-chat-dots-fill text-lg"></i>
+                <span class="text-[8px] font-black uppercase tracking-widest">Chat</span>
+            </a>
+
+            <!-- Profile -->
+            <a href="{{ route('user.profile') }}" class="flex flex-col items-center justify-center gap-1 transition-colors {{ $mobileCurrentRoute === 'user.profile' ? 'text-primary' : 'text-slate-400 hover:text-slate-700' }}">
+                <i class="bi bi-person-fill text-lg"></i>
+                <span class="text-[8px] font-black uppercase tracking-widest">Profile</span>
+            </a>
+
+        </div>
+    </nav>
 
     <script>
         // Sidebar Toggle for Mobile

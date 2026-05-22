@@ -48,6 +48,10 @@
             class="tab-btn flex-1 py-3 px-6 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all duration-200 flex items-center justify-center gap-2 text-slate-400 hover:bg-slate-50">
             <i class="bi bi-textarea-t"></i> Footer Text
         </button>
+        <button type="button" onclick="switchTab('campaigns-deals')" id="btn-campaigns-deals" 
+            class="tab-btn flex-1 py-3 px-6 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all duration-200 flex items-center justify-center gap-2 text-slate-400 hover:bg-slate-50">
+            <i class="bi bi-lightning-charge"></i> Campaigns & Deals
+        </button>
     </div>
 
     <form action="{{ route('admin.settings.update') }}" method="POST" enctype="multipart/form-data" id="settingsForm">
@@ -270,6 +274,48 @@
                 </div>
             </div>
         </div>
+        
+        {{-- Tab 5: Campaigns & Flash Deals --}}
+        <div id="tabpanel-campaigns-deals" class="tab-panel grid grid-cols-1 xl:grid-cols-3 gap-8 hidden">
+            <div class="xl:col-span-2 space-y-8">
+                <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="px-10 py-8 border-b border-slate-50 bg-slate-50/50">
+                        <h3 class="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-3">
+                            <span class="w-8 h-8 rounded-lg bg-red-500/10 text-red-500 flex items-center justify-center">
+                                <i class="bi bi-lightning-charge"></i>
+                            </span>
+                            Flash Deals Campaign
+                        </h3>
+                    </div>
+                    <div class="p-10 grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="space-y-3">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Campaign Title</label>
+                            <input type="text" name="flash_deal_title" value="{{ $settings['flash_deal_title'] ?? 'Flash Deals' }}" 
+                                class="w-full px-6 py-4 bg-slate-50 border-0 rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold text-slate-700"
+                                placeholder="e.g. Flash Deals, Eid Special, etc.">
+                        </div>
+                        
+                        <div class="space-y-3">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Campaign End Time</label>
+                            <input type="datetime-local" name="flash_deal_end_time" value="{{ isset($settings['flash_deal_end_time']) ? date('Y-m-d\TH:i', strtotime($settings['flash_deal_end_time'])) : '' }}" 
+                                class="w-full px-6 py-4 bg-slate-50 border-0 rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold text-slate-700">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-8">
+                <div class="bg-red-500 rounded-[2.5rem] shadow-2xl p-10 text-white relative overflow-hidden">
+                    <div class="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
+                    <h3 class="text-sm font-black uppercase tracking-[0.2em] mb-6 flex items-center gap-3">
+                        <i class="bi bi-lightning-charge-fill"></i> Flash Campaign
+                    </h3>
+                    <p class="text-xs text-red-100 leading-relaxed">
+                        Products with discounts will be automatically loaded into the Flash Deals section. Use this setting to configure the campaign timer and custom banner title shown to customers.
+                    </p>
+                </div>
+            </div>
+        </div>
     </form>
 </div>
 
@@ -299,7 +345,7 @@
     // Load active tab from URL hash on load
     document.addEventListener('DOMContentLoaded', function() {
         const hash = window.location.hash.substring(1);
-        if (hash && ['store-identity', 'shipping-delivery', 'contact-support', 'footer-presentation'].includes(hash)) {
+        if (hash && ['store-identity', 'shipping-delivery', 'contact-support', 'footer-presentation', 'campaigns-deals'].includes(hash)) {
             switchTab(hash);
         }
     });

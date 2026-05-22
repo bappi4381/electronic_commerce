@@ -15,7 +15,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <!-- Tracking Form -->
         <div class="lg:col-span-5 space-y-8">
-            <div class="card border-0 shadow-sm p-10 lg:p-12 bg-white relative overflow-hidden">
+            <div class="card border-0 shadow-sm p-6 sm:p-10 lg:p-12 bg-white relative overflow-hidden">
                 <div class="absolute -top-10 -right-10 w-32 h-32 bg-primary/5 rounded-full blur-3xl"></div>
                 
                 <div class="relative z-10">
@@ -68,11 +68,11 @@
         <!-- Tracking Results -->
         <div class="lg:col-span-7">
             @isset($order)
-                <div class="card border-0 shadow-sm p-10 lg:p-12 bg-white space-y-12">
+                <div class="card border-0 shadow-sm p-6 sm:p-10 lg:p-12 bg-white space-y-12">
                     <div class="flex items-center justify-between pb-8 border-b border-slate-50">
                         <div>
                             <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Package Details</p>
-                            <h3 class="text-2xl font-black text-slate-900 tracking-tighter uppercase">{{ $order->order_id }}</h3>
+                            <h3 class="text-base sm:text-2xl font-black text-slate-900 tracking-tighter uppercase break-all">{{ $order->order_id }}</h3>
                         </div>
                         <div class="text-right">
                             <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Estimated Arrival</p>
@@ -132,7 +132,7 @@
                                 $isReached = $index <= $currentStatusIndex;
                                 $isCurrent = $index === $currentStatusIndex;
                             @endphp
-                            <div class="relative pl-14 flex items-start justify-between group">
+                            <div class="relative pl-14 flex items-start justify-between gap-2 group">
                                 <div class="absolute left-0 w-10 h-10 rounded-xl flex items-center justify-center z-10 transition-all duration-500
                                     {{ $isReached ? 'bg-white border-2 border-primary text-primary shadow-sm' : 'bg-white border-2 border-slate-50 text-slate-200' }}">
                                     @if($isReached && !$isCurrent)
@@ -145,7 +145,7 @@
                                     <h4 class="text-xs font-black uppercase tracking-widest {{ $isReached ? 'text-slate-900' : 'text-slate-300' }}">{{ $stage['label'] }}</h4>
                                     <p class="text-[10px] font-medium {{ $isReached ? 'text-slate-500' : 'text-slate-300' }}">{{ $stage['desc'] }}</p>
                                 </div>
-                                <div class="text-right">
+                                <div class="text-right flex-shrink-0">
                                     <span class="text-[9px] font-black uppercase tracking-widest {{ $isReached ? 'text-slate-400' : 'text-slate-200' }}">{{ $stage['time'] }}</span>
                                 </div>
                             </div>
@@ -153,7 +153,7 @@
                     </div>
                 </div>
             @else
-                <div class="h-full flex flex-col items-center justify-center p-20 bg-white rounded-[48px] border-4 border-dashed border-slate-50 animate-in fade-in zoom-in-95 duration-700">
+                <div class="h-full flex flex-col items-center justify-center p-10 sm:p-20 bg-white rounded-[48px] border-4 border-dashed border-slate-50 animate-in fade-in zoom-in-95 duration-700">
                     <div class="w-32 h-32 bg-slate-50 text-slate-100 rounded-[50px] flex items-center justify-center text-6xl mb-10 shadow-inner">
                         <i class="bi bi-search"></i>
                     </div>

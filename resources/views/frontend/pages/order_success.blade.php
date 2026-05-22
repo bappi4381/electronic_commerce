@@ -18,7 +18,7 @@
     </div>
 </div>
 
-<section class="py-24 bg-slate-50">
+<section class="pt-24 pb-44 bg-slate-50">
     <div class="max-w-5xl mx-auto px-4">
         <!-- Success Banner Card -->
         <div class="bg-white rounded-[40px] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 lg:p-12 text-center mb-12 relative overflow-hidden">

@@ -2,7 +2,7 @@
 @section('title', 'My Wishlist')
 
 @section('content')
-<div class="bg-white py-20 min-h-[60vh]">
+<div class="bg-white pt-20 pb-44 min-h-[60vh]">
     <div class="max-w-7xl mx-auto px-4">
         {{-- Header --}}
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-16">

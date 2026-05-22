@@ -14,13 +14,14 @@ class Product extends Model
         'category_id', 'subcategory_id', 'name', 'description',
         'price', 'discount','discounted_price', 'stock', 'product_id',
         'brand', 'model', 'ram', 'storage', 'battery_capacity', 'screen_size', 'operating_system', 'color', 'warranty_period',
-        'specifications', 'is_featured', 'is_best_seller'
+        'specifications', 'is_featured', 'is_best_seller', 'is_flash_deal'
     ];
 
     protected $casts = [
         'specifications' => 'array',
         'is_featured' => 'boolean',
-        'is_best_seller' => 'boolean'
+        'is_best_seller' => 'boolean',
+        'is_flash_deal' => 'boolean'
     ];
 
     protected static function boot()

@@ -43,7 +43,8 @@
             <div class="absolute -bottom-20 -right-20 w-64 h-64 bg-primary/5 rounded-full blur-3xl"></div>
         </div>
     @else
-        <div class="card border-0 shadow-sm overflow-hidden bg-white">
+        <!-- Desktop View Table -->
+        <div class="hidden md:block card border-0 shadow-sm overflow-hidden bg-white">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
@@ -117,6 +118,66 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+
+        <!-- Mobile View Card List -->
+        <div class="block md:hidden space-y-6">
+            @foreach($orders as $order)
+                @php
+                    $statusStyles = match($order->status) {
+                        'pending' => 'bg-amber-50 text-amber-600 border-amber-100',
+                        'processing' => 'bg-blue-50 text-blue-600 border-blue-100',
+                        'completed' => 'bg-green-50 text-green-600 border-green-100',
+                        'cancelled' => 'bg-rose-50 text-rose-600 border-rose-100',
+                        default => 'bg-slate-50 text-slate-600 border-slate-100',
+                    };
+                @endphp
+                <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-black text-slate-900 uppercase tracking-tighter">{{ $order->order_id }}</span>
+                        <span class="px-3 py-1 rounded-full border text-[8px] font-black uppercase tracking-widest {{ $statusStyles }}">
+                            {{ $order->status }}
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 text-xs">
+                        <div>
+                            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Date</p>
+                            <p class="font-bold text-slate-700">{{ $order->created_at->format('d M, Y') }}</p>
+                            <p class="text-[10px] text-slate-400 mt-0.5">{{ $order->created_at->format('h:i A') }}</p>
+                        </div>
+                        <div>
+                            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Payment</p>
+                            <p class="font-bold text-slate-700 uppercase tracking-tight">{{ $order->payment_method }}</p>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-slate-50 pt-4 flex items-center justify-between">
+                        <div>
+                            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Total Amount</p>
+                            <p class="text-base font-black text-primary">tk. {{ number_format($order->total_price, 2) }}</p>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <a href="{{ route('user.orders.details', $order->id) }}" 
+                               class="px-4 py-2.5 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary transition-all shadow-sm">
+                                Details
+                            </a>
+                            @if($order->status === 'pending')
+                                <form action="{{ route('user.orders.cancel', $order->id) }}" method="POST" class="inline">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit" 
+                                            class="px-4 py-2.5 bg-rose-50 text-rose-500 rounded-xl text-[9px] font-black uppercase tracking-widest border border-rose-100 hover:bg-rose-500 hover:text-white transition-all"
+                                            onclick="return confirm('Are you sure you want to cancel this order?')">
+                                        Cancel
+                                    </button>
+                                </form>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            @endforeach
         </div>
 
         <div class="pt-6">

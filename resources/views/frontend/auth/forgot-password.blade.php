@@ -20,7 +20,7 @@
     </div>
 </div>
 
-<section class="py-24 bg-slate-50">
+<section class="pt-24 pb-44 bg-slate-50">
     <div class="max-w-md mx-auto px-4">
         <div class="bg-white rounded-[40px] shadow-xl shadow-slate-200/50 border border-slate-100 p-10 lg:p-12 relative overflow-hidden">
             <!-- Decorative circle -->

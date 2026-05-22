@@ -18,7 +18,7 @@
     </div>
 </div>
 
-<section class="py-12 lg:py-24 bg-slate-50 min-h-[600px]">
+<section class="pt-12 pb-36 lg:py-24 bg-slate-50 min-h-[600px]">
     <div class="max-w-7xl mx-auto px-4">
         @if(session('success'))
             <div class="mb-8 p-5 bg-green-500 text-white rounded-2xl flex items-center gap-4 shadow-xl shadow-green-500/20 animate-bounce">

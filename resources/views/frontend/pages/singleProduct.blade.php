@@ -3,7 +3,7 @@
 @section('title', $product->name)
 
 @section('content')
-<section class="py-12 bg-white" x-data="productPageHandler()">
+<section class="pt-12 pb-36 bg-white" x-data="productPageHandler()">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {{-- Breadcrumb (Professional) --}}
         <nav class="flex items-center gap-2 mb-8 overflow-x-auto no-scrollbar whitespace-nowrap text-sm font-medium text-slate-500">

@@ -11,7 +11,7 @@
                 <i class="bi bi-arrow-left group-hover:-translate-x-1 transition-transform"></i>
             </a>
             <div>
-                <h2 class="text-3xl font-black text-slate-900 tracking-tighter uppercase">Order #{{ $order->order_id }}</h2>
+                <h2 class="text-xl sm:text-3xl font-black text-slate-900 tracking-tighter uppercase">Order #{{ $order->order_id }}</h2>
                 <p class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">Placed on {{ $order->created_at->format('d M, Y \a\t h:i A') }}</p>
             </div>
         </div>
@@ -50,10 +50,12 @@
                 @if(isset($order->orderItems) && $order->orderItems->count() > 0)
                     <div class="divide-y divide-slate-50">
                         @foreach($order->orderItems as $item)
-                            <div class="px-8 py-8 flex items-center gap-8 group hover:bg-slate-50/30 transition-colors">
+                            <div class="px-6 py-6 md:px-8 md:py-8 flex flex-col sm:flex-row sm:items-center gap-6 sm:gap-8 group hover:bg-slate-50/30 transition-colors">
                                 <!-- Product Image placeholder -->
-                                <div class="w-20 h-20 bg-slate-50 rounded-2xl flex-shrink-0 flex items-center justify-center border border-slate-100 overflow-hidden group-hover:scale-105 transition-transform">
-                                    @if(isset($item->product->thumbnail))
+                                <div class="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 rounded-2xl flex-shrink-0 flex items-center justify-center border border-slate-100 overflow-hidden group-hover:scale-105 transition-transform">
+                                    @if($item->product && $item->product->images->first())
+                                        <img src="{{ asset('storage/' . $item->product->images->first()->image) }}" class="w-full h-full object-contain p-2">
+                                    @elseif(isset($item->product->thumbnail))
                                         <img src="{{ asset($item->product->thumbnail) }}" class="w-full h-full object-cover">
                                     @else
                                         <i class="bi bi-image text-slate-200 text-2xl"></i>
@@ -69,12 +71,14 @@
                                     </p>
                                 </div>
                                 
-                                <div class="text-right">
-                                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Price</p>
-                                    <p class="text-sm font-black text-slate-900">tk. {{ number_format($item->price * $item->quantity, 2) }}</p>
-                                    @if($item->quantity > 1)
-                                        <p class="text-[9px] font-medium text-slate-400">tk. {{ number_format($item->price, 2) }} / unit</p>
-                                    @endif
+                                <div class="text-left sm:text-right w-full sm:w-auto flex sm:flex-col justify-between sm:justify-start items-center sm:items-end border-t border-slate-50 sm:border-0 pt-4 sm:pt-0 mt-2 sm:mt-0">
+                                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest sm:mb-1">Price</span>
+                                    <div class="text-right">
+                                        <p class="text-sm font-black text-slate-900">tk. {{ number_format($item->price * $item->quantity, 2) }}</p>
+                                        @if($item->quantity > 1)
+                                            <p class="text-[9px] font-medium text-slate-400">tk. {{ number_format($item->price, 2) }} / unit</p>
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
                         @endforeach
@@ -87,7 +91,7 @@
             </div>
 
             <!-- Delivery Info Card -->
-            <div class="card border-0 shadow-sm p-10 lg:p-12 bg-white relative overflow-hidden">
+            <div class="card border-0 shadow-sm p-6 sm:p-10 lg:p-12 bg-white relative overflow-hidden">
                 <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-[100px] -z-10"></div>
                 <h4 class="text-lg font-black text-slate-900 tracking-tighter uppercase mb-8 flex items-center gap-4">
                     <span class="w-10 h-10 bg-slate-100 text-primary rounded-xl flex items-center justify-center shadow-inner">
@@ -125,7 +129,7 @@
 
         <!-- Sidebar: Order Summary -->
         <div class="lg:col-span-4 space-y-8">
-            <div class="card border-0 shadow-xl p-10 lg:p-12 bg-slate-900 text-white relative overflow-hidden group">
+            <div class="card border-0 shadow-xl p-6 sm:p-10 lg:p-12 bg-slate-900 text-white relative overflow-hidden group">
                 <div class="absolute -top-10 -right-10 w-32 h-32 bg-primary/20 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700"></div>
                 
                 <div class="relative z-10 space-y-10">

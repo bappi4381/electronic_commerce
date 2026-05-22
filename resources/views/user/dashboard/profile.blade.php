@@ -26,7 +26,7 @@
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <!-- Sidebar: Avatar & Quick Info -->
             <div class="lg:col-span-4 space-y-8">
-                <div class="card border-0 shadow-sm p-10 text-center relative overflow-hidden bg-white">
+                <div class="card border-0 shadow-sm p-6 sm:p-10 text-center relative overflow-hidden bg-white">
                     <div class="absolute -top-10 -right-10 w-32 h-32 bg-primary/5 rounded-full blur-3xl"></div>
                     
                     <div class="relative z-10 space-y-8">
@@ -77,7 +77,7 @@
             <!-- Main Form Column -->
             <div class="lg:col-span-8 space-y-8">
                 <!-- Personal Info Card -->
-                <div class="card border-0 shadow-sm p-10 lg:p-12 bg-white relative overflow-hidden">
+                <div class="card border-0 shadow-sm p-6 sm:p-10 lg:p-12 bg-white relative overflow-hidden">
                     <div class="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-bl-[100px] -z-10"></div>
                     
                     <h4 class="text-lg font-black text-slate-900 tracking-tighter uppercase mb-10 flex items-center gap-4">
@@ -139,7 +139,7 @@
                 </div>
 
                 <!-- Security Card -->
-                <div class="card border-0 shadow-sm p-10 lg:p-12 bg-white relative overflow-hidden">
+                <div class="card border-0 shadow-sm p-6 sm:p-10 lg:p-12 bg-white relative overflow-hidden">
                     <div class="absolute top-0 right-0 w-32 h-32 bg-rose-50 rounded-bl-[100px] -z-10"></div>
                     
                     <h4 class="text-lg font-black text-slate-900 tracking-tighter uppercase mb-10 flex items-center gap-4">

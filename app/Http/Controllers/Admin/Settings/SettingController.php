@@ -29,6 +29,8 @@ class SettingController extends Controller
             'footer_text' => 'nullable|string',
             'shipping_charge_dhaka' => 'nullable|numeric|min:0',
             'shipping_charge_outside' => 'nullable|numeric|min:0',
+            'flash_deal_title' => 'nullable|string|max:255',
+            'flash_deal_end_time' => 'nullable|string',
         ]);
 
         if ($request->hasFile('logo')) {

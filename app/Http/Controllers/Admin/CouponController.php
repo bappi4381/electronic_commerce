@@ -9,11 +9,21 @@ use Illuminate\Http\Request;
 
 class CouponController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $coupons = Coupon::latest()->get();
-        // Get all products to manage their individual discounts
-        $products = Product::with('category')->latest()->paginate(20);
+        $search = $request->input('search');
+
+        // Get all products to manage their individual discounts with search support
+        $products = Product::with('category')
+            ->when($search, function ($query, $search) {
+                $query->where('name', 'like', "%{$search}%")
+                    ->orWhere('brand', 'like', "%{$search}%");
+            })
+            ->latest()
+            ->paginate(20)
+            ->appends(['search' => $search]);
+
         $discountedProductsCount = Product::where('discount', '>', 0)->count();
         
         return view('admin.marketing.index', compact('coupons', 'products', 'discountedProductsCount'));
@@ -23,10 +33,12 @@ class CouponController extends Controller
     {
         $request->validate([
             'discount' => 'required|numeric|min:0|max:100',
+            'is_flash_deal' => 'nullable|boolean',
         ]);
 
         $product->update([
             'discount' => $request->discount,
+            'is_flash_deal' => $request->has('is_flash_deal'),
             'discounted_price' => $product->price - ($product->price * ($request->discount / 100))
         ]);
 

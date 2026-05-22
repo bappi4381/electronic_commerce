@@ -3,7 +3,7 @@
 @section('title', $article->title)
 
 @section('content')
-<article class="py-16 lg:py-24 bg-white min-h-screen">
+<article class="pt-16 pb-36 lg:py-24 bg-white min-h-screen">
     <div class="max-w-4xl mx-auto px-4">
         
         <!-- Minimal Header -->

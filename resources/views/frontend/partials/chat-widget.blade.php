@@ -1,6 +1,6 @@
-<div x-data="globalChat()" class="fixed bottom-6 right-6 z-50">
+<div x-data="globalChat()" class="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-[100]">
     <!-- Chat Button -->
-    <button @click="open = !open" :class="open ? 'scale-0 opacity-0' : 'scale-100 opacity-100'" class="w-16 h-16 bg-primary text-white rounded-full flex items-center justify-center text-2xl shadow-2xl shadow-primary/40 hover:scale-110 active:scale-95 transition-all absolute bottom-0 right-0 z-50">
+    <button @click="open = !open" :class="open ? 'scale-0 opacity-0' : 'scale-100 opacity-100'" class="w-14 h-14 md:w-16 md:h-16 bg-primary text-white rounded-full flex items-center justify-center text-2xl shadow-2xl shadow-primary/40 hover:scale-110 active:scale-95 transition-all absolute bottom-0 right-0 z-[100]">
         <i class="bi bi-chat-dots-fill"></i>
     </button>
 
@@ -12,7 +12,7 @@
          x-transition:leave="transition ease-in duration-200 transform"
          x-transition:leave-start="opacity-100 translate-y-0 scale-100"
          x-transition:leave-end="opacity-0 translate-y-10 scale-95"
-         class="absolute bottom-0 right-0 w-[350px] sm:w-[400px] h-[500px] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-100 origin-bottom-right z-40" style="display: none;">
+         class="absolute bottom-16 md:bottom-0 right-0 w-[calc(100vw-32px)] sm:w-[400px] h-[400px] md:h-[500px] max-w-[350px] sm:max-w-none bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-100 origin-bottom-right z-40" style="display: none;">
         
         <!-- Header -->
         <div class="bg-primary p-6 text-white flex justify-between items-center relative overflow-hidden">

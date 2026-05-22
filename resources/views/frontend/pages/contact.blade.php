@@ -3,7 +3,7 @@
 @section('title', 'Contact Us | Premium Electronics Store')
 
 @section('content')
-<section class="py-24 bg-white">
+<section class="pt-24 pb-44 bg-white">
     <div class="max-w-7xl mx-auto px-4">
         <div class="text-center mb-16 space-y-4">
             <span class="text-primary font-black uppercase tracking-[0.2em] text-xs">Get In Touch</span>
