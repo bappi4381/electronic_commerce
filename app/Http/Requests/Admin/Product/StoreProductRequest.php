@@ -39,6 +39,9 @@ class StoreProductRequest extends FormRequest
             'color' => 'nullable|string|max:255',
             'warranty_period' => 'nullable|string|max:255',
             'specifications' => 'nullable|array',
+            'is_flash_deal' => 'nullable|boolean',
+            'is_featured' => 'nullable|boolean',
+            'is_best_seller' => 'nullable|boolean',
         ];
     }
 }

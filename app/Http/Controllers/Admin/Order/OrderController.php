@@ -54,11 +54,15 @@ class OrderController extends Controller
             ]);
         }
 
-        // 2️⃣ Calculate total price
+        // 2️⃣ Calculate total price using discounted price if available
         $totalPrice = 0;
         foreach ($request->products as $productId) {
             $product = Product::findOrFail($productId);
-            $totalPrice += $product->price;
+            // Use discounted_price if it's lower than original price
+            $itemPrice = ($product->discounted_price > 0 && $product->discounted_price < $product->price) 
+                         ? $product->discounted_price 
+                         : $product->price;
+            $totalPrice += $itemPrice;
         }
 
         // 3️⃣ Create unique order ID
@@ -72,16 +76,27 @@ class OrderController extends Controller
             'status' => $request->payment_method == 'cod' ? 'pending' : 'processing',
         ]);
 
-        // 5️⃣ Create Order Items
+        // 5️⃣ Create Order Items and Manage Stock
         foreach ($request->products as $productId) {
             $product = Product::findOrFail($productId);
+            
+            // Determine the actual price paid
+            $actualPrice = ($product->discounted_price > 0 && $product->discounted_price < $product->price) 
+                           ? $product->discounted_price 
+                           : $product->price;
+
             OrderItem::create([
                 'order_id' => $order->id,
                 'product_id' => $product->id,
                 'quantity' => 1,
-                'price' => $product->price,
-                'subtotal' => $product->price,
+                'price' => $actualPrice,
+                'subtotal' => $actualPrice,
             ]);
+
+            // Professional Stock Deduction
+            if ($product->stock > 0) {
+                $product->decrement('stock', 1);
+            }
         }
 
         // 6️⃣ Send email (same structure as user panel)
@@ -105,12 +120,29 @@ class OrderController extends Controller
 
     public function updateStatus(Order $order, $status)
     {
+        $oldStatus = $order->status;
+        
         if (!in_array($status, ['pending', 'processing', 'completed', 'cancelled'])) {
             return redirect()->back()->with('error', 'Invalid status!');
         }
 
+        // Professional Stock Recovery Logic
+        if ($status === 'cancelled' && $oldStatus !== 'cancelled') {
+            foreach ($order->orderItems as $item) {
+                $item->product->increment('stock', $item->quantity);
+            }
+        } 
+        // Re-deduct if moving BACK from cancelled to active
+        elseif ($oldStatus === 'cancelled' && $status !== 'cancelled') {
+            foreach ($order->orderItems as $item) {
+                if ($item->product->stock > 0) {
+                    $item->product->decrement('stock', $item->quantity);
+                }
+            }
+        }
+
         $order->update(['status' => $status]);
-        return redirect()->back()->with('success', 'Order status updated successfully!');
+        return redirect()->back()->with('success', 'Order status updated successfully and inventory adjusted!');
     }
 
     public function destroy(Order $order)

@@ -17,17 +17,25 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $stockStatus = $request->input('stock_status');
 
-        $products = Product::with(['category', 'subcategory', 'images'])
+        $products = Product::with(['category', 'images'])
             ->when($search, function ($query, $search) {
                 $query->where('name', 'like', "%{$search}%")
-                    ->orWhereHas('category', fn($q) => $q->where('name', 'like', "%{$search}%"))
-                    ->orWhereHas('subcategory', fn($q) => $q->where('name', 'like', "%{$search}%"));
+                    ->orWhere('brand', 'like', "%{$search}%")
+                    ->orWhere('model', 'like', "%{$search}%");
             })
-            ->paginate(10)
-            ->appends(['search' => $search]);
+            ->when($stockStatus === 'low', function ($query) {
+                $query->where('stock', '<', 5);
+            })
+            ->when($stockStatus === 'out', function ($query) {
+                $query->where('stock', '<=', 0);
+            })
+            ->latest()
+            ->paginate(20)
+            ->appends(['search' => $search, 'stock_status' => $stockStatus]);
 
-        return view('admin.product.index', compact('products'));
+        return view('admin.product.index', compact('products', 'search', 'stockStatus'));
     }
 
     public function show(Product $product)
@@ -65,13 +73,18 @@ class ProductController extends Controller
         DB::transaction(function () use ($request) {
             $data = $request->only([
                 'name', 'category_id', 'subcategory_id', 'description', 
-                'price', 'stock',
+                'price', 'stock', 'discount',
                 'brand', 'model', 'ram', 'storage', 'battery_capacity', 'screen_size', 'operating_system', 'color', 'warranty_period', 'specifications',
-                'is_featured', 'is_best_seller'
+                'is_featured', 'is_best_seller', 'is_flash_deal'
             ]);
 
-            $data['discount'] = 0;
-            $data['discounted_price'] = $data['price'];
+            // Ensure booleans
+            $data['is_featured'] = $request->has('is_featured');
+            $data['is_best_seller'] = $request->has('is_best_seller');
+            $data['is_flash_deal'] = $request->has('is_flash_deal');
+
+            $data['discount'] = $request->input('discount', 0);
+            $data['discounted_price'] = $data['price'] - ($data['price'] * ($data['discount'] / 100));
 
             $product = Product::create($data);
 
@@ -111,10 +124,18 @@ class ProductController extends Controller
         DB::transaction(function () use ($request, $product) {
             $data = $request->only([
                 'name', 'category_id', 'subcategory_id', 'description', 
-                'price', 'stock',
+                'price', 'stock', 'discount',
                 'brand', 'model', 'ram', 'storage', 'battery_capacity', 'screen_size', 'operating_system', 'color', 'warranty_period', 'specifications',
-                'is_featured', 'is_best_seller'
+                'is_featured', 'is_best_seller', 'is_flash_deal'
             ]);
+
+            // Ensure booleans
+            $data['is_featured'] = $request->has('is_featured');
+            $data['is_best_seller'] = $request->has('is_best_seller');
+            $data['is_flash_deal'] = $request->has('is_flash_deal');
+
+            $data['discount'] = $request->input('discount', 0);
+            $data['discounted_price'] = $data['price'] - ($data['price'] * ($data['discount'] / 100));
 
             $product->update($data);
 

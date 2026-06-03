@@ -120,8 +120,8 @@ Route::prefix('admin')->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
 
         Route::get('category-subcategory', [CategoriesController::class, 'index'])->name('category_subcategory.index');
-        Route::resource('categories', CategoriesController::class)->only(['store', 'destroy']);
-        Route::resource('subcategories', SubcategoryController::class)->only(['store', 'destroy']);
+        Route::resource('categories', CategoriesController::class)->only(['store', 'update', 'destroy']);
+        Route::resource('subcategories', SubcategoryController::class)->only(['store', 'update', 'destroy']);
 
         // Add route for getting subcategories (e.g., for AJAX dependent dropdowns)
         Route::get('/categories/by-type/{type}', [CategoriesController::class, 'getByType'])->name('categories.byType');

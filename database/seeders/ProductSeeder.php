@@ -152,6 +152,17 @@ class ProductSeeder extends Seeder
                 ];
             }
 
+            $isFlashDeal = rand(1, 10) <= 3; // 30% flash deal chance
+            
+            if ($isFlashDeal) {
+                $discount = [30, 40, 50, 60, 70][rand(0, 4)]; // High discounts for flash deals
+            } else {
+                $discount = rand(0, 4) * 5; // 0-20% for regular items
+            }
+
+            $discounted_price = $price - ($price * ($discount / 100));
+            $stock = rand(2, 85); // Some products will have low stock (< 5)
+
             // Create product
             $product = Product::create([
                 'category_id' => $category->id,
@@ -170,10 +181,10 @@ class ProductSeeder extends Seeder
                 'price' => $price,
                 'discount' => $discount,
                 'discounted_price' => $discounted_price,
-                'stock' => rand(10, 85),
-                'is_featured' => rand(1, 10) <= 3, // 30% featured
-                'is_best_seller' => rand(1, 10) <= 2, // 20% best seller
-                'is_flash_deal' => rand(1, 10) <= 2, // 20% flash deal
+                'stock' => $stock,
+                'is_featured' => rand(1, 10) <= 3, 
+                'is_best_seller' => rand(1, 10) <= 2, 
+                'is_flash_deal' => $isFlashDeal, 
                 'specifications' => $specifications
             ]);
 

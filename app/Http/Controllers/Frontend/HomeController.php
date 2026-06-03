@@ -37,19 +37,46 @@ class HomeController extends Controller
         // Get user wishlist IDs if logged in
         $wishlistIds = Auth::check() ? Wishlist::where('user_id', Auth::id())->pluck('product_id')->toArray() : [];
 
-        // Get Flash Deal products (products specifically marked as flash deals)
-        $flashDealProducts = Product::where('is_flash_deal', true)->with('images')->latest()->take(6)->get();
+        // Get Flash Deal products (Must have discount and must be in stock)
+        $flashDealProducts = Product::where('is_flash_deal', true)
+            ->where('discount', '>', 0)
+            ->where('stock', '>', 0)
+            ->with('images')
+            ->latest()
+            ->take(10) // Allow more for horizontal slider
+            ->get();
+
+        // Get Campaign Settings (Dynamic)
+        $flashDealTitle = \App\Models\Setting::where('key', 'flash_deal_title')->first()?->value ?? "Cyber Monday Extreme Deals";
+        $flashDealEndTime = \App\Models\Setting::where('key', 'flash_deal_end_time')->first()?->value ?? "2026-06-30 23:59:59";
 
         // Get banners
         $heroBanner = \App\Models\Banner::where('type', 'hero')->where('status', true)->orderBy('order', 'asc')->first();
         $subBanners = \App\Models\Banner::where('type', 'sub_banner')->where('status', true)->orderBy('order', 'asc')->take(2)->get();
         $promoBanners = \App\Models\Banner::where('type', 'promo')->where('status', true)->orderBy('order', 'asc')->get();
 
-        return view('frontend.pages.home', compact('latestProducts', 'bestSellers', 'featuredProducts', 'arrivalCategories', 'articles', 'wishlistIds', 'heroBanner', 'subBanners', 'promoBanners', 'flashDealProducts'));
+        // Get all categories for the horizontal scroll section (Latest First)
+        $allCategories = Category::where('type', 'product')->latest()->get();
+
+        return view('frontend.pages.home', compact(
+            'latestProducts', 
+            'bestSellers', 
+            'featuredProducts', 
+            'arrivalCategories', 
+            'articles', 
+            'wishlistIds', 
+            'heroBanner', 
+            'subBanners', 
+            'promoBanners', 
+            'flashDealProducts',
+            'flashDealTitle',
+            'flashDealEndTime',
+            'allCategories'
+        ));
     }
     public function products(Request $request)
     {
-        $categories = Category::where('type', 'product')->get();
+        $categories = Category::where('type', 'product')->withCount('products')->get();
 
         $products = Product::query();
 

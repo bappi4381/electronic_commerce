@@ -52,9 +52,12 @@
                                 @foreach($categories as $category)
                                     <li>
                                         <a href="{{ route('products.index', ['category' => $category->id]) }}" 
-                                           class="flex items-center justify-between group p-4 rounded-2xl transition-all {{ request('category') == $category->id ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'hover:bg-slate-50 text-slate-600' }} no-underline">
-                                            <span class="font-bold text-sm">{{ $category->name }}</span>
-                                            <div class="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+                                           class="flex items-center justify-between group p-3.5 sm:p-4 rounded-2xl transition-all {{ request('category') == $category->id ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'hover:bg-slate-50 text-slate-600' }} no-underline">
+                                            <div class="flex flex-col">
+                                                <span class="font-bold text-sm tracking-tight leading-none">{{ $category->name }}</span>
+                                                <span class="text-[9px] font-black {{ request('category') == $category->id ? 'text-white/70' : 'text-slate-400' }} uppercase tracking-widest mt-1">{{ $category->products_count }} Items Available</span>
+                                            </div>
+                                            <div class="w-6 h-6 rounded-lg {{ request('category') == $category->id ? 'bg-white/20' : 'bg-slate-100' }} flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
                                                 <i class="bi bi-chevron-right text-[10px]"></i>
                                             </div>
                                         </a>
@@ -290,8 +293,11 @@
                     @foreach($categories as $category)
                         <li>
                             <a href="{{ route('products.index', ['category' => $category->id]) }}" 
-                               class="flex items-center justify-between group p-3 rounded-xl transition-all {{ request('category') == $category->id ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'hover:bg-white text-slate-600 bg-white/50 border border-slate-100' }} no-underline">
-                                <span class="font-bold text-xs">{{ $category->name }}</span>
+                               class="flex items-center justify-between group p-3.5 rounded-xl transition-all {{ request('category') == $category->id ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'hover:bg-white text-slate-600 bg-white/50 border border-slate-100' }} no-underline">
+                                <div class="flex flex-col">
+                                    <span class="font-bold text-xs leading-none">{{ $category->name }}</span>
+                                    <span class="text-[8px] font-black {{ request('category') == $category->id ? 'text-white/70' : 'text-slate-400' }} uppercase tracking-widest mt-1">{{ $category->products_count }} Items</span>
+                                </div>
                                 <i class="bi bi-chevron-right text-[8px] opacity-50"></i>
                             </a>
                         </li>

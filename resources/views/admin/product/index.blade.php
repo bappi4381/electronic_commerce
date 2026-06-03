@@ -11,17 +11,21 @@
         </div>
         
         <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-            <form action="{{ route('admin.products.index') }}" method="GET" class="relative flex-grow sm:min-w-[300px]">
-                <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                <input type="text" name="search" value="{{ request('search') }}" 
-                       placeholder="Search products..." 
-                       class="w-full bg-white border border-slate-200 rounded-lg pl-10 pr-10 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors">
-                @if(request('search'))
-                    <a href="{{ route('admin.products.index') }}" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 transition-colors">
-                        <i class="bi bi-x-circle-fill"></i>
-                    </a>
-                @endif
+            <form action="{{ route('admin.products.index') }}" method="GET" class="flex flex-col sm:flex-row gap-3 flex-grow lg:min-w-[500px]">
+                <div class="relative flex-grow">
+                    <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" name="search" value="{{ request('search') }}" 
+                           placeholder="Search products..." 
+                           class="w-full bg-white border border-slate-200 rounded-lg pl-10 pr-10 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-colors">
+                </div>
+                
+                <select name="stock_status" onchange="this.form.submit()" class="bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 outline-none cursor-pointer">
+                    <option value="">All Inventory</option>
+                    <option value="low" {{ request('stock_status') == 'low' ? 'selected' : '' }}>⚠️ Low Stock</option>
+                    <option value="out" {{ request('stock_status') == 'out' ? 'selected' : '' }}>🚫 Out of Stock</option>
+                </select>
             </form>
+
             <a href="{{ route('admin.products.create') }}" class="bg-primary text-white px-5 py-2.5 rounded-lg font-medium text-sm hover:bg-primary-dark transition-colors flex items-center justify-center gap-2 shadow-sm whitespace-nowrap">
                 <i class="bi bi-plus-lg"></i> Add Product
             </a>
@@ -68,7 +72,12 @@
                                     <div class="flex flex-col">
                                         <span class="font-semibold text-slate-900 line-clamp-1">{{ $product->name }}</span>
                                         <span class="text-xs text-slate-500 mt-0.5">{{ $product->brand }} {{ $product->model ? '| ' . $product->model : '' }}</span>
-                                        @if($product->discount)
+                                        @if($product->is_flash_deal)
+                                            <span class="inline-block mt-1 bg-slate-900 text-white text-[9px] font-black px-2 py-0.5 rounded-md w-max border border-white/10 uppercase tracking-tighter">
+                                                <i class="bi bi-lightning-charge-fill text-red-500 mr-1"></i> Flash Sale
+                                            </span>
+                                        @endif
+                                        @if($product->discount && !$product->is_flash_deal)
                                             <span class="inline-block mt-1 bg-red-50 text-red-600 text-xs font-medium px-2 py-0.5 rounded-full w-max border border-red-100">
                                                 {{ $product->discount }}% OFF
                                             </span>
@@ -90,9 +99,9 @@
                             </td>
                             <td class="px-6 py-4 text-right">
                                 <div class="flex flex-col items-end">
-                                    <span class="font-semibold text-slate-900">৳ {{ number_format($product->price, 0) }}</span>
+                                    <span class="font-semibold text-slate-900">৳ {{ number_format($product->discounted_price ?? $product->price, 0) }}</span>
                                     @if($product->discount)
-                                        <span class="text-xs text-slate-400 line-through">৳ {{ number_format($product->price * (1 + $product->discount/100), 0) }}</span>
+                                        <span class="text-xs text-slate-400 line-through">৳ {{ number_format($product->price, 0) }}</span>
                                     @endif
                                 </div>
                             </td>

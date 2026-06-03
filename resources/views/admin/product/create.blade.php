@@ -109,47 +109,59 @@
                             <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest">Dynamic Key-Value Attributes</p>
                         </div>
                     </div>
-                    <button type="button" @click="addSpecGroup()" class="bg-indigo-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20 hover:scale-105 transition-all">
-                        + Add Section
+                    <button type="button" @click="addSpecRow()" class="bg-slate-900 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-slate-900/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2">
+                        <i class="bi bi-plus-lg"></i>
+                        Add Technical Feature
                     </button>
                 </div>
 
-                <div class="space-y-8">
-                    {{-- Quick Specs --}}
-                    <div class="bg-slate-50/50 p-8 rounded-[2rem] grid grid-cols-2 lg:grid-cols-4 gap-6 border border-slate-100">
-                        @foreach([['Brand','brand'],['Model','model'],['RAM','ram'],['Storage','storage'],['Battery','battery_capacity'],['Screen','screen_size'],['OS','operating_system'],['Color','color'],['Warranty','warranty_period']] as $qs)
-                            <div class="space-y-1.5">
-                                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">{{ $qs[0] }}</label>
-                                <input type="text" name="{{ $qs[1] }}" value="{{ old($qs[1], $product->{$qs[1]} ?? '') }}" class="w-full bg-white border-none rounded-lg px-4 py-3 text-xs font-bold shadow-sm focus:ring-1 focus:ring-primary/10">
+                {{-- Quick Specs Grid --}}
+                <div class="mb-12">
+                    <div class="flex items-center gap-3 mb-6">
+                        <span class="w-1.5 h-6 bg-primary rounded-full"></span>
+                        <h5 class="text-[10px] font-black uppercase tracking-widest text-slate-800">Operational Quick-Specs</h5>
+                    </div>
+                    <div class="bg-slate-50/50 p-8 rounded-[2.5rem] grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-6 border border-slate-100 shadow-sm">
+                        @foreach([['Brand Architecture','brand','bi-building'],['Model Identifier','model','bi-tag'],['Memory (RAM)','ram','bi-memory'],['Capacity (Storage)','storage','bi-database'],['Energy Cell','battery_capacity','bi-battery-half'],['Panel Size','screen_size','bi-fullscreen'],['Operating System','operating_system','bi-cpu'],['Warranty Era','warranty_period','bi-shield-check']] as $qs)
+                            <div class="space-y-2 group/field">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <i class="bi {{ $qs[2] }} text-slate-400 text-[10px]"></i>
+                                    <label class="text-[9px] font-black uppercase tracking-widest text-slate-400">{{ $qs[0] }}</label>
+                                </div>
+                                <input type="text" name="{{ $qs[1] }}" value="{{ old($qs[1], $product->{$qs[1]} ?? '') }}" placeholder="Enter data..." class="w-full bg-white border border-slate-100 rounded-xl px-4 py-3.5 text-xs font-bold shadow-sm focus:ring-2 focus:ring-primary/10 outline-none transition-all group-hover/field:border-primary/20">
                             </div>
                         @endforeach
                     </div>
+                </div>
 
-                    {{-- Dynamic Matrix --}}
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <template x-for="(group, gIndex) in specifications" :key="gIndex">
-                            <div class="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm relative group/card">
-                                <button type="button" @click="removeSpecGroup(gIndex)" class="absolute -top-3 -right-3 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-all shadow-xl">
-                                    <i class="bi bi-x-lg text-xs"></i>
+                {{-- Dynamic Matrix --}}
+                <div class="space-y-4">
+                    <div class="flex items-center gap-3 mb-6">
+                        <span class="w-1.5 h-6 bg-indigo-500 rounded-full"></span>
+                        <h5 class="text-[10px] font-black uppercase tracking-widest text-slate-800">Detailed Parameter Matrix</h5>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <template x-for="(row, index) in specifications" :key="index">
+                            <div class="flex items-center gap-3 bg-slate-50/30 p-4 rounded-2xl border border-slate-100 group/row shadow-sm hover:shadow-md transition-all hover:bg-white">
+                                <div class="flex-1 grid grid-cols-2 gap-3">
+                                    <input type="text" x-model="row.label" :name="`specifications[${index}][label]`" placeholder="Feature Name" class="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 text-[10px] font-bold text-slate-500 focus:ring-2 focus:ring-indigo-500/10 outline-none uppercase tracking-wider">
+                                    <input type="text" x-model="row.value" :name="`specifications[${index}][value]`" placeholder="Technical Value" class="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 text-[10px] font-black text-slate-900 focus:ring-2 focus:ring-indigo-500/10 outline-none">
+                                </div>
+                                <button type="button" @click="removeSpecRow(index)" class="w-10 h-10 rounded-xl bg-white border border-slate-100 text-slate-300 hover:text-red-500 hover:border-red-100 flex items-center justify-center transition-all opacity-0 group-hover/row:opacity-100 shadow-sm">
+                                    <i class="bi bi-trash3 text-sm"></i>
                                 </button>
-                                
-                                <div class="flex items-center justify-between mb-6">
-                                    <input type="text" x-model="group.title" :name="`specifications[${gIndex}][title]`" placeholder="Section Title (e.g. Display)" class="bg-slate-50 border-none rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 focus:ring-2 focus:ring-primary/10 w-2/3">
-                                    <button type="button" @click="addSpecRow(gIndex)" class="text-[9px] font-black text-indigo-500 uppercase tracking-widest">+ Feature</button>
-                                </div>
-
-                                <div class="space-y-3">
-                                    <template x-for="(row, rIndex) in group.attributes" :key="rIndex">
-                                        <div class="flex items-center gap-3 group/row">
-                                            <input type="text" x-model="row.label" :name="`specifications[${gIndex}][attributes][${rIndex}][label]`" placeholder="Spec" class="w-1/3 bg-slate-50 border-none rounded-lg px-4 py-2 text-[10px] font-bold text-slate-500">
-                                            <input type="text" x-model="row.value" :name="`specifications[${gIndex}][attributes][${rIndex}][value]`" placeholder="Value" class="flex-1 bg-slate-50 border-none rounded-lg px-4 py-2 text-[10px] font-bold text-slate-900">
-                                            <button type="button" @click="removeSpecRow(gIndex, rIndex)" class="text-red-300 opacity-0 group-hover/row:opacity-100 transition-all"><i class="bi bi-dash-circle"></i></button>
-                                        </div>
-                                    </template>
-                                </div>
                             </div>
                         </template>
                     </div>
+
+                    <template x-if="specifications.length === 0">
+                        <div class="py-20 text-center bg-slate-50 rounded-[2.5rem] border border-dashed border-slate-200">
+                            <i class="bi bi-list-stars text-4xl text-slate-200 block mb-4"></i>
+                            <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">No specifications defined yet</p>
+                            <button type="button" @click="addSpecRow()" class="mt-6 text-indigo-500 text-[10px] font-black uppercase tracking-widest hover:underline">+ Initialize First Row</button>
+                        </div>
+                    </template>
                 </div>
             </div>
         </div>
@@ -162,18 +174,37 @@
                         <h4 class="text-[10px] font-black uppercase tracking-widest text-cyan-500 mb-8">04. Economics</h4>
                         <div class="space-y-6">
                             <div class="space-y-1.5">
-                                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Inventory</label>
-                                <input type="number" name="stock" value="{{ old('stock', $product->stock ?? '') }}" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-black outline-none" required>
+                                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Inventory (Total Stock)</label>
+                                <input type="number" name="stock" value="{{ old('stock', $product->stock ?? '') }}" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-black outline-none" placeholder="e.g. 50" required>
                             </div>
                             <div class="space-y-1.5">
                                 <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Retail Price (TK)</label>
-                                <input type="number" name="price" value="{{ old('price', $product->price ?? '') }}" step="0.01" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-black outline-none" required>
+                                <input type="number" name="price" value="{{ old('price', $product->price ?? '') }}" step="0.01" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-black outline-none" placeholder="e.g. 15000" required>
+                            </div>
+                            <div class="space-y-1.5">
+                                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Discount Percentage (%)</label>
+                                <input type="number" name="discount" value="{{ old('discount', $product->discount ?? '0') }}" min="0" max="100" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-black outline-none" placeholder="e.g. 10">
                             </div>
                         </div>
 
                         {{-- Promotion Settings --}}
-                        <div class="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-4">
+                        <div class="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-4 mt-6">
                             <h5 class="text-[8px] font-black uppercase tracking-widest text-slate-400 ml-1">Promotion Status</h5>
+                            
+                            {{-- Flash Deal Toggle --}}
+                            <div class="flex items-center justify-between px-2 py-1">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center text-white shadow-lg shadow-red-500/20">
+                                        <i class="bi bi-lightning-charge-fill text-sm animate-pulse"></i>
+                                    </div>
+                                    <span class="text-[10px] font-black uppercase tracking-tight text-slate-700">Active Flash Deal</span>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" name="is_flash_deal" value="1" {{ old('is_flash_deal', $product->is_flash_deal ?? false) ? 'checked' : '' }} class="sr-only peer">
+                                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
+                                </label>
+                            </div>
+
                             <div class="flex items-center justify-between px-2">
                                 <div class="flex items-center gap-3">
                                     <div class="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600">
@@ -188,14 +219,14 @@
                             </div>
                             <div class="flex items-center justify-between px-2">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center text-red-600">
-                                        <i class="bi bi-lightning-charge-fill text-sm"></i>
+                                    <div class="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white">
+                                        <i class="bi bi-fire text-sm text-orange-400"></i>
                                     </div>
                                     <span class="text-[10px] font-black uppercase tracking-tight text-slate-700">Best Seller</span>
                                 </div>
                                 <label class="relative inline-flex items-center cursor-pointer">
                                     <input type="checkbox" name="is_best_seller" value="1" {{ old('is_best_seller', $product->is_best_seller ?? false) ? 'checked' : '' }} class="sr-only peer">
-                                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+                                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-slate-900"></div>
                                 </label>
                             </div>
                         </div>
@@ -247,27 +278,16 @@ function productForm() {
 
         init() {
             if (this.specifications.length === 0) {
-                this.addSpecGroup();
+                this.addSpecRow();
             }
         },
 
-        addSpecGroup() {
-            this.specifications.push({
-                title: '',
-                attributes: [{ label: '', value: '' }]
-            });
+        addSpecRow() {
+            this.specifications.push({ label: '', value: '' });
         },
 
-        removeSpecGroup(index) {
+        removeSpecRow(index) {
             this.specifications.splice(index, 1);
-        },
-
-        addSpecRow(gIndex) {
-            this.specifications[gIndex].attributes.push({ label: '', value: '' });
-        },
-
-        removeSpecRow(gIndex, rIndex) {
-            this.specifications[gIndex].attributes.splice(rIndex, 1);
         }
     }
 }

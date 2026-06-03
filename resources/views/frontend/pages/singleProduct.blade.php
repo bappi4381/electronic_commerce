@@ -34,7 +34,7 @@
                     </div>
 
                     @if($product->discount)
-                        <div class="absolute top-6 right-6 bg-red-500 text-white px-3 py-1 rounded-lg text-sm font-bold shadow-sm">
+                        <div class="absolute top-6 right-6 bg-[#20A7DB] text-white px-3 py-1 rounded-lg text-sm font-bold shadow-lg shadow-[#20A7DB]/20 border border-white/20">
                             -{{ $product->discount }}%
                         </div>
                     @endif
@@ -63,25 +63,32 @@
             <div class="w-full lg:w-1/2 flex flex-col justify-center">
                 <div class="mb-8 space-y-4">
                     <div class="flex items-center gap-3">
-                        <span class="text-sm font-semibold text-primary">{{ $product->category->name ?? 'Electronics' }}</span>
+                        <span class="text-[10px] font-black uppercase tracking-[0.2em] text-primary bg-primary/5 px-3 py-1 rounded-full">{{ $product->category->name ?? 'Electronics' }}</span>
                         <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
                         @if($product->stock > 0)
-                            <span class="text-sm font-medium text-emerald-600 flex items-center gap-1.5">
-                                <i class="bi bi-check-circle-fill"></i> In Stock ({{ $product->stock }})
-                            </span>
+                            @if($product->stock <= 10)
+                                <span class="text-sm font-bold text-red-500 flex items-center gap-1.5 animate-pulse">
+                                    <i class="bi bi-exclamation-triangle-fill"></i> ONLY {{ $product->stock }} LEFT IN STOCK!
+                                </span>
+                            @else
+                                <span class="text-sm font-medium text-emerald-600 flex items-center gap-1.5">
+                                    <i class="bi bi-check-circle-fill"></i> In Stock ({{ $product->stock }})
+                                </span>
+                            @endif
                         @else
                             <span class="text-sm font-medium text-red-500 flex items-center gap-1.5">
-                                <i class="bi bi-x-circle-fill"></i> Out of Stock
+                                <i class="bi bi-x-circle-fill"></i> Currently Out of Stock
                             </span>
                         @endif
                     </div>
                     
-                    <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900 tracking-tight leading-tight">{{ $product->name }}</h1>
+                    <h1 class="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-tight uppercase italic">{{ $product->name }}</h1>
                     
                     <div class="flex items-baseline gap-4 mt-2">
-                        <span class="text-3xl font-bold text-slate-900">৳ {{ number_format($product->price, 0) }}</span>
+                        <span class="text-4xl font-black text-slate-900 tracking-tighter italic">৳ {{ number_format($product->discounted_price ?? $product->price, 0) }}</span>
                         @if($product->discount)
-                            <span class="text-lg text-slate-400 line-through">৳ {{ number_format($product->price * (1 + $product->discount/100), 0) }}</span>
+                            <span class="text-xl text-slate-400 line-through font-bold">৳ {{ number_format($product->price, 0) }}</span>
+                            <span class="bg-[#20A7DB] text-white text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-widest shadow-lg shadow-[#20A7DB]/20 border border-white/20">Save {{ $product->discount }}%</span>
                         @endif
                     </div>
                 </div>
@@ -102,13 +109,13 @@
                         <input type="hidden" name="product_id" value="{{ $product->id }}">
                         
                         <button type="submit" {{ $product->stock <= 0 ? 'disabled' : '' }}
-                                class="flex-1 bg-slate-900 text-white py-4 px-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                            <i class="bi bi-cart-plus text-lg"></i>
+                                class="flex-1 bg-slate-900 text-white py-4 px-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:bg-[#20A7DB] transition-all disabled:opacity-50 disabled:cursor-not-allowed group">
+                            <i class="bi bi-cart-plus text-lg group-hover:rotate-12 transition-transform"></i>
                             Add to Cart
                         </button>
 
                         <button type="submit" name="buy_now" value="1" {{ $product->stock <= 0 ? 'disabled' : '' }}
-                                class="flex-1 bg-primary text-white py-4 px-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:bg-primary-dark shadow-lg shadow-primary/30 hover:shadow-primary/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                                class="flex-1 bg-[#20A7DB] text-white py-4 px-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:bg-[#1c96c5] shadow-lg shadow-[#20A7DB]/30 hover:shadow-[#20A7DB]/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                             <i class="bi bi-bag-check text-lg"></i>
                             Order Now
                         </button>

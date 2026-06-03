@@ -18,21 +18,16 @@
             </div>
             <div class="flex gap-4 overflow-x-auto scrollbar-hide no-scrollbar pb-2">
                 @php
-                    $mobile_cats = [
-                        ['name' => 'Phones', 'icon' => 'bi-phone', 'color' => 'bg-blue-100 text-blue-600'],
-                        ['name' => 'Laptops', 'icon' => 'bi-laptop', 'color' => 'bg-indigo-100 text-indigo-600'],
-                        ['name' => 'Tablets', 'icon' => 'bi-tablet', 'color' => 'bg-purple-100 text-purple-600'],
-                        ['name' => 'Watches', 'icon' => 'bi-smartwatch', 'color' => 'bg-pink-100 text-pink-600'],
-                        ['name' => 'Cameras', 'icon' => 'bi-camera', 'color' => 'bg-orange-100 text-orange-600'],
-                    ];
+                    // Use categories fetched from HomeController (type = 'product')
+                    $mobileCategories = $allCategories->take(6);
                 @endphp
-                @foreach($mobile_cats as $cat)
-                <a href="#" class="flex flex-col items-center gap-2.5 min-w-[65px]">
-                    <div class="w-[60px] h-[60px] rounded-[1.2rem] {{ $cat['color'] }} flex items-center justify-center text-2xl shadow-sm border border-white/50 relative overflow-hidden group">
+                @foreach($mobileCategories as $cat)
+                <a href="{{ route('products.index', ['category' => $cat->id]) }}" class="flex flex-col items-center gap-2.5 min-w-[65px]">
+                    <div class="w-[60px] h-[60px] rounded-[1.2rem] {{ $cat->color ?? 'bg-gray-100 text-gray-600' }} flex items-center justify-center text-2xl shadow-sm border border-white/50 relative overflow-hidden group">
                         <div class="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                        <i class="bi {{ $cat['icon'] }} relative z-10 group-hover:scale-110 transition-transform"></i>
+                        <i class="bi {{ $cat->icon ?? 'bi-tag' }} relative z-10 group-hover:scale-110 transition-transform"></i>
                     </div>
-                    <span class="text-[9px] font-black uppercase text-slate-600 tracking-wider">{{ $cat['name'] }}</span>
+                    <span class="text-[9px] font-black uppercase text-slate-600 tracking-wider">{{ $cat->name }}</span>
                 </a>
                 @endforeach
             </div>
@@ -64,8 +59,8 @@
                     @foreach ($flashDealProducts as $product)
                     <a href="{{ route('products.show', $product->id) }}" class="min-w-[130px] relative group block">
                         <div class="absolute top-2 left-2 bg-red-500 text-white text-[7px] font-black px-1.5 py-0.5 rounded shadow-sm z-10">-{{ intval($product->discount) }}%</div>
-                        <div class="bg-slate-50 rounded-xl p-3 mb-3 h-[110px] flex items-center justify-center relative overflow-hidden border border-slate-100">
-                            <img src="{{ $product->images->first() ? asset('storage/' . $product->images->first()->image) : 'https://images.unsplash.com/photo-1526733169359-81173747976e?q=80&w=400&auto=format&fit=crop' }}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1526733169359-81173747976e?q=80&w=400&auto=format&fit=crop';" class="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500" alt="{{ $product->name }}">
+                        <div class="bg-slate-50 rounded-xl mb-3 h-[110px] flex items-center justify-center relative overflow-hidden border border-slate-100">
+                            <img src="{{ $product->images->first() ? asset('storage/' . $product->images->first()->image) : 'https://images.unsplash.com/photo-1526733169359-81173747976e?q=80&w=400&auto=format&fit=crop' }}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1526733169359-81173747976e?q=80&w=400&auto=format&fit=crop';" class="max-w-[85%] max-h-[90px] w-auto h-auto object-contain group-hover:scale-110 transition-transform duration-500" alt="{{ $product->name }}">
                         </div>
                         <h4 class="text-[9px] font-bold text-slate-800 line-clamp-2 leading-tight uppercase">{{ $product->name }}</h4>
                         <div class="mt-2 flex items-center justify-between">
@@ -105,8 +100,8 @@
                         <i class="bi bi-heart text-[10px]"></i>
                     </button>
                     <a href="{{ route('products.show', $product->id) }}" class="block">
-                        <div class="h-[120px] bg-slate-50 rounded-xl p-3 mb-3 flex items-center justify-center overflow-hidden border border-slate-50">
-                            <img src="{{ $product->images->first() ? asset('storage/' . $product->images->first()->image) : 'https://images.unsplash.com/photo-1526733169359-81173747976e?q=80&w=400&auto=format&fit=crop' }}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1526733169359-81173747976e?q=80&w=400&auto=format&fit=crop';" class="w-full h-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-500" alt="{{ $product->name }}">
+                        <div class="h-[120px] bg-slate-50 rounded-xl mb-3 flex items-center justify-center overflow-hidden border border-slate-50">
+                            <img src="{{ $product->images->first() ? asset('storage/' . $product->images->first()->image) : 'https://images.unsplash.com/photo-1526733169359-81173747976e?q=80&w=400&auto=format&fit=crop' }}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1526733169359-81173747976e?q=80&w=400&auto=format&fit=crop';" class="max-w-[85%] max-h-[100px] w-auto h-auto object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-500" alt="{{ $product->name }}">
                         </div>
                     </a>
                     <div class="space-y-1.5">
@@ -144,8 +139,8 @@
                         <i class="bi bi-heart text-[10px]"></i>
                     </button>
                     <a href="{{ route('products.show', $product->id) }}" class="block">
-                        <div class="h-[120px] bg-slate-50 rounded-xl p-3 mb-3 flex items-center justify-center overflow-hidden border border-slate-50">
-                            <img src="{{ $product->images->first() ? asset('storage/' . $product->images->first()->image) : 'https://images.unsplash.com/photo-1526733169359-81173747976e?q=80&w=400&auto=format&fit=crop' }}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1526733169359-81173747976e?q=80&w=400&auto=format&fit=crop';" class="w-full h-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-500" alt="{{ $product->name }}">
+                        <div class="h-[120px] bg-slate-50 rounded-xl mb-3 flex items-center justify-center overflow-hidden border border-slate-50">
+                            <img src="{{ $product->images->first() ? asset('storage/' . $product->images->first()->image) : 'https://images.unsplash.com/photo-1526733169359-81173747976e?q=80&w=400&auto=format&fit=crop' }}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1526733169359-81173747976e?q=80&w=400&auto=format&fit=crop';" class="max-w-[85%] max-h-[100px] w-auto h-auto object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-500" alt="{{ $product->name }}">
                         </div>
                     </a>
                     <div class="space-y-1.5">
@@ -183,8 +178,8 @@
                         <i class="bi bi-heart text-[10px]"></i>
                     </button>
                     <a href="{{ route('products.show', $product->id) }}" class="block">
-                        <div class="h-[120px] bg-slate-50 rounded-xl p-3 mb-3 flex items-center justify-center overflow-hidden border border-slate-50">
-                            <img src="{{ $product->images->first() ? asset('storage/' . $product->images->first()->image) : 'https://images.unsplash.com/photo-1526733169359-81173747976e?q=80&w=400&auto=format&fit=crop' }}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1526733169359-81173747976e?q=80&w=400&auto=format&fit=crop';" class="w-full h-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-500" alt="{{ $product->name }}">
+                        <div class="h-[120px] bg-slate-50 rounded-xl mb-3 flex items-center justify-center overflow-hidden border border-slate-50">
+                            <img src="{{ $product->images->first() ? asset('storage/' . $product->images->first()->image) : 'https://images.unsplash.com/photo-1526733169359-81173747976e?q=80&w=400&auto=format&fit=crop' }}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1526733169359-81173747976e?q=80&w=400&auto=format&fit=crop';" class="max-w-[85%] max-h-[100px] w-auto h-auto object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-500" alt="{{ $product->name }}">
                         </div>
                     </a>
                     <div class="space-y-1.5">
@@ -441,8 +436,8 @@
                             </div>
                             
                             <!-- Image container -->
-                            <div class="bg-white/10 group-hover/card:bg-slate-50 rounded-[1.5rem] p-6 mb-6 aspect-square flex items-center justify-center overflow-hidden transition-colors relative">
-                                <img src="{{ $product->images->first() ? asset('storage/' . $product->images->first()->image) : 'https://images.unsplash.com/photo-1526733169359-81173747976e?q=80&w=400&auto=format&fit=crop' }}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1526733169359-81173747976e?q=80&w=400&auto=format&fit=crop';" class="max-w-full max-h-full object-contain mix-blend-multiply group-hover/card:scale-110 transition-transform duration-500" alt="{{ $product->name }}">
+                            <div class="bg-white/10 group-hover/card:bg-slate-50 rounded-[1.5rem] mb-6 h-44 flex items-center justify-center overflow-hidden transition-colors relative">
+                                <img src="{{ $product->images->first() ? asset('storage/' . $product->images->first()->image) : 'https://images.unsplash.com/photo-1526733169359-81173747976e?q=80&w=400&auto=format&fit=crop' }}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1526733169359-81173747976e?q=80&w=400&auto=format&fit=crop';" class="max-w-[85%] max-h-[140px] w-auto h-auto object-contain mix-blend-multiply group-hover/card:scale-110 transition-transform duration-500" alt="{{ $product->name }}">
                             </div>
 
                             <!-- Brand & Name -->
@@ -632,22 +627,12 @@
                 <div class="w-12 sm:w-20 h-1.5 bg-primary rounded-full mx-auto"></div>
             </div>
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6">
-                @php
-                    $categories_icons = [
-                        ['name' => 'Smartphones', 'icon' => 'bi-phone', 'color' => 'bg-blue-50 text-blue-500'],
-                        ['name' => 'Laptops', 'icon' => 'bi-laptop', 'color' => 'bg-indigo-50 text-indigo-500'],
-                        ['name' => 'Tablets', 'icon' => 'bi-tablet', 'color' => 'bg-purple-50 text-purple-500'],
-                        ['name' => 'Watches', 'icon' => 'bi-smartwatch', 'color' => 'bg-pink-50 text-pink-500'],
-                        ['name' => 'Cameras', 'icon' => 'bi-camera', 'color' => 'bg-orange-50 text-orange-500'],
-                        ['name' => 'Accessories', 'icon' => 'bi-earbuds', 'color' => 'bg-cyan-50 text-cyan-500'],
-                    ];
-                @endphp
-                @foreach($categories_icons as $cat)
-                    <a href="#" class="group p-6 sm:p-8 bg-slate-50 rounded-[2rem] sm:rounded-[40px] border border-transparent hover:border-primary hover:bg-white transition-all text-center no-underline">
-                        <div class="w-16 h-16 sm:w-20 sm:h-20 {{ $cat['color'] }} rounded-[1.2rem] sm:rounded-3xl mx-auto mb-4 sm:mb-6 flex items-center justify-center text-3xl sm:text-4xl group-hover:scale-110 transition-transform">
-                            <i class="bi {{ $cat['icon'] }}"></i>
+                @foreach($allCategories as $cat)
+                    <a href="{{ route('products.index', ['category' => $cat->id]) }}" class="group p-6 sm:p-8 bg-slate-50 rounded-[2rem] sm:rounded-[40px] border border-transparent hover:border-primary hover:bg-white transition-all text-center no-underline">
+                        <div class="w-16 h-16 sm:w-20 sm:h-20 {{ $cat->color ?? 'bg-gray-50 text-gray-500' }} rounded-[1.2rem] sm:rounded-3xl mx-auto mb-4 sm:mb-6 flex items-center justify-center text-3xl sm:text-4xl group-hover:scale-110 transition-transform">
+                            <i class="bi {{ $cat->icon ?? 'bi-tag' }}"></i>
                         </div>
-                        <h5 class="text-[10px] sm:text-xs font-black uppercase tracking-widest text-slate-900">{{ $cat['name'] }}</h5>
+                        <h5 class="text-[10px] sm:text-xs font-black uppercase tracking-widest text-slate-900">{{ $cat->name }}</h5>
                     </a>
                 @endforeach
             </div>
@@ -665,13 +650,13 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8">
                 @foreach ($latestProducts->take(6) as $product)
                     <div class="group bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 flex items-center gap-4 sm:gap-6 border border-slate-100 hover:shadow-xl transition-all">
-                        <div class="w-20 h-20 sm:w-24 sm:h-24 bg-slate-50 rounded-xl sm:rounded-2xl flex-shrink-0 p-3 sm:p-4 relative overflow-hidden">
+                        <div class="w-20 h-20 sm:w-24 sm:h-24 bg-slate-50 rounded-xl sm:rounded-2xl flex-shrink-0 flex items-center justify-center relative overflow-hidden">
                              @if($product->discount)
                                 <div class="absolute top-0 left-0 bg-red-500 text-white text-[7px] font-black px-1.5 py-0.5 rounded-br-lg z-10 shadow-lg">
                                     HOT
                                 </div>
                             @endif
-                            <img src="{{ $product->images->first() ? asset('storage/' . $product->images->first()->image) : 'https://images.unsplash.com/photo-1526733169359-81173747976e?q=80&w=1470&auto=format&fit=crop' }}" alt="{{ $product->name }}" class="w-full h-full object-contain group-hover:scale-110 transition-transform">
+                            <img src="{{ $product->images->first() ? asset('storage/' . $product->images->first()->image) : 'https://images.unsplash.com/photo-1526733169359-81173747976e?q=80&w=400&auto=format&fit=crop' }}" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1526733169359-81173747976e?q=80&w=400&auto=format&fit=crop';" alt="{{ $product->name }}" class="max-w-[80%] max-h-[80%] w-auto h-auto object-contain group-hover:scale-110 transition-transform">
                         </div>
                         <div class="flex-1 space-y-1 sm:space-y-2">
                              <div class="flex items-center gap-1 text-yellow-400 text-[8px]">

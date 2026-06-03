@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin\Product;
 use App\Http\Controllers\Controller;
 use App\Models\Subcategory;
+use App\Models\Category;
 use Illuminate\Http\Request;
 
 class SubcategoryController extends Controller
@@ -30,6 +31,23 @@ class SubcategoryController extends Controller
         $subcategory->delete();
 
         return back()->with('success', 'Subcategory deleted successfully.');
+    }
+
+    // Update subcategory
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'category_id' => 'required|exists:categories,id',
+            'name' => 'required',
+        ]);
+
+        $subcategory = Subcategory::findOrFail($id);
+        $subcategory->update([
+            'category_id' => $request->category_id,
+            'name' => $request->name,
+        ]);
+
+        return back()->with('success', 'Subcategory updated successfully.');
     }
     /**
      * Get subcategories by category ID (for AJAX requests)

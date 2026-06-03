@@ -12,7 +12,7 @@ class CategoriesController extends Controller
     // Show categories & subcategories
     public function index()
     {
-        $categories = Category::with('subcategories')->get();
+        $categories = Category::with('subcategories')->withCount('products')->get();
         return view('admin.product.category_subcategory', compact('categories'));
     }
 
@@ -34,7 +34,9 @@ class CategoriesController extends Controller
         Category::create([
             'name'  => $request->name,
             'type'  => $request->type ?? 'product',
-            'image' => $imagePath, 
+            'image' => $imagePath,
+            'icon'  => $request->icon ?? 'bi-tag',
+            'color' => $request->color ?? 'slate-600',
         ]);
 
         return back()->with('success', 'Category created successfully.');
@@ -47,6 +49,29 @@ class CategoriesController extends Controller
         $category->delete();
 
         return back()->with('success', 'Category deleted successfully.');
+    }
+
+    // Update category
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'name' => 'required|unique:categories,name,' . $id,
+            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+        ]);
+
+        $category = Category::findOrFail($id);
+        $category->name = $request->name;
+
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('categories', 'public');
+            $category->image = $imagePath;
+        }
+
+        $category->icon = $request->icon ?? $category->icon;
+        $category->color = $request->color ?? $category->color;
+        $category->save();
+
+        return back()->with('success', 'Category updated successfully.');
     }
     public function getByType($type)
     {
