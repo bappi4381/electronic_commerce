@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\Auth\LoginController as AdminLogin;
 use App\Http\Controllers\Admin\Auth\ProfileController;
 use App\Http\Controllers\Admin\Dashboard\DashboardController;
 use App\Http\Controllers\Admin\users\UserController;
+use App\Http\Controllers\Admin\Users\AdminUserController;
 use App\Http\Controllers\Admin\Product\CategoriesController;
 use App\Http\Controllers\Admin\Product\SubcategoryController;
 use App\Http\Controllers\Admin\Product\ProductController;
@@ -13,6 +14,8 @@ use App\Http\Controllers\Admin\Order\OrderController;
 use App\Http\Controllers\Frontend\HomeController;
 use App\Http\Controllers\Admin\ArticleController;
 use App\Http\Controllers\Admin\CouponController;
+use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\BannerController;
 use App\Http\Controllers\Frontend\FrontendArticleController;
 use App\Http\Controllers\CartController;
@@ -119,63 +122,91 @@ Route::prefix('admin')->group(function () {
     Route::middleware('admin')->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
 
-        Route::get('category-subcategory', [CategoriesController::class, 'index'])->name('category_subcategory.index');
-        Route::resource('categories', CategoriesController::class)->only(['store', 'update', 'destroy']);
-        Route::resource('subcategories', SubcategoryController::class)->only(['store', 'update', 'destroy']);
+        // Inventory & Products Management
+        Route::middleware('permission:manage-products,admin')->group(function () {
+            Route::get('category-subcategory', [CategoriesController::class, 'index'])->name('category_subcategory.index');
+            Route::resource('categories', CategoriesController::class)->only(['store', 'update', 'destroy']);
+            Route::resource('subcategories', SubcategoryController::class)->only(['store', 'update', 'destroy']);
+            Route::get('/categories/by-type/{type}', [CategoriesController::class, 'getByType'])->name('categories.byType');
+            Route::get('get-subcategories', [SubcategoryController::class, 'getSubcategories'])->name('get.subcategories');
+            Route::resource('products', ProductController::class)->names([
+                'index'   => 'admin.products.index',
+                'create'  => 'admin.products.create',
+                'store'   => 'admin.products.store',
+                'show'    => 'admin.products.show',
+                'edit'    => 'admin.products.edit',
+                'update'  => 'admin.products.update',
+                'destroy' => 'admin.products.destroy',
+            ]);
+            Route::delete('products/comments/{id}', [ProductController::class, 'destroyComment'])->name('admin.products.comment.destroy');
+        });
 
-        // Add route for getting subcategories (e.g., for AJAX dependent dropdowns)
-        Route::get('/categories/by-type/{type}', [CategoriesController::class, 'getByType'])->name('categories.byType');
-        Route::get('get-subcategories', [SubcategoryController::class, 'getSubcategories'])->name('get.subcategories');
-        
-        Route::resource('products', ProductController::class)->names([
-            'index'   => 'admin.products.index',
-            'create'  => 'admin.products.create',
-            'store'   => 'admin.products.store',
-            'show'    => 'admin.products.show',
-            'edit'    => 'admin.products.edit',
-            'update'  => 'admin.products.update',
-            'destroy' => 'admin.products.destroy',
-        ]);
-        Route::delete('products/comments/{id}', [ProductController::class, 'destroyComment'])->name('admin.products.comment.destroy');
+        // Sales & Orders Management
+        Route::middleware('permission:manage-orders,admin')->group(function () {
+            Route::resource('orders', OrderController::class);
+            Route::patch('orders/{order}/status/{status}', [OrderController::class, 'updateStatus'])->name('orders.updateStatus');
+            Route::get('/orders/{id}/generate-invoice', [OrderController::class, 'generateInvoice'])->name('admin.orders.invoice.generate');
+            Route::get('/orders/{id}/download-invoice', [OrderController::class, 'downloadInvoice'])->name('admin.orders.invoice.download');
+        });
 
-        Route::resource('orders', OrderController::class);
-        Route::patch('orders/{order}/status/{status}', [OrderController::class, 'updateStatus'])->name('orders.updateStatus');
-        Route::get('/orders/{id}/generate-invoice', [OrderController::class, 'generateInvoice'])->name('admin.orders.invoice.generate');
-        Route::get('/orders/{id}/download-invoice', [OrderController::class, 'downloadInvoice'])->name('admin.orders.invoice.download');
+        // Tech Blog / Articles Management
+        Route::middleware('permission:manage-articles,admin')->group(function () {
+            Route::resource('/articles', ArticleController::class);
+            Route::delete('/articles/comments/{id}', [ArticleController::class, 'destroyComment'])->name('articles.comments.destroy');
+        });
 
-        Route::resource('/articles', ArticleController::class);
-        Route::delete('/articles/comments/{id}', [ArticleController::class, 'destroyComment'])->name('articles.comments.destroy');
-        
+        // Customers / Users Management
+        Route::middleware('permission:manage-users,admin')->group(function () {
+            Route::resource('users', UserController::class);
+            Route::patch('users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggleStatus');
+            Route::get('users/{user}/orders', [UserController::class, 'orders'])->name('users.orders');
+        });
 
-        Route::resource('users', UserController::class);
-        Route::patch('users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggleStatus');
-        Route::get('users/{user}/orders', [UserController::class, 'orders'])->name('users.orders');
+        // Access Control (Roles, Permissions, Administrators)
+        Route::middleware('permission:manage-roles,admin')->group(function () {
+            Route::resource('roles', RoleController::class);
+            Route::resource('permissions', PermissionController::class);
+            Route::resource('admins', AdminUserController::class);
+        });
 
+        // Profile (Shared administrative route)
         Route::get('/profile', [ProfileController::class, 'index'])->name('admin.profile');
         Route::put('/profile', [ProfileController::class, 'update'])->name('admin.profile.update');
 
-        Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
-        Route::get('/payments/{id}', [PaymentController::class, 'show'])->name('payments.show');
-        Route::get('/payments/export/{type}', [PaymentController::class, 'export'])->name('payments.export');
+        // Payments Management
+        Route::middleware('permission:manage-payments,admin')->group(function () {
+            Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
+            Route::get('/payments/{id}', [PaymentController::class, 'show'])->name('payments.show');
+            Route::get('/payments/export/{type}', [PaymentController::class, 'export'])->name('payments.export');
+        });
 
-        Route::get('/settings', [\App\Http\Controllers\Admin\Settings\SettingController::class, 'index'])->name('admin.settings.index');
-        Route::post('/settings', [\App\Http\Controllers\Admin\Settings\SettingController::class, 'update'])->name('admin.settings.update');
+        // Global Settings Management
+        Route::middleware('permission:manage-settings,admin')->group(function () {
+            Route::get('/settings', [\App\Http\Controllers\Admin\Settings\SettingController::class, 'index'])->name('admin.settings.index');
+            Route::post('/settings', [\App\Http\Controllers\Admin\Settings\SettingController::class, 'update'])->name('admin.settings.update');
+        });
 
-        // Marketing & Coupons
-        Route::get('/marketing', [CouponController::class, 'index'])->name('marketing.index');
-        Route::post('/marketing/discount/{product}', [CouponController::class, 'updateProductDiscount'])->name('marketing.updateDiscount');
-        Route::resource('coupons', CouponController::class)->except(['index', 'create', 'show', 'edit']);
-        Route::patch('coupons/{coupon}/toggle', [CouponController::class, 'toggleStatus'])->name('coupons.toggle');
+        // Marketing & Coupons Management
+        Route::middleware('permission:manage-marketing,admin')->group(function () {
+            Route::get('/marketing', [CouponController::class, 'index'])->name('marketing.index');
+            Route::post('/marketing/discount/{product}', [CouponController::class, 'updateProductDiscount'])->name('marketing.updateDiscount');
+            Route::resource('coupons', CouponController::class)->except(['index', 'create', 'show', 'edit']);
+            Route::patch('coupons/{coupon}/toggle', [CouponController::class, 'toggleStatus'])->name('coupons.toggle');
+        });
 
-        // Banners
-        Route::resource('banners', BannerController::class)->except(['create', 'show', 'edit']);
-        Route::patch('banners/{banner}/toggle', [BannerController::class, 'toggleStatus'])->name('banners.toggle');
+        // Banners Management
+        Route::middleware('permission:manage-banners,admin')->group(function () {
+            Route::resource('banners', BannerController::class)->except(['create', 'show', 'edit']);
+            Route::patch('banners/{banner}/toggle', [BannerController::class, 'toggleStatus'])->name('banners.toggle');
+        });
 
-        // Messages
-        Route::get('/messages', [\App\Http\Controllers\Admin\MessageController::class, 'index'])->name('admin.messages.index');
-        Route::get('/messages/{identifier}/fetch', [\App\Http\Controllers\Admin\MessageController::class, 'fetchMessages'])->name('admin.messages.fetch');
-        Route::post('/messages/{identifier}/send', [\App\Http\Controllers\Admin\MessageController::class, 'sendMessage'])->name('admin.messages.send');
-        Route::post('/messages/{identifier}/mark-read', [\App\Http\Controllers\Admin\MessageController::class, 'markAsRead'])->name('admin.messages.markRead');
+        // Messages Management
+        Route::middleware('permission:manage-messages,admin')->group(function () {
+            Route::get('/messages', [\App\Http\Controllers\Admin\MessageController::class, 'index'])->name('admin.messages.index');
+            Route::get('/messages/{identifier}/fetch', [\App\Http\Controllers\Admin\MessageController::class, 'fetchMessages'])->name('admin.messages.fetch');
+            Route::post('/messages/{identifier}/send', [\App\Http\Controllers\Admin\MessageController::class, 'sendMessage'])->name('admin.messages.send');
+            Route::post('/messages/{identifier}/mark-read', [\App\Http\Controllers\Admin\MessageController::class, 'markAsRead'])->name('admin.messages.markRead');
+        });
 
         Route::post('/logout', [AdminLogin::class, 'logout'])->name('admin.logout');
     });

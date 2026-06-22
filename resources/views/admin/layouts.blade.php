@@ -82,6 +82,7 @@
                     [
                         'title' => 'Inventory',
                         'icon' => 'bi-box-seam',
+                        'permission' => 'manage-products',
                         'children' => [
                             ['title' => 'Categories', 'route' => 'category_subcategory.index'],
                             ['title' => 'Add Product', 'route' => 'admin.products.create'],
@@ -91,6 +92,7 @@
                     [
                         'title' => 'Orders',
                         'icon' => 'bi-bag-check',
+                        'permission' => 'manage-orders',
                         'children' => [
                             ['title' => 'Order List', 'route' => 'orders.index'],
                             ['title' => 'New Order', 'route' => 'orders.create'],
@@ -99,21 +101,35 @@
                     [
                         'title' => 'Customers',
                         'icon' => 'bi-people',
+                        'permission' => 'manage-users',
                         'route' => 'users.index'
+                    ],
+                    [
+                        'title' => 'Access Control',
+                        'icon' => 'bi-shield-lock',
+                        'permission' => 'manage-roles',
+                        'children' => [
+                            ['title' => 'Administrators', 'route' => 'admins.index'],
+                            ['title' => 'Roles', 'route' => 'roles.index'],
+                            ['title' => 'Permissions', 'route' => 'permissions.index'],
+                        ]
                     ],
                     [
                         'title' => 'Payments',
                         'icon' => 'bi-credit-card',
+                        'permission' => 'manage-payments',
                         'route' => 'payments.index'
                     ],
                     [
                         'title' => 'Banners',
                         'icon' => 'bi-images',
+                        'permission' => 'manage-banners',
                         'route' => 'banners.index'
                     ],
                     [
                         'title' => 'Tech Blog',
                         'icon' => 'bi-journal-richtext',
+                        'permission' => 'manage-articles',
                         'children' => [
                             ['title' => 'All Stories', 'route' => 'articles.index'],
                             ['title' => 'Write New', 'route' => 'articles.create'],
@@ -122,17 +138,27 @@
                     [
                         'title' => 'Marketing',
                         'icon' => 'bi-megaphone',
+                        'permission' => 'manage-marketing',
                         'route' => 'marketing.index'
                     ],
                     [
                         'title' => 'Messages',
                         'icon' => 'bi-chat-dots',
+                        'permission' => 'manage-messages',
                         'route' => 'admin.messages.index'
                     ],
-                    ['title' => 'Global Settings', 'icon' => 'bi-gear', 'route' => 'admin.settings.index'],
+                    [
+                        'title' => 'Global Settings', 
+                        'icon' => 'bi-gear', 
+                        'permission' => 'manage-settings',
+                        'route' => 'admin.settings.index'
+                    ],
                 ];
             @endphp
             @foreach ($menus as $menu)
+                @if (isset($menu['permission']) && (!Auth::guard('admin')->user() || !Auth::guard('admin')->user()->can($menu['permission'])))
+                    @continue
+                @endif
                 @if (isset($menu['children']))
                     @php
                         $childRoutes = array_column($menu['children'], 'route');
@@ -207,6 +233,9 @@
         <nav class="flex-grow px-4 py-8 space-y-6">
             {{-- Duplicate Menu Logic for Mobile --}}
             @foreach ($menus as $menu)
+                @if (isset($menu['permission']) && (!Auth::guard('admin')->user() || !Auth::guard('admin')->user()->can($menu['permission'])))
+                    @continue
+                @endif
                 @if (isset($menu['children']))
                     @php
                         $childRoutes = array_column($menu['children'], 'route');

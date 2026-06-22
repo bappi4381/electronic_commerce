@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Gate;
+use App\Models\Admin;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,6 +21,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        
+        Gate::before(function ($user, $ability) {
+            if ($user instanceof Admin && $user->hasRole('Super Admin')) {
+                return true;
+            }
+            return null;
+        });
     }
 }
