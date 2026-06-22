@@ -3,6 +3,60 @@
 @section('title', 'ONEMALL | Premium Electronics Store')
 
 @section('content')
+@php
+// Tailwind color name -> [background hex, text hex]
+$colorMap = [
+    'red-500'    => ['#ef4444', '#ffffff'],
+    'red-600'    => ['#dc2626', '#ffffff'],
+    'red-400'    => ['#f87171', '#ffffff'],
+    'orange-500' => ['#f97316', '#ffffff'],
+    'orange-600' => ['#ea580c', '#ffffff'],
+    'orange-400' => ['#fb923c', '#ffffff'],
+    'yellow-500' => ['#eab308', '#1e293b'],
+    'yellow-400' => ['#facc15', '#1e293b'],
+    'green-500'  => ['#22c55e', '#ffffff'],
+    'green-600'  => ['#16a34a', '#ffffff'],
+    'green-400'  => ['#4ade80', '#ffffff'],
+    'teal-500'   => ['#14b8a6', '#ffffff'],
+    'teal-600'   => ['#0d9488', '#ffffff'],
+    'teal-400'   => ['#2dd4bf', '#ffffff'],
+    'blue-500'   => ['#3b82f6', '#ffffff'],
+    'blue-600'   => ['#2563eb', '#ffffff'],
+    'blue-400'   => ['#60a5fa', '#ffffff'],
+    'indigo-500' => ['#6366f1', '#ffffff'],
+    'indigo-600' => ['#4f46e5', '#ffffff'],
+    'indigo-400' => ['#818cf8', '#ffffff'],
+    'purple-500' => ['#a855f7', '#ffffff'],
+    'purple-600' => ['#9333ea', '#ffffff'],
+    'purple-400' => ['#c084fc', '#ffffff'],
+    'pink-500'   => ['#ec4899', '#ffffff'],
+    'pink-600'   => ['#db2777', '#ffffff'],
+    'pink-400'   => ['#f472b6', '#ffffff'],
+    'rose-500'   => ['#f43f5e', '#ffffff'],
+    'rose-600'   => ['#e11d48', '#ffffff'],
+    'rose-400'   => ['#fb7185', '#ffffff'],
+    'cyan-500'   => ['#06b6d4', '#ffffff'],
+    'cyan-600'   => ['#0891b2', '#ffffff'],
+    'cyan-400'   => ['#22d3ee', '#1e293b'],
+    'slate-500'  => ['#64748b', '#ffffff'],
+    'slate-600'  => ['#475569', '#ffffff'],
+    'gray-500'   => ['#6b7280', '#ffffff'],
+];
+function getCategoryStyle($color, $colorMap) {
+    if (!$color) return 'background-color:#f1f5f9;color:#64748b;';
+    // If it's already a hex color
+    if (str_starts_with($color, '#')) return "background-color:{$color};color:#ffffff;";
+    $parts = array_map('trim', explode(' ', $color));
+    // Try the first part as base color key
+    $key = $parts[0];
+    if (isset($colorMap[$key])) {
+        [$bg, $text] = $colorMap[$key];
+        // Soften background with opacity
+        return "background-color:{$bg}20;color:{$bg};";
+    }
+    return 'background-color:#f1f5f9;color:#64748b;';
+}
+@endphp
     @php
         $flashDealTitle = \App\Models\Setting::get('flash_deal_title', 'Flash Deals');
         $flashDealEndTime = \App\Models\Setting::get('flash_deal_end_time');
@@ -23,7 +77,7 @@
                 @endphp
                 @foreach($mobileCategories as $cat)
                 <a href="{{ route('products.index', ['category' => $cat->id]) }}" class="flex flex-col items-center gap-2.5 min-w-[65px]">
-                    <div class="w-[60px] h-[60px] rounded-[1.2rem] {{ $cat->color ?? 'bg-gray-100 text-gray-600' }} flex items-center justify-center text-2xl shadow-sm border border-white/50 relative overflow-hidden group">
+                    <div class="w-[60px] h-[60px] rounded-[1.2rem] flex items-center justify-center text-2xl shadow-sm border border-white/50 relative overflow-hidden group" style="{{ getCategoryStyle($cat->color, $colorMap) }}">
                         <div class="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <i class="bi {{ $cat->icon ?? 'bi-tag' }} relative z-10 group-hover:scale-110 transition-transform"></i>
                     </div>
@@ -629,7 +683,7 @@
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6">
                 @foreach($allCategories as $cat)
                     <a href="{{ route('products.index', ['category' => $cat->id]) }}" class="group p-6 sm:p-8 bg-slate-50 rounded-[2rem] sm:rounded-[40px] border border-transparent hover:border-primary hover:bg-white transition-all text-center no-underline">
-                        <div class="w-16 h-16 sm:w-20 sm:h-20 {{ $cat->color ?? 'bg-gray-50 text-gray-500' }} rounded-[1.2rem] sm:rounded-3xl mx-auto mb-4 sm:mb-6 flex items-center justify-center text-3xl sm:text-4xl group-hover:scale-110 transition-transform">
+                        <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-[1.2rem] sm:rounded-3xl mx-auto mb-4 sm:mb-6 flex items-center justify-center text-3xl sm:text-4xl group-hover:scale-110 transition-transform" style="{{ getCategoryStyle($cat->color, $colorMap) }}">
                             <i class="bi {{ $cat->icon ?? 'bi-tag' }}"></i>
                         </div>
                         <h5 class="text-[10px] sm:text-xs font-black uppercase tracking-widest text-slate-900">{{ $cat->name }}</h5>

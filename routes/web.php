@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\Auth\LoginController as AdminLogin;
 use App\Http\Controllers\Admin\Auth\ProfileController;
 use App\Http\Controllers\Admin\Dashboard\DashboardController;
-use App\Http\Controllers\Admin\users\UserController;
+use App\Http\Controllers\Admin\Users\UserController;
 use App\Http\Controllers\Admin\Users\AdminUserController;
 use App\Http\Controllers\Admin\Product\CategoriesController;
 use App\Http\Controllers\Admin\Product\SubcategoryController;
