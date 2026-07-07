@@ -45,6 +45,16 @@ Route::prefix('admin')->group(function () {
             Route::resource('categories', CategoriesController::class)->only(['store', 'update', 'destroy']);
             Route::resource('subcategories', SubcategoryController::class)->only(['store', 'update', 'destroy']);
             Route::get('/categories/by-type/{type}', [CategoriesController::class, 'getByType'])->name('categories.byType');
+            // Static Product Routes (must be defined before resource route)
+            Route::get('products/stock-movements', [StockMovementController::class, 'index'])->name('admin.products.stock_movements.index');
+            Route::post('products/stock-movements', [StockMovementController::class, 'store'])->name('admin.products.stock_movements.store');
+            Route::get('products/import', [BulkImportController::class, 'index'])->name('admin.products.import');
+            Route::post('products/import', [BulkImportController::class, 'import']);
+            Route::get('products/import/template', [BulkImportController::class, 'downloadTemplate'])->name('admin.products.import.template');
+            Route::delete('products/comments/{id}', [ProductController::class, 'destroyComment'])->name('admin.products.comment.destroy');
+            Route::delete('products/image/{image}', [ProductController::class, 'destroyImage'])->name('admin.products.image.destroy');
+
+            // Product Resource
             Route::resource('products', ProductController::class)->names([
                         'children' => [
                             ['title' => 'Categories', 'route' => 'category_subcategory.index'],
@@ -61,8 +71,6 @@ Route::prefix('admin')->group(function () {
                 'update'  => 'admin.products.update',
                 'destroy' => 'admin.products.destroy',
             ]);
-            Route::delete('products/comments/{id}', [ProductController::class, 'destroyComment'])->name('admin.products.comment.destroy');
-            Route::delete('products/image/{image}', [ProductController::class, 'destroyImage'])->name('admin.products.image.destroy');
 
             // Attribute Manager routes
             Route::get('attributes', [AttributeController::class, 'index'])->name('admin.attributes.index');
@@ -73,15 +81,6 @@ Route::prefix('admin')->group(function () {
             Route::delete('attributes/values/{value}', [AttributeController::class, 'destroyValue'])->name('admin.attributes.values.destroy');
             Route::get('attributes/by-category/{category_id}', [AttributeController::class, 'getByCategory'])->name('admin.attributes.byCategory');
             Route::post('attributes/attach-to-category', [AttributeController::class, 'attachToCategory'])->name('admin.attributes.attachToCategory');
-
-            // Stock movements (view & manual adjustments)
-            Route::get('products/stock-movements', [StockMovementController::class, 'index'])->name('admin.products.stock_movements.index');
-            Route::post('products/stock-movements', [StockMovementController::class, 'store'])->name('admin.products.stock_movements.store');
-
-            // Bulk Import routes
-            Route::get('products/import', [BulkImportController::class, 'index'])->name('admin.products.import');
-            Route::post('products/import', [BulkImportController::class, 'import']);
-            Route::get('products/import/template', [BulkImportController::class, 'downloadTemplate'])->name('admin.products.import.template');
         });
 
         // Sales & Orders Management
