@@ -7,13 +7,13 @@
     <!-- Header Section -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-            <h2 class="text-3xl font-black text-slate-900 tracking-tighter uppercase">Overview</h2>
-            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">Everything you need to manage your account.</p>
+            <h2 class="text-3xl font-black text-slate-900 tracking-tighter uppercase">{{ __('Overview') }}</h2>
+            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">{{ __('Everything you need to manage your account.') }}</p>
         </div>
         <div class="flex items-center gap-3">
             <span class="text-[10px] font-black uppercase text-slate-500 tracking-widest bg-white px-5 py-3 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-2">
                 <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                System Online
+                {{ __('System Online') }}
             </span>
         </div>
     </div>
@@ -24,7 +24,7 @@
         <div class="card p-6 sm:p-8 border-0 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden relative">
             <div class="flex items-center justify-between relative z-10">
                 <div>
-                    <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Total Orders</p>
+                    <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">{{ __('Total Orders') }}</p>
                     <h4 class="text-4xl font-black text-slate-900 tracking-tighter">{{ $stats['total_orders'] }}</h4>
                 </div>
                 <div class="w-12 h-12 sm:w-14 sm:h-14 bg-sky-50 text-sky-500 rounded-[22px] flex items-center justify-center text-xl sm:text-2xl group-hover:bg-sky-500 group-hover:text-white transition-all duration-500 shadow-inner">
@@ -38,7 +38,7 @@
         <div class="card p-6 sm:p-8 border-0 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden relative">
             <div class="flex items-center justify-between relative z-10">
                 <div>
-                    <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Pending</p>
+                    <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">{{ __('Pending') }}</p>
                     <h4 class="text-4xl font-black text-slate-900 tracking-tighter">{{ $stats['pending_orders'] }}</h4>
                 </div>
                 <div class="w-12 h-12 sm:w-14 sm:h-14 bg-amber-50 text-amber-500 rounded-[22px] flex items-center justify-center text-xl sm:text-2xl group-hover:bg-amber-500 group-hover:text-white transition-all duration-500 shadow-inner">
@@ -52,7 +52,7 @@
         <div class="card p-6 sm:p-8 border-0 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden relative">
             <div class="flex items-center justify-between relative z-10">
                 <div>
-                    <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Delivered</p>
+                    <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">{{ __('Delivered') }}</p>
                     <h4 class="text-4xl font-black text-slate-900 tracking-tighter">{{ $stats['delivered_orders'] }}</h4>
                 </div>
                 <div class="w-12 h-12 sm:w-14 sm:h-14 bg-green-50 text-green-500 rounded-[22px] flex items-center justify-center text-xl sm:text-2xl group-hover:bg-green-500 group-hover:text-white transition-all duration-500 shadow-inner">
@@ -66,7 +66,7 @@
         <div class="card p-6 sm:p-8 border-0 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden relative">
             <div class="flex items-center justify-between relative z-10">
                 <div>
-                    <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Wishlist</p>
+                    <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">{{ __('Wishlist') }}</p>
                     <h4 class="text-4xl font-black text-slate-900 tracking-tighter">{{ $stats['wishlist_count'] }}</h4>
                 </div>
                 <div class="w-12 h-12 sm:w-14 sm:h-14 bg-rose-50 text-rose-500 rounded-[22px] flex items-center justify-center text-xl sm:text-2xl group-hover:bg-rose-500 group-hover:text-white transition-all duration-500 shadow-inner">
@@ -84,9 +84,9 @@
                 <div class="px-6 sm:px-8 py-6 border-b border-slate-50 flex items-center justify-between">
                     <h3 class="text-sm font-black text-slate-900 tracking-widest uppercase flex items-center gap-3">
                         <i class="bi bi-list-stars text-primary"></i>
-                        Recent Orders
+                        {{ __('Recent Orders') }}
                     </h3>
-                    <a href="{{ route('user.orders.index') }}" class="text-[10px] font-black text-primary uppercase tracking-widest hover:underline">View All</a>
+                    <a href="{{ route('user.orders.index') }}" class="text-[10px] font-black text-primary uppercase tracking-widest hover:underline">{{ __('View All') }}</a>
                 </div>
                 
                 @if($recentOrders->isEmpty())
@@ -94,7 +94,7 @@
                         <div class="w-20 h-20 bg-slate-50 text-slate-200 rounded-[30px] flex items-center justify-center text-4xl mx-auto mb-6">
                             <i class="bi bi-bag-x"></i>
                         </div>
-                        <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest">No recent orders found</p>
+                        <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest">{{ __('No recent orders found') }}</p>
                     </div>
                 @else
                     {{-- Desktop table --}}
@@ -102,10 +102,10 @@
                         <table class="w-full text-left">
                             <thead>
                                 <tr class="bg-slate-50/50">
-                                    <th class="px-8 py-4 text-[9px] font-black uppercase text-slate-400 tracking-widest">Order ID</th>
-                                    <th class="px-8 py-4 text-[9px] font-black uppercase text-slate-400 tracking-widest">Date</th>
-                                    <th class="px-8 py-4 text-[9px] font-black uppercase text-slate-400 tracking-widest">Total</th>
-                                    <th class="px-8 py-4 text-[9px] font-black uppercase text-slate-400 tracking-widest text-right">Status</th>
+                                    <th class="px-8 py-4 text-[9px] font-black uppercase text-slate-400 tracking-widest">{{ __('Order ID') }}</th>
+                                    <th class="px-8 py-4 text-[9px] font-black uppercase text-slate-400 tracking-widest">{{ __('Date') }}</th>
+                                    <th class="px-8 py-4 text-[9px] font-black uppercase text-slate-400 tracking-widest">{{ __('Total') }}</th>
+                                    <th class="px-8 py-4 text-[9px] font-black uppercase text-slate-400 tracking-widest text-right">{{ __('Status') }}</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-50">
@@ -172,29 +172,29 @@
         <div class="space-y-8">
             <div class="card border-0 shadow-sm p-8 bg-slate-900 text-white relative overflow-hidden group">
                 <div class="relative z-10">
-                    <h3 class="text-lg font-black tracking-tighter uppercase mb-4">Quick Help</h3>
-                    <p class="text-xs text-slate-400 font-medium leading-relaxed mb-8">Having trouble with an order? Our support team is ready to help you 24/7.</p>
+                    <h3 class="text-lg font-black tracking-tighter uppercase mb-4">{{ __('Quick Help') }}</h3>
+                    <p class="text-xs text-slate-400 font-medium leading-relaxed mb-8">{{ __('Having trouble with an order? Our support team is ready to help you 24/7.') }}</p>
                     <a href="{{ route('user.messages.index') }}" class="block w-full py-4 bg-primary hover:bg-primary-dark text-white text-center font-black uppercase tracking-widest text-[10px] rounded-xl transition-all shadow-lg shadow-primary/20">
-                        Contact Support
+                        {{ __('Contact Support') }}
                     </a>
                 </div>
                 <div class="absolute -top-10 -right-10 w-32 h-32 bg-primary/20 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700"></div>
             </div>
 
             <div class="card border-0 shadow-sm p-8 space-y-6">
-                <h3 class="text-xs font-black text-slate-900 tracking-[0.2em] uppercase">Account Security</h3>
+                <h3 class="text-xs font-black text-slate-900 tracking-[0.2em] uppercase">{{ __('Account Security') }}</h3>
                 <div class="flex items-start gap-4">
                     <div class="w-10 h-10 bg-green-50 text-green-500 rounded-xl flex items-center justify-center flex-shrink-0">
                         <i class="bi bi-shield-check"></i>
                     </div>
                     <div>
-                        <p class="text-[11px] font-black text-slate-900 uppercase tracking-tighter">Email Verified</p>
-                        <p class="text-[10px] font-medium text-slate-400 mt-1">Your account is fully secured.</p>
+                        <p class="text-[11px] font-black text-slate-900 uppercase tracking-tighter">{{ __('Email Verified') }}</p>
+                        <p class="text-[10px] font-medium text-slate-400 mt-1">{{ __('Your account is fully secured.') }}</p>
                     </div>
                 </div>
                 <div class="pt-4 border-t border-slate-100">
                     <a href="{{ route('user.profile') }}" class="text-[9px] font-black text-primary uppercase tracking-widest flex items-center justify-between group/link">
-                        Manage Settings
+                        {{ __('Manage Settings') }}
                         <i class="bi bi-arrow-right group-hover/link:translate-x-1 transition-transform"></i>
                     </a>
                 </div>

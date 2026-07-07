@@ -10,11 +10,11 @@
             <div class="absolute top-0 right-0 w-96 h-96 bg-primary rounded-full blur-[150px]"></div>
         </div>
         <div class="max-w-7xl mx-auto px-4 relative z-10 text-center">
-            <h1 class="text-3xl sm:text-5xl font-black text-white tracking-tighter uppercase mb-3">Store Catalog</h1>
+            <h1 class="text-3xl sm:text-5xl font-black text-white tracking-tighter uppercase mb-3">{{ __('Store Catalog') }}</h1>
             <div class="flex items-center justify-center gap-2 text-slate-400 font-bold text-xs uppercase tracking-widest">
-                <a href="{{ route('home') }}" class="hover:text-primary transition-colors no-underline">Home</a>
+                <a href="{{ route('home') }}" class="hover:text-primary transition-colors no-underline">{{ __('Home') }}</a>
                 <i class="bi bi-chevron-right text-[10px]"></i>
-                <span class="text-white">Shop</span>
+                <span class="text-white">{{ __('Shop') }}</span>
             </div>
         </div>
     </div>
@@ -29,7 +29,7 @@
                         <div class="bg-white p-8 rounded-[32px] shadow-xl shadow-slate-200/50 border border-slate-100">
                             <h5 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 flex items-center gap-2">
                                 <span class="w-2 h-2 bg-primary rounded-full"></span>
-                                Quick Search
+                                {{ __('Quick Search') }}
                             </h5>
                             <form action="{{ route('products.index') }}" method="GET" class="relative group">
                                 @if(request('category'))
@@ -37,7 +37,7 @@
                                 @endif
                                 <input type="text" name="search" 
                                        class="w-full bg-slate-50 border-none rounded-2xl pl-12 pr-4 py-4 text-sm font-bold focus:ring-2 focus:ring-primary transition-all outline-none" 
-                                       placeholder="Search products..." value="{{ request('search') }}">
+                                       placeholder="{{ __('Search products...') }}" value="{{ request('search') }}">
                                 <i class="bi bi-search absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"></i>
                             </form>
                         </div>
@@ -46,7 +46,7 @@
                         <div class="bg-white p-8 rounded-[32px] shadow-xl shadow-slate-200/50 border border-slate-100">
                             <h5 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 flex items-center gap-2">
                                 <span class="w-2 h-2 bg-primary rounded-full"></span>
-                                Departments
+                                {{ __('Departments') }}
                             </h5>
                             <ul class="space-y-2 p-0 m-0 list-none">
                                 @foreach($categories as $category)
@@ -55,7 +55,7 @@
                                            class="flex items-center justify-between group p-3.5 sm:p-4 rounded-2xl transition-all {{ request('category') == $category->id ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'hover:bg-slate-50 text-slate-600' }} no-underline">
                                             <div class="flex flex-col">
                                                 <span class="font-bold text-sm tracking-tight leading-none">{{ $category->name }}</span>
-                                                <span class="text-[9px] font-black {{ request('category') == $category->id ? 'text-white/70' : 'text-slate-400' }} uppercase tracking-widest mt-1">{{ $category->products_count }} Items Available</span>
+                                                <span class="text-[9px] font-black {{ request('category') == $category->id ? 'text-white/70' : 'text-slate-400' }} uppercase tracking-widest mt-1">{{ $category->products_count }} {{ __('Items Available') }}</span>
                                             </div>
                                             <div class="w-6 h-6 rounded-lg {{ request('category') == $category->id ? 'bg-white/20' : 'bg-slate-100' }} flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
                                                 <i class="bi bi-chevron-right text-[10px]"></i>
@@ -70,21 +70,21 @@
                         <div class="bg-white p-8 rounded-[32px] shadow-xl shadow-slate-200/50 border border-slate-100">
                             <h5 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 flex items-center gap-2">
                                 <span class="w-2 h-2 bg-primary rounded-full"></span>
-                                Price Range
+                                {{ __('Price Range') }}
                             </h5>
                             <form action="{{ route('products.index') }}" method="GET" class="space-y-6">
                                 <div class="grid grid-cols-2 gap-4">
                                     <div class="space-y-1">
-                                        <label class="text-[10px] font-black uppercase text-slate-400 ml-2">From</label>
+                                        <label class="text-[10px] font-black uppercase text-slate-400 ml-2">{{ __('From') }}</label>
                                         <input type="number" name="min_price" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-primary outline-none" placeholder="Min" value="{{ request('min_price') }}">
                                     </div>
                                     <div class="space-y-1">
-                                        <label class="text-[10px] font-black uppercase text-slate-400 ml-2">To</label>
+                                        <label class="text-[10px] font-black uppercase text-slate-400 ml-2">{{ __('To') }}</label>
                                         <input type="number" name="max_price" class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-primary outline-none" placeholder="Max" value="{{ request('max_price') }}">
                                     </div>
                                 </div>
                                 <button type="submit" class="w-full py-4 bg-slate-900 hover:bg-primary text-white font-black uppercase text-xs tracking-widest rounded-xl transition-all shadow-lg active:scale-95">
-                                    Filter Results
+                                    {{ __('Filter Results') }}
                                 </button>
                             </form>
                         </div>
@@ -96,23 +96,23 @@
                     <!-- Sorting & Filter Bar -->
                     <div class="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-lg shadow-slate-200/40 mb-6 sm:mb-10 border border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-6">
                         <div class="text-slate-500 font-bold text-xs sm:text-sm text-center sm:text-left">
-                            Showing <span class="text-slate-900">{{ $products->count() }}</span> of <span class="text-slate-900">{{ $products->total() }}</span> results
+                            {{ __('Showing') }} <span class="text-slate-900">{{ $products->count() }}</span> {{ __('of') }} <span class="text-slate-900">{{ $products->total() }}</span> {{ __('results') }}
                         </div>
                         <div class="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
                             <!-- Mobile Filter Toggle Button -->
                             <button @click="mobileFiltersOpen = true" class="lg:hidden flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-800 px-4 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all">
-                                <i class="bi bi-sliders text-xs"></i> Filters
+                                <i class="bi bi-sliders text-xs"></i> {{ __('Filters') }}
                             </button>
                             
                             <div class="flex items-center gap-2 sm:gap-4 ml-auto sm:ml-0">
-                                <span class="text-[10px] sm:text-xs font-black uppercase text-slate-400 tracking-widest hidden xs:inline">Sort By:</span>
+                                <span class="text-[10px] sm:text-xs font-black uppercase text-slate-400 tracking-widest hidden xs:inline">{{ __('Sort By') }}:</span>
                                 <form action="{{ route('products.index') }}" method="GET">
                                      @if(request('category')) <input type="hidden" name="category" value="{{ request('category') }}"> @endif
                                      @if(request('search')) <input type="hidden" name="search" value="{{ request('search') }}"> @endif
                                     <select name="sort" class="bg-slate-50 border-none rounded-xl sm:rounded-2xl px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-bold focus:ring-2 focus:ring-primary transition-all outline-none appearance-none cursor-pointer pr-10 relative" onchange="this.form.submit()">
-                                        <option value="newest" {{ request('sort') == 'newest' ? 'selected' : '' }}>Newest Arrivals</option>
-                                        <option value="price_low" {{ request('sort') == 'price_low' ? 'selected' : '' }}>Price: Low to High</option>
-                                        <option value="price_high" {{ request('sort') == 'price_high' ? 'selected' : '' }}>Price: High to Low</option>
+                                        <option value="newest" {{ request('sort') == 'newest' ? 'selected' : '' }}>{{ __('Newest Arrivals') }}</option>
+                                        <option value="price_low" {{ request('sort') == 'price_low' ? 'selected' : '' }}>{{ __('Price: Low to High') }}</option>
+                                        <option value="price_high" {{ request('sort') == 'price_high' ? 'selected' : '' }}>{{ __('Price: High to Low') }}</option>
                                     </select>
                                 </form>
                             </div>
@@ -139,13 +139,13 @@
                                             @csrf
                                             <input type="hidden" name="product_id" value="{{ $product->id }}">
                                             <button type="submit" class="w-full py-4 bg-primary hover:bg-primary-dark text-white font-black uppercase text-[10px] tracking-widest rounded-xl transition-all shadow-xl shadow-primary/30 active:scale-95">
-                                                Add to Cart
+                                                {{ __('Add to Cart') }}
                                             </button>
                                         </form>
                                     </div>
                                     
                                     <div class="text-center px-1">
-                                        <span class="text-[8px] sm:text-[10px] font-black uppercase text-slate-400 tracking-widest mb-0.5 sm:mb-1 block">{{ $product->brand ?? 'Premium Brand' }}</span>
+                                        <span class="text-[8px] sm:text-[10px] font-black uppercase text-slate-400 tracking-widest mb-0.5 sm:mb-1 block">{{ $product->brand ?? __('Premium Brand') }}</span>
                                         <h3 class="text-xs sm:text-sm font-bold text-slate-900 mb-1.5 sm:mb-2 lg:group-hover:text-primary transition-colors line-clamp-2">
                                             <a href="{{ route('products.show', $product->id) }}" class="no-underline text-inherit leading-tight block">{{ $product->name }}</a>
                                         </h3>
@@ -170,7 +170,7 @@
                                         @csrf
                                         <input type="hidden" name="product_id" value="{{ $product->id }}">
                                         <button type="submit" class="w-full py-2 bg-slate-900 hover:bg-primary text-white font-black uppercase text-[8px] tracking-widest rounded-lg transition-all active:scale-95 flex items-center justify-center gap-1.5">
-                                            <i class="bi bi-cart-plus text-xs"></i> Add to Cart
+                                            <i class="bi bi-cart-plus text-xs"></i> {{ __('Add to Cart') }}
                                         </button>
                                     </form>
                                 </div>
@@ -180,9 +180,9 @@
                                 <div class="w-16 h-16 sm:w-24 sm:h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 sm:mb-8">
                                     <i class="bi bi-search text-2xl sm:text-4xl text-slate-300"></i>
                                 </div>
-                                <h3 class="text-xl sm:text-2xl font-black text-slate-900 mb-2 sm:mb-4 tracking-tighter">No Products Found</h3>
-                                <p class="text-sm text-slate-500 font-bold mb-6 sm:mb-8">Try adjusting your filters or search keywords.</p>
-                                <a href="{{ route('products.index') }}" class="inline-block px-6 py-3.5 sm:px-8 sm:py-4 bg-primary text-white font-black uppercase text-xs tracking-widest rounded-xl shadow-lg shadow-primary/30 no-underline">Clear All Filters</a>
+                                <h3 class="text-xl sm:text-2xl font-black text-slate-900 mb-2 sm:mb-4 tracking-tighter">{{ __('No Products Found') }}</h3>
+                                <p class="text-sm text-slate-500 font-bold mb-6 sm:mb-8">{{ __('Try adjusting your filters or search keywords.') }}</p>
+                                <a href="{{ route('products.index') }}" class="inline-block px-6 py-3.5 sm:px-8 sm:py-4 bg-primary text-white font-black uppercase text-xs tracking-widest rounded-xl shadow-lg shadow-primary/30 no-underline">{{ __('Clear All Filters') }}</a>
                             </div>
                         @endforelse
                     </div>
@@ -252,7 +252,7 @@
          class="fixed inset-y-0 left-0 w-full max-w-[280px] bg-white shadow-2xl z-[101] flex flex-col lg:hidden p-6 overflow-y-auto"
          x-cloak>
         <div class="flex items-center justify-between mb-6">
-            <h3 class="text-base font-black text-slate-900 uppercase italic tracking-tighter">Filter Products</h3>
+            <h3 class="text-base font-black text-slate-900 uppercase italic tracking-tighter">{{ __('Filter Products') }}</h3>
             <button @click="mobileFiltersOpen = false" class="w-8 h-8 bg-slate-50 shadow-sm rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 transition-all">
                 <i class="bi bi-x-lg text-sm"></i>
             </button>
@@ -263,7 +263,7 @@
             <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                 <h5 class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
                     <span class="w-1.5 h-1.5 bg-primary rounded-full"></span>
-                    Quick Search
+                    {{ __('Quick Search') }}
                 </h5>
                 <form action="{{ route('products.index') }}" method="GET" class="relative group">
                     @if(request('category'))
@@ -271,7 +271,7 @@
                     @endif
                     <input type="text" name="search" 
                            class="w-full bg-white border border-slate-200/60 rounded-xl pl-10 pr-4 py-3 text-xs font-bold focus:ring-2 focus:ring-primary transition-all outline-none" 
-                           placeholder="Search..." value="{{ request('search') }}">
+                           placeholder="{{ __('Search...') }}" value="{{ request('search') }}">
                     <i class="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
                 </form>
             </div>
@@ -280,13 +280,13 @@
             <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                 <h5 class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
                     <span class="w-1.5 h-1.5 bg-primary rounded-full"></span>
-                    Departments
+                    {{ __('Departments') }}
                 </h5>
                 <ul class="space-y-1.5 p-0 m-0 list-none">
                     <li>
                         <a href="{{ route('products.index') }}" 
                            class="flex items-center justify-between group p-3 rounded-xl transition-all {{ !request('category') ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'hover:bg-white text-slate-600 bg-white/50 border border-slate-100' }} no-underline">
-                            <span class="font-bold text-xs">All Products</span>
+                            <span class="font-bold text-xs">{{ __('All Products') }}</span>
                             <i class="bi bi-chevron-right text-[8px] opacity-50"></i>
                         </a>
                     </li>
@@ -296,7 +296,7 @@
                                class="flex items-center justify-between group p-3.5 rounded-xl transition-all {{ request('category') == $category->id ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'hover:bg-white text-slate-600 bg-white/50 border border-slate-100' }} no-underline">
                                 <div class="flex flex-col">
                                     <span class="font-bold text-xs leading-none">{{ $category->name }}</span>
-                                    <span class="text-[8px] font-black {{ request('category') == $category->id ? 'text-white/70' : 'text-slate-400' }} uppercase tracking-widest mt-1">{{ $category->products_count }} Items</span>
+                                    <span class="text-[8px] font-black {{ request('category') == $category->id ? 'text-white/70' : 'text-slate-400' }} uppercase tracking-widest mt-1">{{ $category->products_count }} {{ __('Items') }}</span>
                                 </div>
                                 <i class="bi bi-chevron-right text-[8px] opacity-50"></i>
                             </a>
@@ -309,21 +309,21 @@
             <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                 <h5 class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
                     <span class="w-1.5 h-1.5 bg-primary rounded-full"></span>
-                    Price Range
+                    {{ __('Price Range') }}
                 </h5>
                 <form action="{{ route('products.index') }}" method="GET" class="space-y-4">
                     <div class="grid grid-cols-2 gap-3">
                         <div class="space-y-1">
-                            <label class="text-[8px] font-black uppercase text-slate-400 ml-1">From</label>
+                            <label class="text-[8px] font-black uppercase text-slate-400 ml-1">{{ __('From') }}</label>
                             <input type="number" name="min_price" class="w-full bg-white border border-slate-200/60 rounded-lg px-3 py-2.5 text-xs font-bold focus:ring-2 focus:ring-primary outline-none" placeholder="Min" value="{{ request('min_price') }}">
                         </div>
                         <div class="space-y-1">
-                            <label class="text-[8px] font-black uppercase text-slate-400 ml-1">To</label>
+                            <label class="text-[8px] font-black uppercase text-slate-400 ml-1">{{ __('To') }}</label>
                             <input type="number" name="max_price" class="w-full bg-white border border-slate-200/60 rounded-lg px-3 py-2.5 text-xs font-bold focus:ring-2 focus:ring-primary outline-none" placeholder="Max" value="{{ request('max_price') }}">
                         </div>
                     </div>
                     <button type="submit" class="w-full py-3 bg-slate-900 hover:bg-primary text-white font-black uppercase text-[10px] tracking-widest rounded-lg transition-all active:scale-95">
-                        Apply
+                        {{ __('Apply') }}
                     </button>
                 </form>
             </div>

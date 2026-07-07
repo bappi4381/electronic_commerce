@@ -7,12 +7,12 @@
         {{-- Header --}}
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-16">
             <div class="space-y-2 text-center md:text-left">
-                <span class="text-primary font-black uppercase tracking-[0.2em] text-xs">Personal Collection</span>
-                <h1 class="text-4xl lg:text-5xl font-black text-slate-900 tracking-tighter uppercase italic">My Wishlist</h1>
+                <span class="text-primary font-black uppercase tracking-[0.2em] text-xs">{{ __('Personal Collection') }}</span>
+                <h1 class="text-4xl lg:text-5xl font-black text-slate-900 tracking-tighter uppercase italic">{{ __('My Wishlist') }}</h1>
                 <div class="w-20 h-1.5 bg-primary rounded-full mx-auto md:mx-0"></div>
             </div>
             <a href="{{ route('products.index') }}" class="px-8 py-4 bg-slate-900 text-white font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-primary transition-all shadow-xl shadow-slate-900/10 active:scale-95 text-center">
-                Continue Shopping
+                {{ __('Continue Shopping') }}
             </a>
         </div>
 
@@ -39,7 +39,7 @@
 
                         {{-- Info --}}
                         <div class="text-center space-y-4">
-                            <span class="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">{{ $product->brand ?? 'Premium Edition' }}</span>
+                            <span class="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">{{ $product->brand ?? __('Premium Edition') }}</span>
                             <h3 class="text-lg font-black text-slate-900 leading-tight group-hover:text-primary transition-colors">
                                 <a href="{{ route('products.show', $product->id) }}" class="no-underline text-inherit">{{ $product->name }}</a>
                             </h3>
@@ -56,11 +56,11 @@
                                     @csrf
                                     <input type="hidden" name="product_id" value="{{ $product->id }}">
                                     <button type="submit" class="w-full bg-primary text-white py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:bg-slate-900 transition-all active:scale-95 flex items-center justify-center gap-3">
-                                        <i class="bi bi-bag-plus-fill text-sm"></i> Move To Cart
+                                        <i class="bi bi-bag-plus-fill text-sm"></i> {{ __('Move To Cart') }}
                                     </button>
                                 </form>
                                 <a href="{{ route('products.show', $product->id) }}" class="w-full py-4 bg-slate-50 text-slate-400 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-slate-100 hover:text-slate-900 transition-all text-center">
-                                    View Details
+                                    {{ __('View Details') }}
                                 </a>
                             </div>
                         </div>
@@ -73,12 +73,12 @@
                     <i class="bi bi-heart"></i>
                 </div>
                 <div class="space-y-2">
-                    <h2 class="text-2xl font-black text-slate-900 uppercase tracking-tight">Your wishlist is empty</h2>
-                    <p class="text-slate-400 font-medium italic">Save items you love here and they'll be waiting for you.</p>
+                    <h2 class="text-2xl font-black text-slate-900 uppercase tracking-tight">{{ __('Your wishlist is empty') }}</h2>
+                    <p class="text-slate-400 font-medium italic">{{ __('Save items you love here and they\'ll be waiting for you.') }}</p>
                 </div>
                 <div class="pt-6">
                     <a href="{{ route('products.index') }}" class="px-10 py-5 bg-primary text-white font-black uppercase text-xs tracking-widest rounded-2xl shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all inline-block">
-                        Start Adding Items
+                        {{ __('Start Adding Items') }}
                     </a>
                 </div>
             </div>

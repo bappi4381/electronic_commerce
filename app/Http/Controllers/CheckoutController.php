@@ -13,6 +13,7 @@ use App\Models\Setting;
 use App\Mail\OrderConfirmation;
 use Illuminate\Support\Facades\Mail;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\StockMovement;
 
 class CheckoutController extends Controller
 {
@@ -72,8 +73,8 @@ class CheckoutController extends Controller
                 // Fixed values
                 'status' => 'pending',  
 
-                // COD = unpaid, Online = pending
-                'payment_status' => $request->payment_method === 'cod' ? 'unpaid' : 'paid',
+                // COD = unpaid, Online = pending until payment succeeds
+                'payment_status' => $request->payment_method === 'cod' ? 'unpaid' : 'pending',
 
                 // Save payment method
                 'payment_method' => $request->payment_method,
@@ -81,16 +82,35 @@ class CheckoutController extends Controller
 
             $orderItems = [];
 
-            foreach ($cart as $productId => $item) {
+            foreach ($cart as $cartKey => $item) {
                 $orderItems[] = [
                     'order_id' => $order->id,
-                    'product_id' => $productId,
+                    'product_id' => $item['product_id'],
+                    'variant_id' => $item['variant_id'] ?? null,
                     'quantity' => $item['quantity'],
                     'price' => $item['price'],
                     'subtotal' => $item['price'] * $item['quantity'],
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
+
+                // Reserve stock for variant (record movement)
+                if (!empty($item['variant_id'])) {
+                    $variant = \App\Models\ProductVariant::find($item['variant_id']);
+                    if ($variant) {
+                        StockMovement::create([
+                            'variant_id' => $variant->id,
+                            'change' => -1 * intval($item['quantity']),
+                            'type' => 'order_reserved',
+                            'reason' => 'Reserved on checkout placeOrder',
+                            'source_type' => \App\Models\Order::class,
+                            'source_id' => $order->id,
+                            'admin_id' => null,
+                        ]);
+
+                        $variant->decrement('stock', $item['quantity']);
+                    }
+                }
             }
 
             OrderItem::insert($orderItems);
@@ -112,21 +132,21 @@ class CheckoutController extends Controller
 
         // Redirect to payment page
         if ($request->payment_method === 'online') {
-            return redirect()->route('sslc.pay', $order->id);
+            return redirect()->route('sslc.pay', ['locale' => app()->getLocale(), 'orderId' => $order->id]);
         }
 
         // COD → success page
-        return redirect()->route('orders.success', $order->id)
+        return redirect()->route('orders.success', ['locale' => app()->getLocale(), 'order' => $order->id])
             ->with('success', 'Order placed successfully!');
     }
 
 
-    public function success(Order $order)
+    public function success($locale, Order $order)
     {
         return view('frontend.pages.order_success', compact('order'));
     }
 
-    public function downloadInvoice(Order $order)
+    public function downloadInvoice($locale, Order $order)
     {
         // Enforce that only the order owner or admin can download the invoice
         if (Auth::id() !== $order->user_id && !Auth::guard('admin')->check()) {

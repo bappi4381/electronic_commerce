@@ -37,7 +37,7 @@
         <!-- Badges -->
         <div class="absolute top-3 left-3 flex flex-col gap-2 z-10">
             @if($product->created_at->diffInDays(now()) < 7)
-                <span class="bg-indigo-600 text-white text-[8px] font-black uppercase tracking-widest px-2.5 py-1.5 rounded-lg shadow-lg border border-white/10">New</span>
+                <span class="bg-indigo-600 text-white text-[8px] font-black uppercase tracking-widest px-2.5 py-1.5 rounded-lg shadow-lg border border-white/10">{{ __('New') }}</span>
             @endif
             @if($product->discount > 0)
                 <div class="bg-[#20A7DB] text-white text-[8px] font-black px-2.5 py-1.5 rounded-lg shadow-lg border border-white/10">
@@ -67,7 +67,7 @@
                 @csrf
                 <input type="hidden" name="product_id" value="{{ $product->id }}">
                 <button type="submit" class="w-full h-12 bg-[#20A7DB] hover:bg-[#1c96c5] text-white rounded-2xl flex items-center justify-center gap-2 font-black text-[10px] uppercase tracking-widest shadow-xl shadow-[#20A7DB]/20 transition-all hover:scale-[1.02] active:scale-95">
-                    <i class="bi bi-cart-plus-fill text-base"></i> Add To Cart
+                    <i class="bi bi-cart-plus-fill text-base"></i> {{ __('Add to Cart') }}
                 </button>
             </form>
         </div>
@@ -98,7 +98,7 @@
             
             <div class="flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded-lg border border-slate-100 group-hover:bg-[#20A7DB]/5 group-hover:border-[#20A7DB]/20 transition-all">
                 <span class="w-1 h-1 bg-green-500 rounded-full animate-pulse"></span>
-                <span class="text-[7px] font-black text-slate-400 uppercase tracking-widest group-hover:text-[#20A7DB]">In Stock</span>
+                <span class="text-[7px] font-black text-slate-400 uppercase tracking-widest group-hover:text-[#20A7DB]">{{ __('In Stock') }}</span>
             </div>
         </div>
     </div>

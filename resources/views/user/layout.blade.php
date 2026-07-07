@@ -94,16 +94,16 @@
             @php
                 $currentRoute = Route::currentRouteName();
                 $menus = [
-                    ['title' => 'Dashboard', 'icon' => 'bi-grid-1x2-fill', 'route' => 'user.dashboard'],
-                    ['title' => 'My Profile', 'icon' => 'bi-person-fill', 'route' => 'user.profile'],
-                    ['title' => 'My Orders', 'icon' => 'bi-bag-fill', 'route' => 'user.orders.index'],
-                    ['title' => 'Track Order', 'icon' => 'bi-geo-alt-fill', 'route' => 'user.orders.track'],
-                    ['title' => 'Messages', 'icon' => 'bi-chat-dots-fill', 'route' => 'user.messages.index'],
+                    ['title' => __('Dashboard'), 'icon' => 'bi-grid-1x2-fill', 'route' => 'user.dashboard'],
+                    ['title' => __('My Profile'), 'icon' => 'bi-person-fill', 'route' => 'user.profile'],
+                    ['title' => __('My Orders'), 'icon' => 'bi-bag-fill', 'route' => 'user.orders.index'],
+                    ['title' => __('Track Order'), 'icon' => 'bi-geo-alt-fill', 'route' => 'user.orders.track'],
+                    ['title' => __('Messages'), 'icon' => 'bi-chat-dots-fill', 'route' => 'user.messages.index'],
                 ];
             @endphp
 
             <div class="px-4 mb-4">
-                <p class="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] px-4 mb-4">Menu</p>
+                <p class="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] px-4 mb-4">{{ __('Menu') }}</p>
                 <div class="space-y-1">
                     @foreach ($menus as $menu)
                         <a href="{{ route($menu['route']) }}" class="nav-link-item rounded-xl {{ $currentRoute === $menu['route'] ? 'active' : '' }}">
@@ -119,7 +119,7 @@
                     @csrf
                     <button type="submit" class="nav-link-item w-full rounded-xl text-rose-400 hover:text-rose-500 hover:bg-rose-500/5 border border-transparent hover:border-rose-500/10 transition-all">
                         <i class="bi bi-box-arrow-right text-rose-400"></i>
-                        <span>Logout</span>
+                        <span>{{ __('Logout') }}</span>
                     </button>
                 </form>
             </div>
@@ -135,7 +135,7 @@
                     <i class="bi bi-list"></i>
                 </button>
                 <div class="hidden md:flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                    <span>Account</span>
+                    <span>{{ __('Account') }}</span>
                     <i class="bi bi-chevron-right text-[8px]"></i>
                     <span class="text-slate-900">@yield('title')</span>
                 </div>
@@ -158,7 +158,7 @@
                 <div class="flex items-center gap-3 pl-6 border-l border-slate-100">
                     <div class="text-right hidden sm:block">
                         <p class="text-[11px] font-black text-slate-900 leading-none mb-1">{{ Auth::user()->name }}</p>
-                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">Customer</p>
+                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">{{ __('Customer') }}</p>
                     </div>
                     <img src="{{ $avatarUrl }}" class="w-10 h-10 rounded-xl object-cover border-2 border-white shadow-sm" alt="User">
                 </div>
@@ -174,11 +174,11 @@
         <footer class="mt-auto py-8 px-12 border-t border-slate-100 bg-white hidden lg:block">
             <div class="flex flex-col md:flex-row justify-between items-center gap-4">
                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                    &copy; 2026 <span class="text-slate-900">ONEMALL</span>. All rights reserved.
+                    &copy; 2026 <span class="text-slate-900">ONEMALL</span>. {{ __('All rights reserved.') }}
                 </p>
                 <div class="flex gap-6">
-                    <a href="#" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-primary transition-colors">Privacy Policy</a>
-                    <a href="#" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-primary transition-colors">Terms of Service</a>
+                    <a href="#" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-primary transition-colors">{{ __('Privacy Policy') }}</a>
+                    <a href="#" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-primary transition-colors">{{ __('Terms of Service') }}</a>
                 </div>
             </div>
         </footer>
@@ -194,13 +194,13 @@
             <!-- Dashboard -->
             <a href="{{ route('user.dashboard') }}" class="flex flex-col items-center justify-center gap-1 transition-colors {{ $mobileCurrentRoute === 'user.dashboard' ? 'text-primary' : 'text-slate-400 hover:text-slate-700' }}">
                 <i class="bi bi-grid-1x2-fill text-lg"></i>
-                <span class="text-[8px] font-black uppercase tracking-widest">Home</span>
+                <span class="text-[8px] font-black uppercase tracking-widest">{{ __('Home') }}</span>
             </a>
 
             <!-- Orders -->
             <a href="{{ route('user.orders.index') }}" class="flex flex-col items-center justify-center gap-1 transition-colors {{ $mobileCurrentRoute === 'user.orders.index' || $mobileCurrentRoute === 'user.orders.details' ? 'text-primary' : 'text-slate-400 hover:text-slate-700' }}">
                 <i class="bi bi-bag-fill text-lg"></i>
-                <span class="text-[8px] font-black uppercase tracking-widest">Orders</span>
+                <span class="text-[8px] font-black uppercase tracking-widest">{{ __('Orders') }}</span>
             </a>
 
             <!-- Track (centre accent) -->
@@ -208,19 +208,19 @@
                 <span class="w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl shadow-primary/30 transition-all {{ $mobileCurrentRoute === 'user.orders.track' ? 'bg-primary-dark scale-95' : 'bg-primary hover:bg-primary-dark' }}">
                     <i class="bi bi-geo-alt-fill text-white text-xl"></i>
                 </span>
-                <span class="text-[8px] font-black uppercase tracking-widest mt-0.5 {{ $mobileCurrentRoute === 'user.orders.track' ? 'text-primary' : 'text-slate-400' }}">Track</span>
+                <span class="text-[8px] font-black uppercase tracking-widest mt-0.5 {{ $mobileCurrentRoute === 'user.orders.track' ? 'text-primary' : 'text-slate-400' }}">{{ __('Track') }}</span>
             </a>
 
             <!-- Messages -->
             <a href="{{ route('user.messages.index') }}" class="flex flex-col items-center justify-center gap-1 transition-colors {{ $mobileCurrentRoute === 'user.messages.index' ? 'text-primary' : 'text-slate-400 hover:text-slate-700' }}">
                 <i class="bi bi-chat-dots-fill text-lg"></i>
-                <span class="text-[8px] font-black uppercase tracking-widest">Chat</span>
+                <span class="text-[8px] font-black uppercase tracking-widest">{{ __('Chat') }}</span>
             </a>
 
             <!-- Profile -->
             <a href="{{ route('user.profile') }}" class="flex flex-col items-center justify-center gap-1 transition-colors {{ $mobileCurrentRoute === 'user.profile' ? 'text-primary' : 'text-slate-400 hover:text-slate-700' }}">
                 <i class="bi bi-person-fill text-lg"></i>
-                <span class="text-[8px] font-black uppercase tracking-widest">Profile</span>
+                <span class="text-[8px] font-black uppercase tracking-widest">{{ __('Profile') }}</span>
             </a>
 
         </div>

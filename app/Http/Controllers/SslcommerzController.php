@@ -6,13 +6,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use App\Models\Order; // Your Order model
 use App\Models\Payment;
+use App\Models\StockMovement;
 
 class SslcommerzController extends Controller
 {
     /**
      * Initiate Payment
      */
-    public function pay($orderId)
+    public function pay($locale, $orderId)
     {
         $order = Order::find($orderId);
 
@@ -20,15 +21,17 @@ class SslcommerzController extends Controller
             return response()->json(['error' => 'Order not found'], 404);
         }
 
+        $routeParams = ['locale' => app()->getLocale()];
+
         $post_data = [
             'store_id' => env('SSLC_STORE_ID'),
             'store_passwd' => env('SSLC_STORE_PASSWORD'),
             'total_amount' => $order->total_price,
             'currency' => 'BDT',
             'tran_id' => $order->order_id,
-            'success_url' => route(env('SSLC_ROUTE_SUCCESS')),
-            'fail_url' => route(env('SSLC_ROUTE_FAILURE')),
-            'cancel_url' => route(env('SSLC_ROUTE_CANCEL')),
+            'success_url' => route(env('SSLC_ROUTE_SUCCESS'), $routeParams),
+            'fail_url' => route(env('SSLC_ROUTE_FAILURE'), $routeParams),
+            'cancel_url' => route(env('SSLC_ROUTE_CANCEL'), $routeParams),
 
             // Customer info
             'cus_name' => $order->customer_name ?? 'Test Customer',
@@ -76,7 +79,7 @@ class SslcommerzController extends Controller
      */
     public function success(Request $request)
     {
-        $tran_id = $request->tran_id;
+        $tran_id = $request->input('tran_id');
 
         $order = Order::where('order_id', $tran_id)->first();
 
@@ -89,6 +92,22 @@ class SslcommerzController extends Controller
             'payment_status' => 'paid',
             'status' => 'processing',
         ]);
+
+        // Record committed stock movements for each reserved variant
+        foreach ($order->orderItems as $item) {
+            $variant = $item->variant ?? ($item->product ? $item->product->variants()->first() : null);
+            if ($variant) {
+                StockMovement::create([
+                    'variant_id' => $variant->id,
+                    'change' => 0,
+                    'type' => 'order_committed',
+                    'reason' => 'Payment success committed reservation',
+                    'source_type' => Order::class,
+                    'source_id' => $order->id,
+                    'admin_id' => null,
+                ]);
+            }
+        }
 
         // Insert into payments table
         Payment::create([
@@ -103,7 +122,7 @@ class SslcommerzController extends Controller
             'payment_date' => now(),
         ]);
 
-        return redirect()->route('orders.success', $order->id);
+        return redirect()->route('orders.success', ['locale' => app()->getLocale(), 'order' => $order->id]);
     }
 
     /**
@@ -111,7 +130,27 @@ class SslcommerzController extends Controller
      */
     public function fail(Request $request)
     {
-        $tran_id = $request->tran_id;
+        $tran_id = $request->input('tran_id');
+        $order = Order::where('order_id', $tran_id)->first();
+        if ($order && $order->status !== 'cancelled') {
+            $order->update(['status' => 'cancelled', 'payment_status' => 'failed']);
+            foreach ($order->orderItems as $item) {
+                $variant = $item->variant ?? ($item->product ? $item->product->variants()->first() : null);
+                if ($variant) {
+                    StockMovement::create([
+                        'variant_id' => $variant->id,
+                        'change' => intval($item->quantity),
+                        'type' => 'order_released',
+                        'reason' => 'Payment failure released reservation',
+                        'source_type' => Order::class,
+                        'source_id' => $order->id,
+                        'admin_id' => null,
+                    ]);
+                    $variant->increment('stock', $item->quantity);
+                }
+            }
+        }
+
         return "Payment Failed! Transaction ID: $tran_id";
     }
 
@@ -120,7 +159,27 @@ class SslcommerzController extends Controller
      */
     public function cancel(Request $request)
     {
-        $tran_id = $request->tran_id;
+        $tran_id = $request->input('tran_id');
+        $order = Order::where('order_id', $tran_id)->first();
+        if ($order && $order->status !== 'cancelled') {
+            $order->update(['status' => 'cancelled', 'payment_status' => 'cancelled']);
+            foreach ($order->orderItems as $item) {
+                $variant = $item->variant ?? ($item->product ? $item->product->variants()->first() : null);
+                if ($variant) {
+                    StockMovement::create([
+                        'variant_id' => $variant->id,
+                        'change' => intval($item->quantity),
+                        'type' => 'order_released',
+                        'reason' => 'Payment cancellation released reservation',
+                        'source_type' => Order::class,
+                        'source_id' => $order->id,
+                        'admin_id' => null,
+                    ]);
+                    $variant->increment('stock', $item->quantity);
+                }
+            }
+        }
+
         return "Payment Cancelled! Transaction ID: $tran_id";
     }
 

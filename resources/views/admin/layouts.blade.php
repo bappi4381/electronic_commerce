@@ -85,8 +85,11 @@
                         'permission' => 'manage-products',
                         'children' => [
                             ['title' => 'Categories', 'route' => 'category_subcategory.index'],
+                            ['title' => 'Attributes', 'route' => 'admin.attributes.index'],
+                            ['title' => 'Stock Movements', 'route' => 'admin.products.stock_movements.index'],
                             ['title' => 'Add Product', 'route' => 'admin.products.create'],
                             ['title' => 'Products', 'route' => 'admin.products.index'],
+                            ['title' => 'Bulk Import', 'route' => 'admin.products.import'],
                         ]
                     ],
                     [

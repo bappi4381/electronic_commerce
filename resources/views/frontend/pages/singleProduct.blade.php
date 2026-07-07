@@ -3,13 +3,56 @@
 @section('title', $product->name)
 
 @section('content')
+
+@php
+    // Prepare Variants Data
+    $availableAttributes = collect();
+    $variantsData = [];
+
+    if ($product->variants->count() > 0) {
+        foreach ($product->variants as $variant) {
+            $variantAttributes = [];
+            foreach ($variant->attributeValues as $av) {
+                $attrId = $av->attribute->id;
+                $attrName = $av->attribute->name;
+                
+                if (!$availableAttributes->has($attrId)) {
+                    $availableAttributes->put($attrId, [
+                        'id' => $attrId,
+                        'name' => $attrName,
+                        'values' => collect()
+                    ]);
+                }
+                
+                if (!$availableAttributes[$attrId]['values']->contains('id', $av->id)) {
+                    $availableAttributes[$attrId]['values']->push([
+                        'id' => $av->id,
+                        'value' => $av->value
+                    ]);
+                }
+                $variantAttributes[$attrId] = $av->id;
+            }
+            
+            $variantsData[] = [
+                'id' => $variant->id,
+                'sku' => $variant->sku,
+                'price' => $variant->price ? $variant->price : ($product->discounted_price ?? $product->price),
+                'base_price' => $product->price,
+                'discount' => $product->discount,
+                'stock' => $variant->stock,
+                'attributes' => $variantAttributes
+            ];
+        }
+    }
+@endphp
+
 <section class="pt-12 pb-36 bg-white" x-data="productPageHandler()">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {{-- Breadcrumb (Professional) --}}
         <nav class="flex items-center gap-2 mb-8 overflow-x-auto no-scrollbar whitespace-nowrap text-sm font-medium text-slate-500">
-            <a href="{{ route('home') }}" class="hover:text-primary transition-colors">Home</a>
+            <a href="{{ route('home') }}" class="hover:text-primary transition-colors">{{ __('Home') }}</a>
             <i class="bi bi-chevron-right text-xs text-slate-300"></i>
-            <a href="{{ route('products.index') }}" class="hover:text-primary transition-colors">Products</a>
+            <a href="{{ route('products.index') }}" class="hover:text-primary transition-colors">{{ __('Products') }}</a>
             <i class="bi bi-chevron-right text-xs text-slate-300"></i>
             <span class="text-slate-900">{{ $product->name }}</span>
         </nav>
@@ -18,10 +61,14 @@
             <!-- Image Portfolio -->
             <div class="w-full lg:w-1/2 space-y-6">
                 <div class="relative aspect-square bg-slate-50 rounded-2xl overflow-hidden border border-slate-100 flex items-center justify-center p-8 group">
-                    <img src="{{ asset('storage/' . $product->images->first()->image) }}" 
-                         id="mainProductImage"
-                         alt="{{ $product->name }}" 
-                         class="w-full h-full object-contain transition-transform duration-500 group-hover:scale-[1.02]">
+                    @if($product->images->count())
+                        <img src="{{ asset('storage/' . $product->images->first()->image) }}" 
+                             id="mainProductImage"
+                             alt="{{ $product->name }}" 
+                             class="w-full h-full object-contain transition-transform duration-500 group-hover:scale-[1.02]">
+                    @else
+                        <i class="bi bi-image text-slate-300 text-6xl"></i>
+                    @endif
                     
                     {{-- Reaction Badge --}}
                     <div class="absolute top-6 left-6 flex items-center gap-2 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-xl border border-slate-100 shadow-sm z-10">
@@ -61,67 +108,96 @@
 
             <!-- Product Intel -->
             <div class="w-full lg:w-1/2 flex flex-col justify-center">
-                <div class="mb-8 space-y-4">
+                <div class="mb-6 space-y-4">
                     <div class="flex items-center gap-3">
                         <span class="text-[10px] font-black uppercase tracking-[0.2em] text-primary bg-primary/5 px-3 py-1 rounded-full">{{ $product->category->name ?? 'Electronics' }}</span>
                         <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
-                        @if($product->stock > 0)
-                            @if($product->stock <= 10)
-                                <span class="text-sm font-bold text-red-500 flex items-center gap-1.5 animate-pulse">
-                                    <i class="bi bi-exclamation-triangle-fill"></i> ONLY {{ $product->stock }} LEFT IN STOCK!
-                                </span>
-                            @else
-                                <span class="text-sm font-medium text-emerald-600 flex items-center gap-1.5">
-                                    <i class="bi bi-check-circle-fill"></i> In Stock ({{ $product->stock }})
-                                </span>
-                            @endif
-                        @else
-                            <span class="text-sm font-medium text-red-500 flex items-center gap-1.5">
-                                <i class="bi bi-x-circle-fill"></i> Currently Out of Stock
+                        
+                        <template x-if="currentVariantStock > 0">
+                            <span class="text-sm font-medium flex items-center gap-1.5" :class="currentVariantStock <= 10 ? 'text-amber-500' : 'text-emerald-600'">
+                                <i class="bi bi-check-circle-fill"></i> 
+                                <span x-text="currentVariantStock <= 10 ? `{{ __('Only') }} ${currentVariantStock} {{ __('left!') }}` : `{{ __('In Stock') }} (${currentVariantStock})`"></span>
                             </span>
-                        @endif
+                        </template>
+                        <template x-if="currentVariantStock === 0 && hasVariants">
+                            <span class="text-sm font-medium text-red-500 flex items-center gap-1.5">
+                                <i class="bi bi-x-circle-fill"></i> {{ __('This variant is Out of Stock') }}
+                            </span>
+                        </template>
+                        <template x-if="currentVariantStock === 0 && !hasVariants">
+                            <span class="text-sm font-medium text-red-500 flex items-center gap-1.5">
+                                <i class="bi bi-x-circle-fill"></i> {{ __('Currently Out of Stock') }}
+                            </span>
+                        </template>
                     </div>
                     
                     <h1 class="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-tight uppercase italic">{{ $product->name }}</h1>
                     
                     <div class="flex items-baseline gap-4 mt-2">
-                        <span class="text-4xl font-black text-slate-900 tracking-tighter italic">৳ {{ number_format($product->discounted_price ?? $product->price, 0) }}</span>
-                        @if($product->discount)
-                            <span class="text-xl text-slate-400 line-through font-bold">৳ {{ number_format($product->price, 0) }}</span>
-                            <span class="bg-[#20A7DB] text-white text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-widest shadow-lg shadow-[#20A7DB]/20 border border-white/20">Save {{ $product->discount }}%</span>
-                        @endif
+                        <span class="text-4xl font-black text-slate-900 tracking-tighter italic" x-text="`৳ ${formatPrice(currentVariantPrice)}`"></span>
+                        <template x-if="currentDiscount > 0">
+                            <div class="flex items-baseline gap-4">
+                                <span class="text-xl text-slate-400 line-through font-bold" x-text="`৳ ${formatPrice(currentBasePrice)}`"></span>
+                                <span class="bg-[#20A7DB] text-white text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-widest shadow-lg shadow-[#20A7DB]/20 border border-white/20" x-text="`{{ __('Save') }} ${currentDiscount}%`"></span>
+                            </div>
+                        </template>
                     </div>
                 </div>
 
                 {{-- Key Specs Grid --}}
-                <div class="grid grid-cols-2 gap-6 py-6 border-y border-slate-100 mb-8">
-                    @foreach([['Brand','brand'],['Model','model'],['SKU','product_id'],['Warranty','warranty_period']] as $spec)
+                <div class="grid grid-cols-2 gap-6 py-5 border-y border-slate-100 mb-6">
+                    @foreach([['Brand','brand'],['Model','model'],['Warranty','warranty_period']] as $spec)
                         <div>
-                            <p class="text-sm text-slate-500 mb-1">{{ $spec[0] }}</p>
-                            <p class="text-base font-semibold text-slate-900">{{ $product->{$spec[1]} ?? 'Standard' }}</p>
+                            <p class="text-sm text-slate-500 mb-1">{{ __($spec[0]) }}</p>
+                            <p class="text-base font-semibold text-slate-900">{{ $product->{$spec[1]} ?? 'N/A' }}</p>
                         </div>
                     @endforeach
+                    <div>
+                        <p class="text-sm text-slate-500 mb-1">{{ __('SKU') }}</p>
+                        <p class="text-base font-semibold text-slate-900" x-text="currentVariantSku"></p>
+                    </div>
                 </div>
 
+                {{-- Variant Selector --}}
+                @if($availableAttributes->isNotEmpty())
+                    <div class="space-y-5 mb-8 bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                        @foreach($availableAttributes as $attr)
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-800 mb-3 uppercase tracking-wider">{{ $attr['name'] }}</h3>
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach($attr['values'] as $val)
+                                        <button @click="selectAttribute({{ $attr['id'] }}, {{ $val['id'] }})"
+                                                :class="selectedAttributes[{{ $attr['id'] }}] === {{ $val['id'] }} ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400'"
+                                                class="px-4 py-2 border rounded-xl text-sm font-semibold transition-all">
+                                            {{ $val['value'] }}
+                                        </button>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+
                 <div class="flex flex-col sm:flex-row gap-3 mb-8">
-                    <form action="{{ route('cart.add') }}" method="POST" class="flex-1 flex gap-3">
+                    <form action="{{ route('cart.add') }}" method="POST" class="flex-1 flex gap-3" @submit="validateCartForm">
                         @csrf
                         <input type="hidden" name="product_id" value="{{ $product->id }}">
+                        <input type="hidden" name="variant_id" :value="currentVariantId">
                         
-                        <button type="submit" {{ $product->stock <= 0 ? 'disabled' : '' }}
+                        <button type="submit" :disabled="currentVariantStock <= 0 || (hasVariants && !currentVariantId)"
                                 class="flex-1 bg-slate-900 text-white py-4 px-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:bg-[#20A7DB] transition-all disabled:opacity-50 disabled:cursor-not-allowed group">
                             <i class="bi bi-cart-plus text-lg group-hover:rotate-12 transition-transform"></i>
-                            Add to Cart
+                            <span x-text="(hasVariants && !currentVariantId) ? '{{ __('Select Options') }}' : '{{ __('Add to Cart') }}'"></span>
                         </button>
 
-                        <button type="submit" name="buy_now" value="1" {{ $product->stock <= 0 ? 'disabled' : '' }}
+                        <button type="submit" name="buy_now" value="1" :disabled="currentVariantStock <= 0 || (hasVariants && !currentVariantId)"
                                 class="flex-1 bg-[#20A7DB] text-white py-4 px-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:bg-[#1c96c5] shadow-lg shadow-[#20A7DB]/30 hover:shadow-[#20A7DB]/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                             <i class="bi bi-bag-check text-lg"></i>
-                            Order Now
+                            {{ __('Order Now') }}
                         </button>
                     </form>
 
-                    <button x-data @click.prevent="$dispatch('toggle-wishlist', { id: {{ $product->id }} })" 
+                    <button @click.prevent="$dispatch('toggle-wishlist', { id: {{ $product->id }} })" 
                             class="w-full sm:w-auto py-4 px-6 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-colors font-medium flex items-center justify-center gap-2" title="Add to Wishlist">
                         <i class="bi bi-heart text-lg"></i>
                     </button>
@@ -133,8 +209,8 @@
                         <i class="bi bi-shield-check text-xl"></i>
                     </div>
                     <div>
-                        <h6 class="text-sm font-semibold text-slate-900">Authentic Product</h6>
-                        <p class="text-sm text-slate-500 mt-0.5">100% Genuine product sourced from official distributors.</p>
+                        <h6 class="text-sm font-semibold text-slate-900">{{ __('Authentic Product') }}</h6>
+                        <p class="text-sm text-slate-500 mt-0.5">{{ __('100% Genuine product sourced from official distributors.') }}</p>
                     </div>
                 </div>
             </div>
@@ -185,7 +261,7 @@
 
                         @if($hasQuickSpecs)
                             <div>
-                                <h4 class="text-lg font-semibold text-slate-900 mb-4">General Features</h4>
+                                <h4 class="text-lg font-semibold text-slate-900 mb-4">{{ __('General Features') }}</h4>
                                 <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
                                     <table class="w-full text-sm text-left">
                                         <tbody class="divide-y divide-slate-100">
@@ -202,42 +278,6 @@
                                 </div>
                             </div>
                         @endif
-
-                        {{-- Dynamic Specifications --}}
-                        @php
-                            $validDynamicSpecs = collect($product->specifications ?? [])->filter(function($group) {
-                                return !empty($group['title']) || (!empty($group['attributes']) && collect($group['attributes'])->filter(fn($attr) => !empty($attr['label']) || !empty($attr['value']))->isNotEmpty());
-                            });
-                        @endphp
-
-                        @if($validDynamicSpecs->isNotEmpty())
-                            @foreach($validDynamicSpecs as $group)
-                                <div>
-                                    <h4 class="text-lg font-semibold text-slate-900 mb-4">{{ $group['title'] ?? 'Other Features' }}</h4>
-                                    <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                                        <table class="w-full text-sm text-left">
-                                            <tbody class="divide-y divide-slate-100">
-                                                @foreach($group['attributes'] as $attr)
-                                                    @if(!empty($attr['label']) || !empty($attr['value']))
-                                                    <tr class="hover:bg-slate-50 transition-colors">
-                                                        <th class="px-6 py-4 font-medium text-slate-500 w-1/3 bg-slate-50/50">{{ $attr['label'] ?? '' }}</th>
-                                                        <td class="px-6 py-4 text-slate-900">{{ $attr['value'] ?? '' }}</td>
-                                                    </tr>
-                                                    @endif
-                                                @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            @endforeach
-                        @endif
-
-                        @if(!$hasQuickSpecs && $validDynamicSpecs->isEmpty())
-                            <div class="py-12 text-center text-slate-500">
-                                <i class="bi bi-card-list text-3xl mb-3 block text-slate-300"></i>
-                                <p>No detailed specifications available for this product.</p>
-                            </div>
-                        @endif
                     </div>
                 </div>
 
@@ -252,29 +292,29 @@
 
                         @auth
                             <div class="bg-white border border-slate-200 rounded-xl p-6 mb-12 shadow-sm">
-                                <h4 class="text-base font-semibold text-slate-900 mb-4">Write a Review</h4>
+                                <h4 class="text-base font-semibold text-slate-900 mb-4">{{ __('Write a Review') }}</h4>
                                 <form action="{{ route('product.comment', $product->id) }}" method="POST" class="space-y-4">
                                     @csrf
                                     <textarea name="comment" rows="3" required
                                               class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-sm focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors outline-none resize-y"
-                                              placeholder="Share your experience with this product..."></textarea>
+                                              placeholder="{{ __('Share your experience with this product...') }}"></textarea>
                                     <div class="flex justify-end">
                                         <button type="submit" class="px-6 py-2.5 bg-slate-900 text-white font-medium text-sm rounded-lg hover:bg-primary transition-colors">
-                                            Post Review
+                                            {{ __('Post Review') }}
                                         </button>
                                     </div>
                                 </form>
                             </div>
                         @else
                             <div class="p-8 bg-slate-50 rounded-xl text-center border border-slate-200 mb-12">
-                                <h4 class="text-base font-medium text-slate-900 mb-2">Want to share your thoughts?</h4>
-                                <p class="text-sm text-slate-500 mb-6">Please log in to write a review or join the discussion.</p>
-                                <a href="{{ route('user.auth.login') }}" class="inline-flex px-6 py-2.5 bg-white text-slate-700 border border-slate-300 rounded-lg font-medium text-sm hover:bg-slate-50 transition-colors shadow-sm">Sign In</a>
+                                <h4 class="text-base font-medium text-slate-900 mb-2">{{ __('Want to share your thoughts?') }}</h4>
+                                <p class="text-sm text-slate-500 mb-6">{{ __('Please log in to write a review or join the discussion.') }}</p>
+                                <a href="{{ route('user.auth.login') }}" class="inline-flex px-6 py-2.5 bg-white text-slate-700 border border-slate-300 rounded-lg font-medium text-sm hover:bg-slate-50 transition-colors shadow-sm">{{ __('Sign In') }}</a>
                             </div>
                         @endauth
 
                         <div class="space-y-6">
-                            <h4 class="text-lg font-semibold text-slate-900 border-b border-slate-100 pb-4">Customer Reviews ({{ $product->comments->count() }})</h4>
+                            <h4 class="text-lg font-semibold text-slate-900 border-b border-slate-100 pb-4">{{ __('Customer Reviews') }} ({{ $product->comments->count() }})</h4>
                             
                             @forelse($product->comments->sortByDesc('created_at') as $comment)
                                 <div class="py-6 border-b border-slate-100 last:border-0" x-data="{ editing: false }">
@@ -292,15 +332,15 @@
                                                 @if(auth()->id() === $comment->user_id)
                                                     <div class="flex items-center gap-3">
                                                         <button @click="editing = !editing" type="button" class="text-sm text-slate-400 hover:text-primary transition-colors">
-                                                            <span x-show="!editing">Edit</span>
-                                                            <span x-show="editing">Cancel</span>
+                                                            <span x-show="!editing">{{ __('Edit') }}</span>
+                                                            <span x-show="editing">{{ __('Cancel') }}</span>
                                                         </button>
                                                         
                                                         <form x-ref="deleteForm{{ $comment->id }}" action="{{ route('product.comment.delete', $comment->id) }}" method="POST" class="hidden">
                                                             @csrf @method('DELETE')
                                                         </form>
                                                         <button @click="if(confirm('Are you sure you want to delete this review?')) $refs['deleteForm{{ $comment->id }}'].submit()" type="button" class="text-sm text-slate-400 hover:text-red-500 transition-colors">
-                                                            Delete
+                                                            {{ __('Delete') }}
                                                         </button>
                                                     </div>
                                                 @endif
@@ -314,7 +354,7 @@
                                                 <form action="{{ route('product.comment.update', $comment->id) }}" method="POST" class="space-y-3">
                                                     @csrf @method('PUT')
                                                     <textarea name="comment" class="w-full bg-white border border-slate-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-primary/20 outline-none" rows="3">{{ $comment->comment }}</textarea>
-                                                    <button type="submit" class="px-4 py-2 bg-slate-900 text-white text-xs font-medium rounded hover:bg-primary transition-colors">Save Update</button>
+                                                    <button type="submit" class="px-4 py-2 bg-slate-900 text-white text-xs font-medium rounded hover:bg-primary transition-colors">{{ __('Save Update') }}</button>
                                                 </form>
                                             </div>
                                         </div>
@@ -322,7 +362,7 @@
                                 </div>
                             @empty
                                 <div class="text-center py-12">
-                                    <p class="text-slate-500 text-sm">No reviews yet. Be the first to share your experience!</p>
+                                    <p class="text-slate-500 text-sm">{{ __('No reviews yet. Be the first to share your experience!') }}</p>
                                 </div>
                             @endforelse
                         </div>
@@ -334,12 +374,14 @@
         <!-- Related Products -->
         @if($relatedProducts->count() > 0)
         <section class="mt-24 pt-16 border-t border-slate-100">
-            <h3 class="text-2xl font-bold text-slate-900 mb-8">Related Products</h3>
+            <h3 class="text-2xl font-bold text-slate-900 mb-8">{{ __('Related Products') }}</h3>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
                 @foreach($relatedProducts as $related)
                     <a href="{{ route('products.show', $related->id) }}" class="group block border border-slate-100 rounded-2xl p-4 hover:shadow-lg transition-all bg-white">
                         <div class="aspect-square bg-slate-50 rounded-xl overflow-hidden mb-4 p-4">
-                            <img src="{{ asset('storage/' . $related->images->first()->image) }}" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" alt="{{ $related->name }}">
+                            @if($related->images->count())
+                                <img src="{{ asset('storage/' . $related->images->first()->image) }}" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" alt="{{ $related->name }}">
+                            @endif
                         </div>
                         <h4 class="text-sm font-semibold text-slate-900 mb-1 line-clamp-2 group-hover:text-primary transition-colors">{{ $related->name }}</h4>
                         <p class="text-sm font-bold text-slate-900">৳ {{ number_format($related->price, 0) }}</p>
@@ -359,10 +401,71 @@ function productPageHandler() {
         liked: @json($product->isLikedBy(auth()->user())),
         count: @json($product->reactions->count()),
         tabs: [
-            { id: 'overview', label: 'Overview' },
-            { id: 'specs', label: 'Specifications' },
-            { id: 'discussions', label: 'Reviews' }
+            { id: 'overview', label: '{{ __('Overview') }}' },
+            { id: 'specs', label: '{{ __('Specifications') }}' },
+            { id: 'discussions', label: '{{ __('Reviews') }}' }
         ],
+        
+        // Variants state
+        variants: @json($variantsData),
+        hasVariants: @json(count($variantsData) > 0),
+        selectedAttributes: {},
+        currentVariantId: null,
+        currentVariantPrice: @json($product->discounted_price ?? $product->price),
+        currentBasePrice: @json($product->price),
+        currentDiscount: @json($product->discount),
+        currentVariantStock: @json($product->total_stock ?? $product->stock ?? 0),
+        currentVariantSku: @json($product->product_id),
+
+        init() {
+            // Auto-select first variant if variants exist
+            if (this.hasVariants && this.variants.length > 0) {
+                const firstVariant = this.variants[0];
+                this.selectedAttributes = { ...firstVariant.attributes };
+                this.updateVariantInfo();
+            }
+        },
+
+        selectAttribute(attrId, valueId) {
+            this.selectedAttributes[attrId] = valueId;
+            this.updateVariantInfo();
+        },
+
+        updateVariantInfo() {
+            // Find a variant that matches all selected attributes
+            const matchedVariant = this.variants.find(variant => {
+                for (const [attrId, valueId] of Object.entries(this.selectedAttributes)) {
+                    if (variant.attributes[attrId] != valueId) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+
+            if (matchedVariant) {
+                this.currentVariantId = matchedVariant.id;
+                this.currentVariantPrice = matchedVariant.price;
+                this.currentBasePrice = matchedVariant.base_price;
+                this.currentDiscount = matchedVariant.discount;
+                this.currentVariantStock = matchedVariant.stock;
+                this.currentVariantSku = matchedVariant.sku || this.currentVariantSku;
+            } else {
+                this.currentVariantId = null;
+                this.currentVariantStock = 0; // Not available combination
+            }
+        },
+
+        formatPrice(price) {
+            return new Intl.NumberFormat('en-IN').format(price);
+        },
+
+        validateCartForm(e) {
+            if (this.hasVariants && !this.currentVariantId) {
+                e.preventDefault();
+                alert('{{ __('Please select all options before adding to cart.') }}');
+            }
+        },
+
         async toggleLike() {
             if (!@json(auth()->check())) {
                 window.location.href = "{{ route('user.auth.login') }}";

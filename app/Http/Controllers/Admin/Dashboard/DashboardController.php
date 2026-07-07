@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin\Dashboard;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Category;
-use App\Models\Subcategory;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -23,7 +22,10 @@ class DashboardController extends Controller
         $recentOrders = Order::with('user')->latest()->take(5)->get();
         
         // Low Stock Products (Stock < 5)
-        $lowStockProducts = Product::where('stock', '<', 5)->take(5)->get();
+        $lowStockProducts = Product::withSum('variants', 'stock')
+            ->havingRaw('COALESCE(variants_sum_stock, 0) < low_stock_threshold')
+            ->take(5)
+            ->get();
         
         // Data for Sales Chart (Last 6 Months)
         $salesData = Order::where('payment_status', 'paid')

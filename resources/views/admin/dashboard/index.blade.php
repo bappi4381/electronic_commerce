@@ -129,8 +129,8 @@
                         @forelse($lowStockProducts as $product)
                             <div class="flex items-center justify-between group">
                                 <div class="flex flex-col min-w-0">
-                                    <span class="text-sm font-bold text-slate-700 truncate group-hover:text-primary transition-colors cursor-pointer">{{ $product->name }}</span>
-                                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Stock Level: {{ $product->stock }}</span>
+                                    <span class="text-sm font-bold text-slate-700 truncate group-hover:text-primary transition-colors cursor-pointer">{{ is_array($product->name) ? ($product->name['en'] ?? '') : $product->name }}</span>
+                                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Stock Level: {{ $product->total_stock }}</span>
                                 </div>
                                 <a href="{{ route('admin.products.edit', $product->id) }}" class="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-primary hover:text-white transition-all">
                                     <i class="bi bi-pencil-square"></i>

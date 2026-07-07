@@ -8,20 +8,21 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, \Spatie\Translatable\HasTranslations;
 
     protected $fillable = [
-        'category_id', 'subcategory_id', 'name', 'description',
-        'price', 'discount','discounted_price', 'stock', 'product_id',
-        'brand', 'model', 'ram', 'storage', 'battery_capacity', 'screen_size', 'operating_system', 'color', 'warranty_period',
-        'specifications', 'is_featured', 'is_best_seller', 'is_flash_deal'
+        'category_id', 'name', 'description',
+        'price', 'discount', 'discounted_price', 'product_id', 'brand', 'model', 'warranty_period',
+        'specifications', 'video_link', 'low_stock_threshold', 'is_featured', 'is_best_seller', 'is_flash_deal'
     ];
 
+    public $translatable = ['name', 'description'];
+
     protected $casts = [
-        'specifications' => 'array',
-        'is_featured' => 'boolean',
-        'is_best_seller' => 'boolean',
-        'is_flash_deal' => 'boolean'
+        'specifications'  => 'array',
+        'is_featured'     => 'boolean',
+        'is_best_seller'  => 'boolean',
+        'is_flash_deal'   => 'boolean',
     ];
 
     protected static function boot()
@@ -35,15 +36,13 @@ class Product extends Model
         });
     }
 
+    // ── Relationships ───────────────────────────────────────
+
     public function category()
     {
         return $this->belongsTo(Category::class);
     }
 
-    public function subcategory()
-    {
-        return $this->belongsTo(Subcategory::class);
-    }
     public function images()
     {
         return $this->hasMany(ProductImage::class);
@@ -59,9 +58,45 @@ class Product extends Model
         return $this->hasMany(ProductReaction::class);
     }
 
+    public function variants()
+    {
+        return $this->hasMany(ProductVariant::class);
+    }
+
+    public function specifications()
+    {
+        return $this->belongsToMany(AttributeValue::class, 'product_specifications', 'product_id', 'attribute_value_id');
+    }
+
+    // ── Helpers ─────────────────────────────────────────────
+
     public function isLikedBy($user)
     {
         if (!$user) return false;
         return $this->reactions()->where('user_id', $user->id)->exists();
+    }
+
+    /**
+     * Total stock across all variants.
+     */
+    public function getTotalStockAttribute(): int
+    {
+        return $this->variants->sum('stock');
+    }
+
+    /**
+     * Alias for total stock across all variants.
+     */
+    public function getStockAttribute(): int
+    {
+        return $this->variants->sum('stock');
+    }
+
+    /**
+     * Whether any variant has stock > 0.
+     */
+    public function getInStockAttribute(): bool
+    {
+        return $this->variants->sum('stock') > 0;
     }
 }

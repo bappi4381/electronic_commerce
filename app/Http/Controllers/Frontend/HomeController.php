@@ -37,13 +37,13 @@ class HomeController extends Controller
         // Get user wishlist IDs if logged in
         $wishlistIds = Auth::check() ? Wishlist::where('user_id', Auth::id())->pluck('product_id')->toArray() : [];
 
-        // Get Flash Deal products (Must have discount and must be in stock)
+        // Get Flash Deal products (Must have discount and at least one variant in stock)
         $flashDealProducts = Product::where('is_flash_deal', true)
             ->where('discount', '>', 0)
-            ->where('stock', '>', 0)
+            ->whereHas('variants', fn($q) => $q->where('stock', '>', 0))
             ->with('images')
             ->latest()
-            ->take(10) // Allow more for horizontal slider
+            ->take(10)
             ->get();
 
         // Get Campaign Settings (Dynamic)
@@ -80,12 +80,14 @@ class HomeController extends Controller
 
         $products = Product::query();
 
-        // Search
+        // Search (name is now JSON, use JSON_EXTRACT or LIKE on raw value)
         if ($request->search) {
-            $products->where(function($query) use ($request) {
-                $query->where('name', 'like', '%' . $request->search . '%')
-                      ->orWhere('brand', 'like', '%' . $request->search . '%')
-                      ->orWhere('model', 'like', '%' . $request->search . '%');
+            $s = $request->search;
+            $products->where(function($query) use ($s) {
+                $query->whereRaw('JSON_EXTRACT(name, "$.en") LIKE ?', ["%{$s}%"])
+                      ->orWhereRaw('JSON_EXTRACT(name, "$.bn") LIKE ?', ["%{$s}%"])
+                      ->orWhere('brand', 'like', "%{$s}%")
+                      ->orWhere('model', 'like', "%{$s}%");
             });
         }
 
@@ -122,7 +124,7 @@ class HomeController extends Controller
     }
     public function show($id)
     {
-        $product = Product::with(['images', 'category', 'comments.user', 'reactions'])->findOrFail($id);
+        $product = Product::with(['images', 'category', 'comments.user', 'reactions', 'variants.attributeValues.attribute'])->findOrFail($id);
         
         // Related products from the same category
         $relatedProducts = Product::where('category_id', $product->category_id)

@@ -263,7 +263,7 @@
             @foreach($order->orderItems as $item)
             <tr>
                 <td class="text-center">{{ $item->quantity }}</td>
-                <td>{{ $item->product->name ?? 'Product N/A' }}</td>
+                <td>{{ $item->product ? (is_array($item->product->name) ? ($item->product->name['en'] ?? 'N/A') : $item->product->name) : 'Product N/A' }}</td>
                 <td class="text-right">{{ number_format($item->price, 2) }}</td>
                 <td class="text-right">{{ number_format($item->subtotal, 2) }}</td>
             </tr>

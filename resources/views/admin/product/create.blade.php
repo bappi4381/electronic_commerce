@@ -1,360 +1,330 @@
 @extends('admin.layouts')
-@section('title', isset($product) ? 'Refine Product' : 'Onboard Product')
+@section('title', isset($product) ? 'Edit Product' : 'Add New Product')
+
+@push('styles')
+<style>
+    .variant-row { animation: fadeIn .3s ease; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+    .tab-btn.active { background: #3b82f6; color: #fff; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+</style>
+@endpush
 
 @section('content')
-<div class="max-w-7xl mx-auto pb-20" x-data="productForm()">
+<div class="space-y-6 max-w-6xl mx-auto">
+
     {{-- Header --}}
-    <div class="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-6">
-        <div class="flex items-center gap-5">
-            <div class="w-16 h-16 bg-slate-900 rounded-[2rem] flex items-center justify-center text-white shadow-2xl shadow-slate-900/20">
-                <i class="bi bi-box-seam text-2xl"></i>
-            </div>
-            <div>
-                <h1 class="text-3xl font-black tracking-tight text-slate-900 leading-none">
-                    {{ isset($product) ? 'Refine Asset' : 'New Product' }}
-                </h1>
-                <div class="flex items-center gap-2 mt-2">
-                    <span class="w-1 h-1 bg-primary rounded-full"></span>
-                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Inventory Management</p>
-                </div>
-            </div>
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-black text-slate-800 tracking-tight">
+                {{ isset($product) ? 'Edit Product' : 'Add New Product' }}
+            </h1>
+            <p class="text-sm text-slate-500 mt-1">Fill in both English & Bengali fields for full multi-language support.</p>
         </div>
-        
-        {{-- Navigation Stepper --}}
-        <div class="flex bg-slate-100/50 p-1.5 rounded-3xl border border-slate-200/50 backdrop-blur-xl">
-            <template x-for="(tab, index) in tabs" :key="index">
-                <button @click="currentTab = tab.id" 
-                        :class="currentTab === tab.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'"
-                        class="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 flex items-center gap-2">
-                    <i :class="tab.icon"></i>
-                    <span x-text="tab.label"></span>
-                </button>
-            </template>
-        </div>
+        <a href="{{ route('admin.products.index') }}" class="flex items-center gap-2 text-sm font-bold text-slate-600 bg-white border border-slate-200 px-4 py-2 rounded-xl hover:bg-slate-50 transition-all">
+            <i class="bi bi-arrow-left"></i> Back to Products
+        </a>
     </div>
 
-    <form action="{{ isset($product) ? route('admin.products.update', $product) : route('admin.products.store') }}" 
-          method="POST" enctype="multipart/form-data" id="product-form">
+    @if($errors->any())
+        <div class="bg-red-50 border border-red-200 rounded-2xl p-4">
+            <ul class="list-disc list-inside text-red-600 text-sm space-y-1">
+                @foreach($errors->all() as $err) <li>{{ $err }}</li> @endforeach
+            </ul>
+        </div>
+    @endif
+
+    @php
+        $selectedCategoryAttributes = isset($selectedCategoryAttributes) && $selectedCategoryAttributes->isNotEmpty()
+            ? $selectedCategoryAttributes
+            : $attributes;
+    @endphp
+
+    <form action="{{ isset($product) ? route('admin.products.update', $product) : route('admin.products.store') }}"
+        method="POST" enctype="multipart/form-data" id="productForm">
         @csrf
         @if(isset($product)) @method('PUT') @endif
 
-        {{-- Tab 1: Primary Configuration --}}
-        <div x-show="currentTab === 'primary'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4">
-            <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                <div class="lg:col-span-1 space-y-8">
-                    <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40">
-                        <h4 class="text-[10px] font-black uppercase tracking-widest text-primary mb-6">01. Essential Info</h4>
-                        <div class="space-y-6">
-                            <div class="space-y-1.5">
-                                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Product Title</label>
-                                <input type="text" name="name" value="{{ old('name', $product->name ?? '') }}" placeholder="e.g. iPhone 17" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-bold focus:ring-2 focus:ring-primary/20 outline-none transition-all" required>
-                            </div>
-                            <div class="space-y-1.5">
-                                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Category</label>
-                                <select name="category_id" id="category-select" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-bold focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer" required>
-                                    <option value="">Select...</option>
-                                    @foreach($categories as $category)
-                                        <option value="{{ $category->id }}" {{ old('category_id', $product->category_id ?? '') == $category->id ? 'selected' : '' }}>{{ $category->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="space-y-1.5">
-                                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Sub-Category</label>
-                                <select name="subcategory_id" id="subcategory-select" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-bold focus:ring-2 focus:ring-primary/20 outline-none transition-all cursor-pointer">
-                                    <option value="">Select...</option>
-                                    @foreach($subcategories as $sub)
-                                        <option value="{{ $sub->id }}" {{ old('subcategory_id', $product->subcategory_id ?? '') == $sub->id ? 'selected' : '' }}>{{ $sub->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-indigo-600 p-8 rounded-[2.5rem] text-white shadow-2xl shadow-indigo-600/30">
-                        <i class="bi bi-lightbulb text-2xl text-indigo-200"></i>
-                        <h5 class="mt-4 text-xs font-black uppercase tracking-widest">Table Support</h5>
-                        <p class="mt-2 text-[10px] font-medium opacity-80 leading-relaxed">The main editor supports professional table formatting. Use it to paste your full specification sheets directly from Excel or Google Sheets.</p>
-                    </div>
-                </div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                <div class="lg:col-span-3">
-                    <div class="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/40">
-                        <div class="flex items-center gap-4 mb-8 pb-4 border-b border-slate-50">
-                            <div class="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600">
-                                <i class="bi bi-list-columns-reverse text-xl"></i>
-                            </div>
-                            <div>
-                                <h4 class="text-xs font-black uppercase tracking-[0.2em] text-slate-700">02. Full Specifications Sheet</h4>
-                                <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest">Main Product Content & Tables</p>
-                            </div>
-                        </div>
-                        <div class="rounded-2xl overflow-hidden border border-slate-100">
-                            <textarea name="description" id="tiny-editor">{{ old('description', $product->description ?? '') }}</textarea>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+            {{-- Left Column: Main Info --}}
+            <div class="lg:col-span-2 space-y-5">
 
-        {{-- Tab 2: Technical Attributes --}}
-        <div x-show="currentTab === 'attributes'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-cloak>
-            <div class="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/40">
-                <div class="flex items-center justify-between mb-10 pb-6 border-b border-slate-50">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600">
-                            <i class="bi bi-cpu text-2xl"></i>
+                {{-- Language Tabs for Name & Description --}}
+                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                    <div class="flex border-b border-slate-100 bg-slate-50">
+                        <button type="button" onclick="switchTab('en')" id="tab-en"
+                            class="tab-btn active px-6 py-3.5 text-sm font-bold rounded-none transition-all flex items-center gap-2">
+                            🇬🇧 English
+                        </button>
+                        <button type="button" onclick="switchTab('bn')" id="tab-bn"
+                            class="tab-btn px-6 py-3.5 text-sm font-bold rounded-none text-slate-500 transition-all flex items-center gap-2 hover:bg-slate-100">
+                            🇧🇩 বাংলা
+                        </button>
+                    </div>
+
+                    {{-- English --}}
+                    <div id="content-en" class="tab-content active p-6 space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Product Name (English) <span class="text-red-500">*</span></label>
+                            <input type="text" name="name_en" value="{{ old('name_en', isset($product) ? $product->getTranslation('name','en') : '') }}"
+                                class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
+                                placeholder="e.g. Premium Cotton T-Shirt" required>
                         </div>
                         <div>
-                            <h4 class="text-xs font-black uppercase tracking-[0.2em] text-slate-700">03. Technical Matrix</h4>
-                            <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest">Dynamic Key-Value Attributes</p>
+                            <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Description (English)</label>
+                            <textarea name="description_en" rows="5"
+                                class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
+                                placeholder="Write a detailed product description in English...">{{ old('description_en', isset($product) ? $product->getTranslation('description','en') : '') }}</textarea>
                         </div>
                     </div>
-                    <button type="button" @click="addSpecRow()" class="bg-slate-900 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-slate-900/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2">
-                        <i class="bi bi-plus-lg"></i>
-                        Add Technical Feature
-                    </button>
+
+                    {{-- Bangla --}}
+                    <div id="content-bn" class="tab-content p-6 space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">পণ্যের নাম (বাংলা)</label>
+                            <input type="text" name="name_bn" value="{{ old('name_bn', isset($product) ? $product->getTranslation('name','bn') : '') }}"
+                                class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
+                                placeholder="যেমন: প্রিমিয়াম কটন টি-শার্ট">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">বিবরণ (বাংলা)</label>
+                            <textarea name="description_bn" rows="5"
+                                class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
+                                placeholder="বাংলায় পণ্যের বিস্তারিত বিবরণ লিখুন...">{{ old('description_bn', isset($product) ? $product->getTranslation('description','bn') : '') }}</textarea>
+                        </div>
+                    </div>
                 </div>
 
-                {{-- Quick Specs Grid --}}
-                <div class="mb-12">
-                    <div class="flex items-center gap-3 mb-6">
-                        <span class="w-1.5 h-6 bg-primary rounded-full"></span>
-                        <h5 class="text-[10px] font-black uppercase tracking-widest text-slate-800">Operational Quick-Specs</h5>
+                {{-- Product Variants Manager --}}
+                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                    <div class="flex items-center justify-between px-6 py-4 bg-slate-50 border-b border-slate-100">
+                        <div>
+                            <h2 class="text-base font-black text-slate-800">Product Variants</h2>
+                            <p class="text-xs text-slate-500 mt-0.5">Each variant has its own Stock, Price & SKU. e.g. Red-M, Blue-L</p>
+                        </div>
+                        <button type="button" onclick="addVariant()"
+                            class="flex items-center gap-2 text-sm font-bold bg-primary text-white px-4 py-2 rounded-xl hover:bg-primary-dark transition-all">
+                            <i class="bi bi-plus-lg"></i> Add Variant
+                        </button>
                     </div>
-                    <div class="bg-slate-50/50 p-8 rounded-[2.5rem] grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-6 border border-slate-100 shadow-sm">
-                        @foreach([['Brand Architecture','brand','bi-building'],['Model Identifier','model','bi-tag'],['Memory (RAM)','ram','bi-memory'],['Capacity (Storage)','storage','bi-database'],['Energy Cell','battery_capacity','bi-battery-half'],['Panel Size','screen_size','bi-fullscreen'],['Operating System','operating_system','bi-cpu'],['Warranty Era','warranty_period','bi-shield-check']] as $qs)
-                            <div class="space-y-2 group/field">
-                                <div class="flex items-center gap-2 mb-1">
-                                    <i class="bi {{ $qs[2] }} text-slate-400 text-[10px]"></i>
-                                    <label class="text-[9px] font-black uppercase tracking-widest text-slate-400">{{ $qs[0] }}</label>
+
+                    <div id="variants-container" class="divide-y divide-slate-100">
+                        @if(isset($product) && $product->variants->count())
+                            @foreach($product->variants as $vi => $variant)
+                            <div class="variant-row p-5 space-y-3" id="variant-{{ $vi }}">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-black uppercase text-slate-500 tracking-widest">Variant #{{ $vi + 1 }}</span>
+                                    <button type="button" onclick="removeVariant({{ $vi }})"
+                                        class="text-red-400 hover:text-red-600 transition-colors text-sm font-bold">
+                                        <i class="bi bi-trash"></i> Remove
+                                    </button>
                                 </div>
-                                <input type="text" name="{{ $qs[1] }}" value="{{ old($qs[1], $product->{$qs[1]} ?? '') }}" placeholder="Enter data..." class="w-full bg-white border border-slate-100 rounded-xl px-4 py-3.5 text-xs font-bold shadow-sm focus:ring-2 focus:ring-primary/10 outline-none transition-all group-hover/field:border-primary/20">
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <div>
+                                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">SKU</label>
+                                        <input type="text" name="variants[{{ $vi }}][sku]" value="{{ $variant->sku }}"
+                                            class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-semibold outline-none focus:border-blue-400 transition-all"
+                                            placeholder="e.g. TSH-RED-M">
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Price Override (৳)</label>
+                                        <input type="number" name="variants[{{ $vi }}][price]" value="{{ $variant->price }}" min="0" step="0.01"
+                                            class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-semibold outline-none focus:border-blue-400 transition-all"
+                                            placeholder="Leave blank = base price">
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">Stock <span class="text-red-500">*</span></label>
+                                        <input type="number" name="variants[{{ $vi }}][stock]" value="{{ $variant->stock }}" min="0" required
+                                            class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-semibold outline-none focus:border-blue-400 transition-all"
+                                            placeholder="0">
+                                    </div>
+                                </div>
+                                {{-- Attribute selections --}}
+                                @foreach($selectedCategoryAttributes as $attr)
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">{{ $attr->name }}</label>
+                                    <div class="flex flex-wrap gap-2">
+                                        @foreach($attr->values as $val)
+                                        @php $checked = $variant->attributeValues->contains('id', $val->id); @endphp
+                                        <label class="cursor-pointer">
+                                            <input type="checkbox" name="variants[{{ $vi }}][attribute_value_ids][]" value="{{ $val->id }}"
+                                                {{ $checked ? 'checked' : '' }} class="sr-only peer">
+                                            <span class="peer-checked:bg-primary peer-checked:text-white peer-checked:border-primary border border-slate-200 text-slate-600 text-xs font-bold px-3 py-1.5 rounded-lg transition-all hover:border-primary/50 select-none">
+                                                {{ $val->value }}
+                                            </span>
+                                        </label>
+                                        @endforeach
+                                    </div>
+                                </div>
+                                @endforeach
                             </div>
+                            @endforeach
+                        @else
+                            <div id="no-variants-msg" class="p-8 text-center text-slate-400 text-sm">
+                                <i class="bi bi-boxes text-4xl block mb-2 opacity-30"></i>
+                                No variants added yet. Click "Add Variant" to start.
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Product Images --}}
+                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+                    <h2 class="text-base font-black text-slate-800 mb-4 flex items-center gap-2">
+                        <i class="bi bi-images text-primary"></i> Product Images / Gallery
+                    </h2>
+                    @if(isset($product) && $product->images->count())
+                        <div class="grid grid-cols-4 gap-3 mb-4">
+                            @foreach($product->images as $img)
+                            <div class="relative group rounded-xl overflow-hidden border border-slate-200 aspect-square">
+                                <img src="{{ Storage::url($img->image) }}" class="w-full h-full object-cover">
+                                <form action="{{ route('admin.products.image.destroy', $img) }}" method="POST"
+                                    class="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-all">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="bg-red-500 text-white rounded-lg px-3 py-1.5 text-xs font-bold">
+                                        <i class="bi bi-trash"></i> Remove
+                                    </button>
+                                </form>
+                            </div>
+                            @endforeach
+                        </div>
+                    @endif
+                    <label class="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-2xl p-8 cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all group">
+                        <i class="bi bi-cloud-upload text-4xl text-slate-400 group-hover:text-primary transition-colors mb-2"></i>
+                        <p class="text-sm font-bold text-slate-600 group-hover:text-primary transition-colors">Click to upload images</p>
+                        <p class="text-xs text-slate-400 mt-1">PNG, JPG, WEBP — Multiple files allowed</p>
+                        <input type="file" name="images[]" multiple accept="image/*" class="hidden"
+                            onchange="previewImages(this)">
+                    </label>
+                    <div id="image-preview" class="grid grid-cols-4 gap-3 mt-4"></div>
+                </div>
+
+                {{-- Video Link --}}
+                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+                    <h2 class="text-base font-black text-slate-800 mb-4 flex items-center gap-2">
+                        <i class="bi bi-play-circle text-primary"></i> Video Link (Optional)
+                    </h2>
+                    <input type="url" name="video_link" value="{{ old('video_link', $product->video_link ?? '') }}"
+                        class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
+                        placeholder="https://youtube.com/watch?v=...">
+                </div>
+
+            </div>
+
+            {{-- Right Column: Settings --}}
+            <div class="space-y-5">
+
+                {{-- Publish --}}
+                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+                    <h2 class="text-base font-black text-slate-800 mb-4">Publish Settings</h2>
+                    <div class="space-y-3">
+                        @foreach(['is_featured' => ['⭐', 'Featured Product'], 'is_best_seller' => ['🔥', 'Best Seller'], 'is_flash_deal' => ['⚡', 'Flash Deal']] as $field => [$icon, $label])
+                        <label class="flex items-center gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50 cursor-pointer hover:bg-primary/5 hover:border-primary/20 transition-all group">
+                            <input type="checkbox" name="{{ $field }}" value="1"
+                                {{ old($field, isset($product) && $product->$field ? '1' : '0') === '1' ? 'checked' : '' }}
+                                class="w-4 h-4 accent-primary">
+                            <span class="text-sm font-bold text-slate-700 group-hover:text-primary transition-colors">{{ $icon }} {{ $label }}</span>
+                        </label>
                         @endforeach
                     </div>
-                </div>
-
-                {{-- Dynamic Matrix --}}
-                <div class="space-y-4">
-                    <div class="flex items-center gap-3 mb-6">
-                        <span class="w-1.5 h-6 bg-indigo-500 rounded-full"></span>
-                        <h5 class="text-[10px] font-black uppercase tracking-widest text-slate-800">Detailed Parameter Matrix</h5>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <template x-for="(row, index) in specifications" :key="index">
-                            <div class="flex items-center gap-3 bg-slate-50/30 p-4 rounded-2xl border border-slate-100 group/row shadow-sm hover:shadow-md transition-all hover:bg-white">
-                                <div class="flex-1 grid grid-cols-2 gap-3">
-                                    <input type="text" x-model="row.label" :name="`specifications[${index}][label]`" placeholder="Feature Name" class="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 text-[10px] font-bold text-slate-500 focus:ring-2 focus:ring-indigo-500/10 outline-none uppercase tracking-wider">
-                                    <input type="text" x-model="row.value" :name="`specifications[${index}][value]`" placeholder="Technical Value" class="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 text-[10px] font-black text-slate-900 focus:ring-2 focus:ring-indigo-500/10 outline-none">
-                                </div>
-                                <button type="button" @click="removeSpecRow(index)" class="w-10 h-10 rounded-xl bg-white border border-slate-100 text-slate-300 hover:text-red-500 hover:border-red-100 flex items-center justify-center transition-all opacity-0 group-hover/row:opacity-100 shadow-sm">
-                                    <i class="bi bi-trash3 text-sm"></i>
-                                </button>
-                            </div>
-                        </template>
-                    </div>
-
-                    <template x-if="specifications.length === 0">
-                        <div class="py-20 text-center bg-slate-50 rounded-[2.5rem] border border-dashed border-slate-200">
-                            <i class="bi bi-list-stars text-4xl text-slate-200 block mb-4"></i>
-                            <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">No specifications defined yet</p>
-                            <button type="button" @click="addSpecRow()" class="mt-6 text-indigo-500 text-[10px] font-black uppercase tracking-widest hover:underline">+ Initialize First Row</button>
-                        </div>
-                    </template>
-                </div>
-            </div>
-        </div>
-
-        {{-- Tab 3: Economics & Media --}}
-        <div x-show="currentTab === 'economics'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-cloak>
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div class="lg:col-span-1 space-y-8">
-                    <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40">
-                        <h4 class="text-[10px] font-black uppercase tracking-widest text-cyan-500 mb-8">04. Economics</h4>
-                        <div class="space-y-6">
-                            <div class="space-y-1.5">
-                                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Inventory (Total Stock)</label>
-                                <input type="number" name="stock" value="{{ old('stock', $product->stock ?? '') }}" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-black outline-none" placeholder="e.g. 50" required>
-                            </div>
-                            <div class="space-y-1.5">
-                                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Retail Price (TK)</label>
-                                <input type="number" name="price" value="{{ old('price', $product->price ?? '') }}" step="0.01" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-black outline-none" placeholder="e.g. 15000" required>
-                            </div>
-                            <div class="space-y-1.5">
-                                <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Discount Percentage (%)</label>
-                                <input type="number" name="discount" value="{{ old('discount', $product->discount ?? '0') }}" min="0" max="100" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-black outline-none" placeholder="e.g. 10">
-                            </div>
-                        </div>
-
-                        {{-- Promotion Settings --}}
-                        <div class="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-4 mt-6">
-                            <h5 class="text-[8px] font-black uppercase tracking-widest text-slate-400 ml-1">Promotion Status</h5>
-                            
-                            {{-- Flash Deal Toggle --}}
-                            <div class="flex items-center justify-between px-2 py-1">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center text-white shadow-lg shadow-red-500/20">
-                                        <i class="bi bi-lightning-charge-fill text-sm animate-pulse"></i>
-                                    </div>
-                                    <span class="text-[10px] font-black uppercase tracking-tight text-slate-700">Active Flash Deal</span>
-                                </div>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" name="is_flash_deal" value="1" {{ old('is_flash_deal', $product->is_flash_deal ?? false) ? 'checked' : '' }} class="sr-only peer">
-                                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
-                                </label>
-                            </div>
-
-                            <div class="flex items-center justify-between px-2">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600">
-                                        <i class="bi bi-star-fill text-sm"></i>
-                                    </div>
-                                    <span class="text-[10px] font-black uppercase tracking-tight text-slate-700">Featured Product</span>
-                                </div>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" name="is_featured" value="1" {{ old('is_featured', $product->is_featured ?? false) ? 'checked' : '' }} class="sr-only peer">
-                                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                                </label>
-                            </div>
-                            <div class="flex items-center justify-between px-2">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white">
-                                        <i class="bi bi-fire text-sm text-orange-400"></i>
-                                    </div>
-                                    <span class="text-[10px] font-black uppercase tracking-tight text-slate-700">Best Seller</span>
-                                </div>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" name="is_best_seller" value="1" {{ old('is_best_seller', $product->is_best_seller ?? false) ? 'checked' : '' }} class="sr-only peer">
-                                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-slate-900"></div>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <button type="submit" class="w-full bg-primary text-white py-6 rounded-[2rem] font-black text-[12px] uppercase tracking-[0.3em] shadow-2xl shadow-primary/40 hover:bg-black transition-all">
-                        Finalize Product
+                    <button type="submit"
+                        class="w-full mt-5 bg-primary hover:bg-primary-dark text-white font-black py-3.5 rounded-xl transition-all text-sm tracking-wide flex items-center justify-center gap-2">
+                        <i class="bi bi-check-lg text-lg"></i>
+                        {{ isset($product) ? 'Update Product' : 'Create Product' }}
                     </button>
                 </div>
 
-                <div class="lg:col-span-2">
-                    <div class="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/40 h-full">
-                        <h4 class="text-[10px] font-black uppercase tracking-widest text-purple-500 mb-8">05. Visual Portfolio</h4>
-                        <div id="image-drop-area" class="border-4 border-dashed border-slate-100 rounded-[2.5rem] p-12 text-center group cursor-pointer hover:border-primary/20 hover:bg-slate-50/50 transition-all h-[300px] flex flex-col items-center justify-center">
-                            <i class="bi bi-images text-5xl text-slate-200 group-hover:text-primary transition-colors"></i>
-                            <h4 class="mt-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Asset Sync</h4>
-                            <input type="file" name="images[]" accept="image/*" multiple class="hidden" id="image-input">
-                        </div>
-                        <div id="image-preview" class="grid grid-cols-4 lg:grid-cols-6 gap-4 mt-8">
-                            @if(isset($product) && $product->images)
-                                @foreach($product->images as $img)
-                                    <div class="aspect-square rounded-xl border border-slate-50 overflow-hidden shadow-sm relative group/img">
-                                        <img src="{{ asset('storage/' . $img->image) }}" class="w-full h-full object-cover">
-                                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-all flex items-center justify-center">
-                                            <i class="bi bi-check text-white"></i>
-                                        </div>
-                                    </div>
-                                @endforeach
+                {{-- Category --}}
+                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+                    <h2 class="text-base font-black text-slate-800 mb-4">Category</h2>
+                    <select id="category" name="category_id" required onchange="onCategoryChange()"
+                        class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-blue-400 transition-all appearance-none bg-white cursor-pointer">
+                        <option value="">— Select Category —</option>
+                        @foreach($categories as $cat)
+                            <option value="{{ $cat->id }}" {{ old('category_id', isset($product) ? $product->category_id : '') == $cat->id ? 'selected' : '' }}>
+                                {{ $cat->getTranslation('name','en') }}
+                            </option>
+                            @foreach($cat->children ?? [] as $child)
+                            <option value="{{ $child->id }}" {{ old('category_id', isset($product) ? $product->category_id : '') == $child->id ? 'selected' : '' }}>
+                                &nbsp;&nbsp;↳ {{ $child->getTranslation('name','en') }}
+                            </option>
+                            @endforeach
+                        @endforeach
+                    </select>
+
+                    <div id="category-attribute-summary" class="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <p class="text-sm font-black uppercase tracking-[0.25em] text-slate-500">Selected Category Attributes</p>
+                        <div id="category-attribute-tags" class="mt-3 flex flex-wrap gap-2">
+                            @foreach($selectedCategoryAttributes as $attribute)
+                                <span class="rounded-full bg-white border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700">{{ $attribute->name }}</span>
+                            @endforeach
+                            @if($selectedCategoryAttributes->isEmpty())
+                                <span class="text-xs text-slate-400">Choose a category to see custom attributes here.</span>
                             @endif
                         </div>
                     </div>
                 </div>
+
+                {{-- Pricing --}}
+                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-4">
+                    <h2 class="text-base font-black text-slate-800">Pricing</h2>
+                    <div>
+                        <label class="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Base Price (৳) <span class="text-red-500">*</span></label>
+                        <input type="number" name="price" value="{{ old('price', $product->price ?? '') }}" min="0" step="0.01" required
+                            class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold outline-none focus:border-blue-400 transition-all"
+                            placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Discount (%)</label>
+                        <input type="number" name="discount" value="{{ old('discount', $product->discount ?? 0) }}" min="0" max="100"
+                            class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold outline-none focus:border-blue-400 transition-all"
+                            placeholder="0">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Low Stock Alert Threshold</label>
+                        <input type="number" name="low_stock_threshold" value="{{ old('low_stock_threshold', $product->low_stock_threshold ?? 5) }}" min="0"
+                            class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold outline-none focus:border-blue-400 transition-all">
+                    </div>
+                </div>
+
+                {{-- Brand & Model --}}
+                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-4">
+                    <h2 class="text-base font-black text-slate-800">Product Details</h2>
+                    <div>
+                        <label class="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Brand</label>
+                        <input type="text" name="brand" value="{{ old('brand', $product->brand ?? '') }}"
+                            class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold outline-none focus:border-blue-400 transition-all"
+                            placeholder="e.g. Samsung, Levi's">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Model</label>
+                        <input type="text" name="model" value="{{ old('model', $product->model ?? '') }}"
+                            class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold outline-none focus:border-blue-400 transition-all"
+                            placeholder="e.g. Galaxy S24, Slim Fit">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Warranty Period</label>
+                        <input type="text" name="warranty_period" value="{{ old('warranty_period', $product->warranty_period ?? '') }}"
+                            class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold outline-none focus:border-blue-400 transition-all"
+                            placeholder="e.g. 1 Year, 6 Months">
+                    </div>
+                </div>
+
             </div>
         </div>
     </form>
 </div>
 
-<script src="https://cdn.ckeditor.com/ckeditor5/41.1.0/classic/ckeditor.js"></script>
+@push('scripts')
 <script>
-function productForm() {
-    return {
-        currentTab: 'primary',
-        tabs: [
-            { id: 'primary', label: 'Identity & Specs', icon: 'bi-file-earmark-text' },
-            { id: 'attributes', label: 'Technical Matrix', icon: 'bi-cpu' },
-            { id: 'economics', label: 'Economics & Media', icon: 'bi-cash-coin' }
-        ],
-        specifications: @json(old('specifications', $product->specifications ?? [])) || [],
-
-        init() {
-            if (this.specifications.length === 0) {
-                this.addSpecRow();
-            }
-        },
-
-        addSpecRow() {
-            this.specifications.push({ label: '', value: '' });
-        },
-
-        removeSpecRow(index) {
-            this.specifications.splice(index, 1);
-        }
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    ClassicEditor
-        .create(document.querySelector('#tiny-editor'), {
-            toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'insertTable', 'blockQuote', 'undo', 'redo'],
-            table: {
-                contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells']
-            }
-        })
-        .then(editor => {
-            editor.model.document.on('change:data', () => {
-                document.querySelector('#tiny-editor').value = editor.getData();
-            });
-        })
-        .catch(error => {
-            console.error(error);
-        });
-
-    const categorySelect = document.getElementById('category-select');
-    const subcategorySelect = document.getElementById('subcategory-select');
-    let oldSubcategory = "{{ old('subcategory_id', $product->subcategory_id ?? '') }}";
-
-    categorySelect.addEventListener('change', function() {
-        const categoryId = this.value;
-        if(!categoryId) {
-            subcategorySelect.innerHTML = '<option value="">Select Category</option>';
-            return;
-        }
-        fetch("{{ route('get.subcategories') }}?category_id=" + categoryId)
-            .then(res => res.json())
-            .then(data => {
-                let options = '<option value="">Select Subcategory</option>';
-                data.forEach(sub => {
-                    options += `<option value="${sub.id}" ${sub.id == oldSubcategory ? 'selected' : ''}>${sub.name}</option>`;
-                });
-                subcategorySelect.innerHTML = options;
-            });
-    });
-
-    const dropArea = document.getElementById('image-drop-area');
-    const input = document.getElementById('image-input');
-    const preview = document.getElementById('image-preview');
-
-    dropArea.addEventListener('click', () => input.click());
-    input.addEventListener('change', function () {
-        preview.innerHTML = '';
-        Array.from(this.files).forEach(file => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const div = document.createElement('div');
-                div.className = 'aspect-square rounded-xl border border-primary/20 overflow-hidden shadow-sm';
-                div.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
-                preview.appendChild(div);
-            }
-            reader.readAsDataURL(file);
-        });
-    });
-});
+    window.productVariantConfig = {
+        attributes: @json($attributePayload['attributes']),
+        categoryAttributeMappings: @json($attributePayload['categoryAttributeMappings']),
+        initialVariantIndex: {{ isset($product) ? $product->variants->count() : 0 }},
+    };
 </script>
-
-<style>
-    [x-cloak] { display: none !important; }
-    .ck-editor__editable { min-height: 400px !important; border-radius: 0 0 1.5rem 1.5rem !important; background: #fff !important; border-color: #f1f5f9 !important; padding: 2rem !important; }
-    .ck-toolbar { border-radius: 1.5rem 1.5rem 0 0 !important; background: #fff !important; border-color: #f1f5f9 !important; padding: 0.5rem !important; }
-    input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-</style>
+@vite(['resources/js/admin/product.js'])
+@endpush
 @endsection

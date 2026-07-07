@@ -51,7 +51,7 @@
         <!-- Comments (Simplified) -->
         <section class="mt-32 space-y-16" id="comments">
             <div class="flex items-center justify-between border-b border-slate-100 pb-4">
-                <h3 class="text-xl font-black text-slate-900 uppercase tracking-tighter italic">Discussion ({{ $article->comments->count() }})</h3>
+                <h3 class="text-xl font-black text-slate-900 uppercase tracking-tighter italic">{{ __('Discussion') }} ({{ $article->comments->count() }})</h3>
             </div>
 
             @if(session('success'))
@@ -65,15 +65,15 @@
                     @csrf
                     <textarea name="comment" rows="4" required
                               class="w-full bg-slate-50 border-0 rounded-xl px-6 py-5 text-sm font-medium focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-slate-300"
-                              placeholder="Add a comment..."></textarea>
+                              placeholder="{{ __('Add a comment...') }}"></textarea>
                     <button type="submit" class="px-8 py-4 bg-slate-900 text-white font-black uppercase text-[10px] tracking-widest rounded-lg hover:bg-primary transition-all">
-                        Post Comment
+                        {{ __('Post Comment') }}
                     </button>
                 </form>
             @else
                 <div class="p-10 bg-slate-50 rounded-2xl text-center">
-                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Please login to join the discussion</p>
-                    <a href="{{ route('user.auth.login') }}" class="text-xs font-black text-primary uppercase tracking-widest no-underline border-b-2 border-primary/20 hover:border-primary">Login Now</a>
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">{{ __('Please login to join the discussion') }}</p>
+                    <a href="{{ route('user.auth.login') }}" class="text-xs font-black text-primary uppercase tracking-widest no-underline border-b-2 border-primary/20 hover:border-primary">{{ __('Login Now') }}</a>
                 </div>
             @endauth
 
@@ -88,7 +88,7 @@
                                 <div class="flex items-center gap-3">
                                     <h5 class="text-[10px] font-black text-slate-900 uppercase tracking-widest">{{ $comment->user->name }}</h5>
                                     @if(auth()->id() === $comment->user_id)
-                                        <span class="text-[8px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-400 font-black uppercase tracking-widest">You</span>
+                                        <span class="text-[8px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-400 font-black uppercase tracking-widest">{{ __('You') }}</span>
                                     @endif
                                 </div>
                                 <div class="flex items-center gap-4">
@@ -128,22 +128,22 @@
                                     @method('PUT')
                                     <textarea name="comment" class="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-medium focus:ring-1 focus:ring-primary/20 transition-all outline-none" rows="3">{{ $comment->comment }}</textarea>
                                     <div class="flex gap-2">
-                                        <button type="submit" class="px-4 py-2 bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-primary transition-all">Save Changes</button>
-                                        <button type="button" @click="editing = false" class="px-4 py-2 bg-slate-100 text-slate-400 text-[9px] font-black uppercase tracking-widest rounded-lg">Cancel</button>
+                                        <button type="submit" class="px-4 py-2 bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-primary transition-all">{{ __('Save Changes') }}</button>
+                                        <button type="button" @click="editing = false" class="px-4 py-2 bg-slate-100 text-slate-400 text-[9px] font-black uppercase tracking-widest rounded-lg">{{ __('Cancel') }}</button>
                                     </div>
                                 </form>
                             </div>
                         </div>
                     </div>
                 @empty
-                    <p class="text-center text-[10px] font-black text-slate-300 uppercase tracking-widest">No comments yet.</p>
+                    <p class="text-center text-[10px] font-black text-slate-300 uppercase tracking-widest">{{ __('No comments yet.') }}</p>
                 @endforelse
             </div>
         </section>
 
         <!-- More Articles (Minimal Grid) -->
         <section class="mt-32 pt-24 border-t border-slate-100">
-            <h5 class="text-xs font-black text-slate-900 uppercase tracking-widest mb-12 italic">More Stories</h5>
+            <h5 class="text-xs font-black text-slate-900 uppercase tracking-widest mb-12 italic">{{ __('More Stories') }}</h5>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
                 @foreach($otherArticles as $other)
                     <a href="{{ route('frontend.articles.show', $other->slug) }}" class="group no-underline block space-y-4">

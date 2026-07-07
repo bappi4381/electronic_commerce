@@ -9,11 +9,11 @@
         <div class="absolute top-0 right-0 w-96 h-96 bg-primary rounded-full blur-[150px]"></div>
     </div>
     <div class="max-w-7xl mx-auto px-4 relative z-10 text-center">
-        <h1 class="text-4xl lg:text-5xl font-black text-white tracking-tighter uppercase mb-4 italic">Your Shopping Cart</h1>
+        <h1 class="text-4xl lg:text-5xl font-black text-white tracking-tighter uppercase mb-4 italic">{{ __('Your Shopping Cart') }}</h1>
         <div class="flex items-center justify-center gap-2 text-slate-400 font-bold text-xs uppercase tracking-widest">
-            <a href="{{ route('home') }}" class="hover:text-primary transition-colors">Home</a>
+            <a href="{{ route('home') }}" class="hover:text-primary transition-colors">{{ __('Home') }}</a>
             <i class="bi bi-chevron-right text-[10px]"></i>
-            <span class="text-white">Cart</span>
+            <span class="text-white">{{ __('Cart') }}</span>
         </div>
     </div>
 </div>
@@ -48,9 +48,12 @@
 
                                 <!-- Info -->
                                 <div class="flex-1 text-center md:text-left space-y-2">
-                                    <span class="text-[10px] font-black uppercase text-primary tracking-widest">Premium Collection</span>
+                                    <span class="text-[10px] font-black uppercase text-primary tracking-widest">{{ __('Premium Collection') }}</span>
                                     <h4 class="text-lg lg:text-xl font-black text-slate-900 group-hover:text-primary transition-colors tracking-tight leading-tight uppercase italic">{{ $item['name'] }}</h4>
-                                    <p class="text-sm font-bold text-slate-400 tracking-tighter">tk. {{ number_format($item['price'], 0) }} / unit</p>
+                                    @if(!empty($item['variant_name']))
+                                        <p class="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-md inline-block">{{ $item['variant_name'] }}</p>
+                                    @endif
+                                    <p class="text-sm font-bold text-slate-400 tracking-tighter">tk. {{ number_format($item['price'], 0) }} / {{ __('unit') }}</p>
                                 </div>
 
                                 <!-- Quantity & Action -->
@@ -84,11 +87,11 @@
                     <div class="mt-10 flex flex-col sm:flex-row justify-between items-center gap-6">
                         <a href="{{ route('products.index') }}" class="flex items-center gap-3 text-slate-500 hover:text-primary font-black uppercase text-[10px] tracking-widest transition-all hover:-translate-x-1">
                             <i class="bi bi-arrow-left text-lg"></i>
-                            Return to Store
+                            {{ __('Return to Store') }}
                         </a>
                         <div class="flex items-center gap-3 w-full sm:w-auto">
-                            <input type="text" placeholder="Promo Code" disabled class="flex-1 sm:w-48 bg-white border border-slate-200 rounded-2xl px-6 py-4 text-[10px] font-black uppercase tracking-widest outline-none cursor-not-allowed opacity-50">
-                            <button type="button" disabled class="bg-slate-300 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest cursor-not-allowed opacity-50">Apply</button>
+                            <input type="text" placeholder="{{ __('Promo Code') }}" disabled class="flex-1 sm:w-48 bg-white border border-slate-200 rounded-2xl px-6 py-4 text-[10px] font-black uppercase tracking-widest outline-none cursor-not-allowed opacity-50">
+                            <button type="button" disabled class="bg-slate-300 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest cursor-not-allowed opacity-50">{{ __('Apply') }}</button>
                         </div>
                     </div>
                 </div>
@@ -99,31 +102,31 @@
                         <!-- Decorative bg -->
                         <div class="absolute -top-20 -right-20 w-64 h-64 bg-primary/20 rounded-full blur-[80px]"></div>
                         
-                        <h3 class="text-2xl font-black tracking-tighter uppercase mb-10 relative z-10 italic">Order Review</h3>
+                        <h3 class="text-2xl font-black tracking-tighter uppercase mb-10 relative z-10 italic">{{ __('Order Review') }}</h3>
                         
                         <div class="space-y-6 mb-10 relative z-10">
                             <div class="flex justify-between items-center">
-                                <span class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Merchandise Total</span>
+                                <span class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{{ __('Merchandise Total') }}</span>
                                 <span class="font-bold text-lg tracking-tighter">tk. {{ number_format($total, 0) }}</span>
                             </div>
                             <div class="flex justify-between items-center">
-                                <span class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Shipping Estimate</span>
-                                <span class="font-black text-green-400 tracking-widest text-[10px]">FREE OF CHARGE</span>
+                                <span class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{{ __('Shipping Estimate') }}</span>
+                                <span class="font-black text-green-400 tracking-widest text-[10px]">{{ __('FREE OF CHARGE') }}</span>
                             </div>
                             <div class="flex justify-between items-center">
-                                <span class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Tax / VAT</span>
+                                <span class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{{ __('Tax / VAT') }}</span>
                                 <span class="font-bold text-lg tracking-tighter">tk. 0</span>
                             </div>
                             <div class="h-px bg-white/10 my-8"></div>
                             <div class="flex justify-between items-center">
-                                <span class="text-sm font-black uppercase tracking-[0.2em] text-primary">Final Payable</span>
+                                <span class="text-sm font-black uppercase tracking-[0.2em] text-primary">{{ __('Final Payable') }}</span>
                                 <span class="text-3xl font-black tracking-tighter">tk. {{ number_format($total, 0) }}</span>
                             </div>
                         </div>
 
                         <div class="space-y-6 relative z-10">
                             <a href="{{ route('checkout.index') }}" class="block w-full py-6 bg-primary hover:bg-primary-dark text-white text-center font-black uppercase tracking-[0.3em] text-[10px] rounded-3xl shadow-2xl shadow-primary/30 transition-all active:scale-95 no-underline">
-                                Confirm & Checkout <i class="bi bi-arrow-right-circle-fill ml-2 text-lg align-middle"></i>
+                                {{ __('Confirm & Checkout') }} <i class="bi bi-arrow-right-circle-fill ml-2 text-lg align-middle"></i>
                             </a>
                             <div class="flex items-center justify-center gap-6 opacity-30 mt-8 grayscale">
                                 <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" class="h-4" alt="Visa">
@@ -139,10 +142,10 @@
                 <div class="w-32 h-32 bg-slate-50 rounded-3xl flex items-center justify-center mx-auto mb-10 group rotate-12">
                     <i class="bi bi-cart-x text-6xl text-slate-200 group-hover:text-primary transition-all group-hover:rotate-0"></i>
                 </div>
-                <h3 class="text-3xl font-black text-slate-900 mb-4 tracking-tighter uppercase italic">Cart is Currently Empty</h3>
-                <p class="text-slate-500 font-bold mb-10 px-6 uppercase text-[10px] tracking-widest leading-loose">Secure your next digital upgrade today. Explore our curated collections of premium electronics.</p>
+                <h3 class="text-3xl font-black text-slate-900 mb-4 tracking-tighter uppercase italic">{{ __('Cart is Currently Empty') }}</h3>
+                <p class="text-slate-500 font-bold mb-10 px-6 uppercase text-[10px] tracking-widest leading-loose">{{ __('Secure your next digital upgrade today. Explore our curated collections of premium electronics.') }}</p>
                 <a href="{{ route('products.index') }}" class="inline-block px-12 py-5 bg-primary text-white font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl shadow-primary/30 transition-all hover:-translate-y-1 active:scale-95 no-underline">
-                    Begin Shopping Expedition
+                    {{ __('Begin Shopping Expedition') }}
                 </a>
             </div>
         @endif
