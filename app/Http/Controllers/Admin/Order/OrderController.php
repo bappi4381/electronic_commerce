@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\StockMovement;
 
 class OrderController extends Controller
 {
@@ -74,6 +75,8 @@ class OrderController extends Controller
             'user_id' => $user->id,
             'total_price' => $totalPrice,
             'status' => $request->payment_method == 'cod' ? 'pending' : 'processing',
+            'payment_method' => $request->payment_method,
+            'payment_status' => $request->payment_method == 'cod' ? 'unpaid' : 'pending',
         ]);
 
         // 5️⃣ Create Order Items and Manage Stock
@@ -85,17 +88,29 @@ class OrderController extends Controller
                            ? $product->discounted_price 
                            : $product->price;
 
+            $variant = $product->variants()->first();
+
             OrderItem::create([
                 'order_id' => $order->id,
                 'product_id' => $product->id,
+                'variant_id' => $variant ? $variant->id : null,
                 'quantity' => 1,
                 'price' => $actualPrice,
                 'subtotal' => $actualPrice,
             ]);
 
-            // Professional Stock Deduction
-            if ($product->stock > 0) {
-                $product->decrement('stock', 1);
+            // Professional Stock Deduction (record movement)
+            if ($variant && $variant->stock > 0) {
+                StockMovement::create([
+                    'variant_id' => $variant->id,
+                    'change' => -1,
+                    'type' => 'order_reserved',
+                    'reason' => 'Reserved on admin order create',
+                    'source_type' => \App\Models\Order::class,
+                    'source_id' => $order->id,
+                    'admin_id' => null,
+                ]);
+                $variant->decrement('stock', 1);
             }
         }
 
@@ -129,14 +144,54 @@ class OrderController extends Controller
         // Professional Stock Recovery Logic
         if ($status === 'cancelled' && $oldStatus !== 'cancelled') {
             foreach ($order->orderItems as $item) {
-                $item->product->increment('stock', $item->quantity);
+                $targetVariant = $item->variant ?? ($item->product ? $item->product->variants()->first() : null);
+                if ($targetVariant) {
+                    // Record release movement
+                    StockMovement::create([
+                        'variant_id' => $targetVariant->id,
+                        'change' => intval($item->quantity),
+                        'type' => 'order_released',
+                        'reason' => 'Released due to order cancellation',
+                        'source_type' => \App\Models\Order::class,
+                        'source_id' => $order->id,
+                        'admin_id' => null,
+                    ]);
+                    $targetVariant->increment('stock', $item->quantity);
+                }
             }
         } 
         // Re-deduct if moving BACK from cancelled to active
         elseif ($oldStatus === 'cancelled' && $status !== 'cancelled') {
             foreach ($order->orderItems as $item) {
-                if ($item->product->stock > 0) {
-                    $item->product->decrement('stock', $item->quantity);
+                $targetVariant = $item->variant ?? ($item->product ? $item->product->variants()->first() : null);
+                if ($targetVariant && $targetVariant->stock > 0) {
+                    StockMovement::create([
+                        'variant_id' => $targetVariant->id,
+                        'change' => -1 * intval($item->quantity),
+                        'type' => 'order_reserved',
+                        'reason' => 'Re-reserved when moving order from cancelled to active',
+                        'source_type' => \App\Models\Order::class,
+                        'source_id' => $order->id,
+                        'admin_id' => null,
+                    ]);
+                    $targetVariant->decrement('stock', $item->quantity);
+                }
+            }
+        }
+
+        if ($status === 'completed' && $oldStatus !== 'completed') {
+            foreach ($order->orderItems as $item) {
+                $targetVariant = $item->variant ?? ($item->product ? $item->product->variants()->first() : null);
+                if ($targetVariant) {
+                    StockMovement::create([
+                        'variant_id' => $targetVariant->id,
+                        'change' => 0,
+                        'type' => 'order_committed',
+                        'reason' => 'Order completed, reservation confirmed',
+                        'source_type' => \App\Models\Order::class,
+                        'source_id' => $order->id,
+                        'admin_id' => null,
+                    ]);
                 }
             }
         }

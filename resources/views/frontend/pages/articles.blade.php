@@ -1,6 +1,6 @@
 @extends('frontend.layout')
 
-@section('title', 'Tech Blog | Digital Insights')
+@section('title', __('Tech Blog') . ' | ' . __('Digital Insights'))
 
 @section('content')
 <section class="pt-16 pb-36 lg:py-24 bg-white min-h-screen">
@@ -8,7 +8,7 @@
         
         <!-- Minimal Header -->
         <div class="mb-20 text-center">
-            <h1 class="text-4xl lg:text-6xl font-black text-slate-900 tracking-tighter uppercase italic mb-4">Tech Insights</h1>
+            <h1 class="text-4xl lg:text-6xl font-black text-slate-900 tracking-tighter uppercase italic mb-4">{{ __('Tech Insights') }}</h1>
             <div class="w-20 h-1.5 bg-primary mx-auto rounded-full"></div>
         </div>
 
@@ -17,11 +17,11 @@
             <aside class="w-full lg:w-1/4 space-y-12">
                 <!-- Search -->
                 <div class="space-y-4">
-                    <h5 class="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em]">Search</h5>
+                    <h5 class="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em]">{{ __('Search') }}</h5>
                     <form action="{{ route('frontend.articles') }}" method="GET" class="relative">
                         <input type="text" name="search" value="{{ request('search') }}" 
                                class="w-full border-b-2 border-slate-100 py-3 text-sm font-bold focus:border-primary transition-all placeholder:text-slate-300 outline-none bg-transparent"
-                               placeholder="Type keywords...">
+                               placeholder="{{ __('Type keywords...') }}">
                         <button type="submit" class="absolute right-0 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary">
                             <i class="bi bi-search"></i>
                         </button>
@@ -30,11 +30,11 @@
 
                 <!-- Categories -->
                 <div class="space-y-6">
-                    <h5 class="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em]">Topics</h5>
+                    <h5 class="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em]">{{ __('Topics') }}</h5>
                     <div class="flex flex-col gap-4">
                         <a href="{{ route('frontend.articles') }}" 
                            class="text-xs font-bold uppercase tracking-widest no-underline transition-colors {{ !request('category') ? 'text-primary' : 'text-slate-400 hover:text-slate-900' }}">
-                            All Tech Stories
+                            {{ __('All Tech Stories') }}
                         </a>
                         @foreach($categories as $category)
                             <a href="{{ route('frontend.articles', ['category' => $category->id]) }}" 
@@ -71,14 +71,14 @@
                                     <div class="flex items-center gap-6 text-[10px] font-black text-slate-300 uppercase tracking-widest pt-2">
                                         <span>{{ $article->created_at->format('M d, Y') }}</span>
                                         <span>/</span>
-                                        <span>{{ $article->comments_count ?? $article->comments()->count() }} Comments</span>
+                                        <span>{{ $article->comments_count ?? $article->comments()->count() }} {{ __('Comments') }}</span>
                                     </div>
                                 </div>
                             </div>
                         </article>
                     @empty
                         <div class="py-20 text-center border-2 border-dashed border-slate-100 rounded-3xl">
-                            <p class="text-xs font-black text-slate-400 uppercase tracking-widest">No stories found in this section.</p>
+                            <p class="text-xs font-black text-slate-400 uppercase tracking-widest">{{ __('No stories found in this section.') }}</p>
                         </div>
                     @endforelse
                 </div>

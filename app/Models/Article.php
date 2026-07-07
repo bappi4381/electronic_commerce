@@ -7,7 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Article extends Model
 {
-     use HasFactory;
+     use HasFactory, \Spatie\Translatable\HasTranslations;
+
+    public $translatable = ['title', 'content'];
 
     protected $fillable = ['title', 'content', 'slug','image','published_at','status', 'category_id'];
 

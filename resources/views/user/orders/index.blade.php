@@ -7,13 +7,13 @@
     <!-- Header Section -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-            <h2 class="text-3xl font-black text-slate-900 tracking-tighter uppercase">Order History</h2>
-            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">Manage and track all your purchases.</p>
+            <h2 class="text-3xl font-black text-slate-900 tracking-tighter uppercase">{{ __('Order History') }}</h2>
+            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">{{ __('Manage and track all your purchases.') }}</p>
         </div>
         
         <div class="flex items-center gap-3 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
             @php
-                $filters = ['All', 'Pending', 'Processing', 'Delivered', 'Cancelled'];
+                $filters = [__('All'), __('Pending'), __('Processing'), __('Delivered'), __('Cancelled')];
             @endphp
             @foreach($filters as $filter)
                 <button class="px-5 py-2.5 bg-white border border-slate-100 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-primary hover:border-primary/20 transition-all shadow-sm whitespace-nowrap {{ $loop->first ? 'text-primary border-primary/20 bg-primary/5' : '' }}">
@@ -36,9 +36,9 @@
                 <div class="w-24 h-24 bg-slate-50 text-slate-200 rounded-[40px] flex items-center justify-center text-5xl mx-auto mb-8 shadow-inner">
                     <i class="bi bi-bag-x"></i>
                 </div>
-                <h3 class="text-2xl font-black text-slate-900 tracking-tighter uppercase mb-3">No Orders Found</h3>
-                <p class="text-sm text-slate-400 font-medium mb-10 max-w-xs mx-auto">It looks like you haven't placed any orders yet. Start exploring our premium electronics collection!</p>
-                <a href="{{ route('products.index') }}" class="inline-block px-12 py-5 bg-primary text-white font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl shadow-xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all">Start Shopping</a>
+                <h3 class="text-2xl font-black text-slate-900 tracking-tighter uppercase mb-3">{{ __('No Orders Found') }}</h3>
+                <p class="text-sm text-slate-400 font-medium mb-10 max-w-xs mx-auto">{{ __('It looks like you haven\'t placed any orders yet. Start exploring our premium electronics collection!') }}</p>
+                <a href="{{ route('products.index') }}" class="inline-block px-12 py-5 bg-primary text-white font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl shadow-xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all">{{ __('Start Shopping') }}</a>
             </div>
             <div class="absolute -bottom-20 -right-20 w-64 h-64 bg-primary/5 rounded-full blur-3xl"></div>
         </div>
@@ -49,11 +49,11 @@
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-slate-50/50 border-b border-slate-100">
-                            <th class="px-8 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">Order Identifier</th>
-                            <th class="px-8 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">Date & Time</th>
-                            <th class="px-8 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">Transaction Total</th>
-                            <th class="px-8 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Status</th>
-                            <th class="px-8 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Actions</th>
+                            <th class="px-8 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">{{ __('Order Identifier') }}</th>
+                            <th class="px-8 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">{{ __('Date & Time') }}</th>
+                            <th class="px-8 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">{{ __('Transaction Total') }}</th>
+                            <th class="px-8 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">{{ __('Status') }}</th>
+                            <th class="px-8 py-6 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">{{ __('Actions') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-50">

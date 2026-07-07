@@ -7,8 +7,8 @@
     <!-- Header Section -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-            <h2 class="text-3xl font-black text-slate-900 tracking-tighter uppercase">Track Order</h2>
-            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">Real-time updates on your package status.</p>
+            <h2 class="text-3xl font-black text-slate-900 tracking-tighter uppercase">{{ __('Track Order') }}</h2>
+            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">{{ __('Real-time updates on your package status.') }}</p>
         </div>
     </div>
 
@@ -19,13 +19,13 @@
                 <div class="absolute -top-10 -right-10 w-32 h-32 bg-primary/5 rounded-full blur-3xl"></div>
                 
                 <div class="relative z-10">
-                    <h3 class="text-lg font-black text-slate-900 tracking-tighter uppercase mb-2">Check Status</h3>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-10">Enter your Order ID below.</p>
+                    <h3 class="text-lg font-black text-slate-900 tracking-tighter uppercase mb-2">{{ __('Check Status') }}</h3>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-10">{{ __('Enter your Order ID below.') }}</p>
 
                     <form action="{{ route('user.trackOrder.submit') }}" method="POST" class="space-y-6">
                         @csrf
                         <div class="space-y-3">
-                            <label for="order_id" class="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Order Identifier</label>
+                            <label for="order_id" class="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">{{ __('Order Identifier') }}</label>
                             <div class="relative group">
                                 <i class="bi bi-hash absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-primary transition-colors text-xl"></i>
                                 <input type="text" name="order_id" id="order_id" value="{{ old('order_id', request('order_id') ?? ($order->order_id ?? '')) }}" 
@@ -36,7 +36,7 @@
                         </div>
 
                         <button type="submit" class="w-full py-5 bg-slate-900 hover:bg-black text-white font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl shadow-2xl shadow-slate-900/30 transition-all active:scale-95 flex items-center justify-center gap-3 group">
-                            Track Package
+                            {{ __('Track Package') }}
                             <i class="bi bi-arrow-right group-hover:translate-x-1 transition-transform"></i>
                         </button>
                     </form>
@@ -51,15 +51,15 @@
             </div>
 
             <div class="card border-0 shadow-sm p-8 bg-slate-50 border-slate-100 border-dashed">
-                <h4 class="text-[10px] font-black text-slate-900 tracking-widest uppercase mb-4">Tracking Tips</h4>
+                <h4 class="text-[10px] font-black text-slate-900 tracking-widest uppercase mb-4">{{ __('Tracking Tips') }}</h4>
                 <ul class="space-y-3">
                     <li class="flex items-start gap-3 text-[10px] font-medium text-slate-500">
                         <i class="bi bi-check2-circle text-primary mt-0.5"></i>
-                        Check your order confirmation email for the ID.
+                        {{ __('Check your order confirmation email for the ID.') }}
                     </li>
                     <li class="flex items-start gap-3 text-[10px] font-medium text-slate-500">
                         <i class="bi bi-check2-circle text-primary mt-0.5"></i>
-                        Updates might take 24h to appear after shipment.
+                        {{ __('Updates might take 24h to appear after shipment.') }}
                     </li>
                 </ul>
             </div>
@@ -71,11 +71,11 @@
                 <div class="card border-0 shadow-sm p-6 sm:p-10 lg:p-12 bg-white space-y-12">
                     <div class="flex items-center justify-between pb-8 border-b border-slate-50">
                         <div>
-                            <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Package Details</p>
+                            <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">{{ __('Package Details') }}</p>
                             <h3 class="text-base sm:text-2xl font-black text-slate-900 tracking-tighter uppercase break-all">{{ $order->order_id }}</h3>
                         </div>
                         <div class="text-right">
-                            <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Estimated Arrival</p>
+                            <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">{{ __('Estimated Arrival') }}</p>
                             <p class="text-sm font-black text-slate-900 tracking-tighter uppercase">{{ $order->created_at->addDays(5)->format('d M, Y') }}</p>
                         </div>
                     </div>

@@ -154,7 +154,7 @@
                 <tbody class="divide-y divide-slate-50">
                     @foreach($order->orderItems as $item)
                         <tr class="hover:bg-slate-50 transition">
-                            <td class="px-6 py-4 text-sm font-semibold text-slate-800">{{ $item->product->name ?? 'N/A' }}</td>
+                            <td class="px-6 py-4 text-sm font-semibold text-slate-800">{{ $item->product ? (is_array($item->product->name) ? ($item->product->name['en'] ?? 'N/A') : $item->product->name) : 'N/A' }}</td>
                             <td class="px-6 py-4 text-center">
                                 <span class="bg-slate-100 text-slate-600 text-xs font-black px-3 py-1 rounded-lg">{{ $item->quantity }}</span>
                             </td>

@@ -24,14 +24,16 @@ class Order extends Model
         parent::boot();
 
         static::creating(function ($order) {
-            // Generate a unique, date-based order ID: ORD-YYYYMMDD-XXXX
-            $date = now()->format('Ymd');
-            $lastOrder = self::whereDate('created_at', now()->toDateString())
-                             ->latest('id')
-                             ->first();
+            if (empty($order->order_id)) {
+                // Generate a unique, date-based order ID: ORD-YYYYMMDD-XXXX
+                $date = now()->format('Ymd');
+                $lastOrder = self::whereDate('created_at', now()->toDateString())
+                                 ->latest('id')
+                                 ->first();
 
-            $number = $lastOrder ? ((int) substr($lastOrder->order_id, -4)) + 1 : 1;
-            $order->order_id = 'ORD-' . $date . '-' . str_pad($number, 4, '0', STR_PAD_LEFT);
+                $number = $lastOrder ? ((int) substr($lastOrder->order_id, -4)) + 1 : 1;
+                $order->order_id = 'ORD-' . $date . '-' . str_pad($number, 4, '0', STR_PAD_LEFT);
+            }
         });
     }
 }

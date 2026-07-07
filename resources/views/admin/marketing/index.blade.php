@@ -185,8 +185,8 @@
                                 @endif
                             </div>
                             <div class="flex-grow min-w-0">
-                                <h4 class="text-[11px] font-black text-slate-900 truncate leading-tight uppercase">{{ $product->name }}</h4>
-                                <p class="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-widest">{{ $product->category->name ?? 'General' }}</p>
+                                <h4 class="text-[11px] font-black text-slate-900 truncate leading-tight uppercase">{{ is_array($product->name) ? ($product->name[app()->getLocale()] ?? $product->name['en'] ?? '') : $product->name }}</h4>
+                                <p class="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-widest">{{ $product->category ? (is_array($product->category->name) ? ($product->category->name[app()->getLocale()] ?? $product->category->name['en'] ?? 'General') : $product->category->name) : 'General' }}</p>
                                 <div class="flex items-center gap-3 mt-2">
                                     <span class="text-[10px] font-black text-slate-900 italic">TK {{ number_format($product->price, 0) }}</span>
                                     @if($product->discount > 0)

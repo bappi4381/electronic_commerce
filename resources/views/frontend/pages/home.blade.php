@@ -67,8 +67,8 @@ function getCategoryStyle($color, $colorMap) {
         <!-- Category Scroll -->
         <div class="px-4 mb-8">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-[11px] font-black uppercase tracking-widest text-slate-900">Categories</h3>
-                <a href="{{ route('products.index') }}" class="text-[9px] font-black uppercase tracking-widest text-primary">See All</a>
+                <h3 class="text-[11px] font-black uppercase tracking-widest text-slate-900">{{ __('Categories') }}</h3>
+                <a href="{{ route('products.index') }}" class="text-[9px] font-black uppercase tracking-widest text-primary">{{ __('See All') }}</a>
             </div>
             <div class="flex gap-4 overflow-x-auto scrollbar-hide no-scrollbar pb-2">
                 @php
@@ -135,7 +135,7 @@ function getCategoryStyle($color, $colorMap) {
                 @else
                 <div class="py-8 text-center opacity-40">
                     <i class="bi bi-tag text-3xl text-slate-300"></i>
-                    <p class="mt-2 text-[9px] font-black uppercase tracking-widest text-slate-400">No Flash Deals Right Now</p>
+                    <p class="mt-2 text-[9px] font-black uppercase tracking-widest text-slate-400">{{ __('No Flash Deals Right Now') }}</p>
                 </div>
                 @endif
             </div>
@@ -144,8 +144,8 @@ function getCategoryStyle($color, $colorMap) {
         <!-- Latest Products Section -->
         <div class="px-4 mb-8">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-[11px] font-black uppercase tracking-widest text-slate-900">Latest Products</h3>
-                <a href="{{ route('products.index') }}" class="text-[9px] font-black uppercase tracking-widest text-primary">View All</a>
+                <h3 class="text-[11px] font-black uppercase tracking-widest text-slate-900">{{ __('Latest Products') }}</h3>
+                <a href="{{ route('products.index') }}" class="text-[9px] font-black uppercase tracking-widest text-primary">{{ __('View All') }}</a>
             </div>
             <div class="grid grid-cols-2 gap-3">
                 @foreach ($latestProducts->take(6) as $product)
@@ -183,8 +183,8 @@ function getCategoryStyle($color, $colorMap) {
         <!-- Best Selling Section -->
         <div class="px-4 mb-8">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-[11px] font-black uppercase tracking-widest text-slate-900">Best Selling</h3>
-                <a href="{{ route('products.index') }}" class="text-[9px] font-black uppercase tracking-widest text-primary">View All</a>
+                <h3 class="text-[11px] font-black uppercase tracking-widest text-slate-900">{{ __('Best Selling') }}</h3>
+                <a href="{{ route('products.index') }}" class="text-[9px] font-black uppercase tracking-widest text-primary">{{ __('View All') }}</a>
             </div>
             <div class="grid grid-cols-2 gap-3">
                 @foreach ($bestSellers->take(6) as $product)
@@ -222,8 +222,8 @@ function getCategoryStyle($color, $colorMap) {
         <!-- Featured Products Section -->
         <div class="px-4 mb-8">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-[11px] font-black uppercase tracking-widest text-slate-900">Featured Products</h3>
-                <a href="{{ route('products.index') }}" class="text-[9px] font-black uppercase tracking-widest text-primary">View All</a>
+                <h3 class="text-[11px] font-black uppercase tracking-widest text-slate-900">{{ __('Featured Products') }}</h3>
+                <a href="{{ route('products.index') }}" class="text-[9px] font-black uppercase tracking-widest text-primary">{{ __('View All') }}</a>
             </div>
             <div class="grid grid-cols-2 gap-3">
                 @foreach ($featuredProducts->take(6) as $product)
@@ -280,10 +280,10 @@ function getCategoryStyle($color, $colorMap) {
                             </h2>
                             <div class="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 pt-2 sm:pt-4 w-full sm:w-auto">
                                 <a href="{{ $heroBanner->link ?? '#' }}" class="w-full sm:w-auto justify-center px-6 sm:px-8 py-3.5 sm:py-4 bg-primary hover:bg-white hover:text-primary text-white font-black uppercase text-[10px] sm:text-[11px] tracking-[0.2em] rounded-xl sm:rounded-2xl transition-all shadow-xl shadow-primary/30 flex items-center gap-2 sm:gap-3 group/btn">
-                                    Shop Collection <i class="bi bi-arrow-right text-base sm:text-lg group-hover/btn:translate-x-1 transition-transform"></i>
+                                    {{ __('Shop Collection') }} <i class="bi bi-arrow-right text-base sm:text-lg group-hover/btn:translate-x-1 transition-transform"></i>
                                 </a>
                                 <button onclick="window.dispatchEvent(new CustomEvent('open-chat'))" class="w-full sm:w-auto justify-center px-6 sm:px-8 py-3.5 sm:py-4 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white font-black uppercase text-[10px] sm:text-[11px] tracking-[0.2em] rounded-xl sm:rounded-2xl transition-all flex items-center gap-2 sm:gap-3">
-                                    <i class="bi bi-chat-left-text-fill text-primary"></i> Live Support
+                                    <i class="bi bi-chat-left-text-fill text-primary"></i> {{ __('Live Support') }}
                                 </button>
                             </div>
                         </div>
@@ -302,10 +302,10 @@ function getCategoryStyle($color, $colorMap) {
                             </h2>
                             <div class="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 pt-2 sm:pt-4 w-full sm:w-auto">
                                 <a href="#" class="w-full sm:w-auto justify-center px-6 sm:px-8 py-3.5 sm:py-4 bg-primary hover:bg-white hover:text-primary text-white font-black uppercase text-[10px] sm:text-[11px] tracking-[0.2em] rounded-xl sm:rounded-2xl transition-all shadow-xl shadow-primary/30 flex items-center gap-2 sm:gap-3 group/btn">
-                                    Explore Now <i class="bi bi-arrow-right text-base sm:text-lg group-hover/btn:translate-x-1 transition-transform"></i>
+                                    {{ __('Explore Now') }} <i class="bi bi-arrow-right text-base sm:text-lg group-hover/btn:translate-x-1 transition-transform"></i>
                                 </a>
                                 <button onclick="window.dispatchEvent(new CustomEvent('open-chat'))" class="w-full sm:w-auto justify-center px-6 sm:px-8 py-3.5 sm:py-4 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white font-black uppercase text-[10px] sm:text-[11px] tracking-[0.2em] rounded-xl sm:rounded-2xl transition-all flex items-center gap-2 sm:gap-3">
-                                    <i class="bi bi-chat-left-text-fill text-primary"></i> Live Support
+                                    <i class="bi bi-chat-left-text-fill text-primary"></i> {{ __('Live Support') }}
                                 </button>
                             </div>
                         </div>
@@ -320,7 +320,7 @@ function getCategoryStyle($color, $colorMap) {
                          <div class="relative z-10 space-y-2 sm:space-y-3">
                             <span class="text-[9px] sm:text-[10px] font-black text-primary uppercase tracking-[0.2em] sm:tracking-[0.3em] drop-shadow-md">{{ $subBanner->subtitle }}</span>
                             <h4 class="text-base sm:text-lg lg:text-xl font-black leading-tight uppercase italic tracking-tighter drop-shadow-lg">{{ $subBanner->title }}</h4>
-                            <a href="{{ $subBanner->link ?? '#' }}" class="inline-flex items-center gap-2 text-[10px] font-black uppercase text-white border-b-2 border-primary pb-1 group-hover:gap-4 transition-all">Buy Now <i class="bi bi-chevron-right"></i></a>
+                            <a href="{{ $subBanner->link ?? '#' }}" class="inline-flex items-center gap-2 text-[10px] font-black uppercase text-white border-b-2 border-primary pb-1 group-hover:gap-4 transition-all">{{ __('Buy Now') }} <i class="bi bi-chevron-right"></i></a>
                          </div>
                          <img src="{{ asset('storage/' . $subBanner->image) }}" class="absolute top-0 right-0 w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform duration-700" alt="{{ $subBanner->title }}">
                     </div>
@@ -329,7 +329,7 @@ function getCategoryStyle($color, $colorMap) {
                          <div class="relative z-10 space-y-2 sm:space-y-3">
                             <span class="text-[9px] sm:text-[10px] font-black text-primary uppercase tracking-[0.2em] sm:tracking-[0.3em] drop-shadow-md">iPad Pro 2026</span>
                             <h4 class="text-base sm:text-lg lg:text-xl font-black leading-tight uppercase italic tracking-tighter drop-shadow-lg">12.9-inch Liquid<br>Retina Display</h4>
-                            <a href="#" class="inline-flex items-center gap-2 text-[9px] sm:text-[10px] font-black uppercase text-white border-b-2 border-primary pb-1 group-hover:gap-4 transition-all w-max">Buy Now <i class="bi bi-chevron-right"></i></a>
+                            <a href="#" class="inline-flex items-center gap-2 text-[9px] sm:text-[10px] font-black uppercase text-white border-b-2 border-primary pb-1 group-hover:gap-4 transition-all w-max">{{ __('Buy Now') }} <i class="bi bi-chevron-right"></i></a>
                          </div>
                          <img src="https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?q=80&w=500&auto=format&fit=crop" class="absolute top-0 right-0 w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform duration-700" alt="iPad">
                     </div>
@@ -337,7 +337,7 @@ function getCategoryStyle($color, $colorMap) {
                          <div class="relative z-10 space-y-2 sm:space-y-3">
                             <span class="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] sm:tracking-[0.3em]">Beats Solo Pro</span>
                             <h4 class="text-base sm:text-lg lg:text-xl font-black leading-tight text-slate-900 uppercase italic tracking-tighter">Experience Pure<br>Acoustic Sound</h4>
-                            <a href="#" class="inline-flex items-center gap-2 text-[9px] sm:text-[10px] font-black uppercase text-slate-900 border-b-2 border-primary pb-1 group-hover:gap-4 transition-all w-max">Buy Now <i class="bi bi-chevron-right"></i></a>
+                            <a href="#" class="inline-flex items-center gap-2 text-[9px] sm:text-[10px] font-black uppercase text-slate-900 border-b-2 border-primary pb-1 group-hover:gap-4 transition-all w-max">{{ __('Buy Now') }} <i class="bi bi-chevron-right"></i></a>
                          </div>
                          <img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=500&auto=format&fit=crop" class="absolute top-0 right-0 w-full h-full object-cover opacity-20 group-hover:scale-110 transition-transform duration-700" alt="Headphones">
                     </div>
@@ -356,7 +356,7 @@ function getCategoryStyle($color, $colorMap) {
                     <img src="{{ asset('storage/' . $promo->image) }}" class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="{{ $promo->title }}">
                     <div class="absolute inset-0 bg-slate-900/40 p-6 sm:p-8 flex flex-col justify-center items-start text-white {{ $loop->iteration == 2 ? 'text-right ml-auto' : '' }}">
                         <h3 class="text-lg sm:text-xl font-black mb-2 uppercase tracking-tighter leading-none">{!! nl2br(e($promo->title)) !!}</h3>
-                        <a href="{{ $promo->link ?? '#' }}" class="px-4 py-2 sm:px-5 sm:py-2 bg-primary text-[9px] sm:text-[10px] font-black uppercase tracking-widest rounded-lg {{ $loop->iteration == 2 ? 'ml-auto' : '' }}">Explore</a>
+                        <a href="{{ $promo->link ?? '#' }}" class="px-4 py-2 sm:px-5 sm:py-2 bg-primary text-[9px] sm:text-[10px] font-black uppercase tracking-widest rounded-lg {{ $loop->iteration == 2 ? 'ml-auto' : '' }}">{{ __('Explore') }}</a>
                     </div>
                 </div>
                 @empty
@@ -364,21 +364,21 @@ function getCategoryStyle($color, $colorMap) {
                     <img src="https://images.unsplash.com/photo-1550009158-9ebf69173e03?q=80&w=1000&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="Tech">
                     <div class="absolute inset-0 bg-slate-900/40 p-6 sm:p-8 flex flex-col justify-center items-start text-white">
                         <h3 class="text-lg sm:text-xl font-black mb-2 uppercase tracking-tighter leading-none">Smart Home<br>Systems</h3>
-                        <a href="#" class="px-4 py-2 sm:px-5 sm:py-2 bg-primary text-[9px] sm:text-[10px] font-black uppercase tracking-widest rounded-lg">Explore</a>
+                        <a href="#" class="px-4 py-2 sm:px-5 sm:py-2 bg-primary text-[9px] sm:text-[10px] font-black uppercase tracking-widest rounded-lg">{{ __('Explore') }}</a>
                     </div>
                 </div>
                 <div class="relative h-40 sm:h-48 rounded-2xl sm:rounded-3xl overflow-hidden group">
                     <img src="https://images.unsplash.com/photo-1593642632823-8f785ba67e45?q=80&w=1000&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="Tech">
                     <div class="absolute inset-0 bg-slate-900/40 p-6 sm:p-8 flex flex-col justify-center items-start text-white text-right ml-auto">
                         <h3 class="text-lg sm:text-xl font-black mb-2 uppercase tracking-tighter leading-none">Gaming<br>Laptops</h3>
-                        <a href="#" class="px-4 py-2 sm:px-5 sm:py-2 bg-primary text-[9px] sm:text-[10px] font-black uppercase tracking-widest rounded-lg ml-auto">Shop Now</a>
+                        <a href="#" class="px-4 py-2 sm:px-5 sm:py-2 bg-primary text-[9px] sm:text-[10px] font-black uppercase tracking-widest rounded-lg ml-auto">{{ __('Shop Now') }}</a>
                     </div>
                 </div>
                 <div class="relative h-40 sm:h-48 rounded-2xl sm:rounded-3xl overflow-hidden group">
                     <img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1000&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="Tech">
                     <div class="absolute inset-0 bg-slate-900/40 p-6 sm:p-8 flex flex-col justify-center items-start text-white">
                         <h3 class="text-lg sm:text-xl font-black mb-2 uppercase tracking-tighter leading-none">Wearable<br>Technology</h3>
-                        <a href="#" class="px-4 py-2 sm:px-5 sm:py-2 bg-primary text-[9px] sm:text-[10px] font-black uppercase tracking-widest rounded-lg">Buy Now</a>
+                        <a href="#" class="px-4 py-2 sm:px-5 sm:py-2 bg-primary text-[9px] sm:text-[10px] font-black uppercase tracking-widest rounded-lg">{{ __('Buy Now') }}</a>
                     </div>
                 </div>
                 @endforelse
@@ -404,8 +404,8 @@ function getCategoryStyle($color, $colorMap) {
                         <i class="bi bi-currency-dollar"></i>
                     </div>
                     <div>
-                        <h5 class="text-xs sm:text-sm font-black uppercase tracking-tight text-slate-900">Money Return</h5>
-                        <p class="text-[9px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest">30 Days Guarantee</p>
+                        <h5 class="text-xs sm:text-sm font-black uppercase tracking-tight text-slate-900">{{ __('Money Return') }}</h5>
+                        <p class="text-[9px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest">{{ __('30 Days Guarantee') }}</p>
                     </div>
                 </div>
                 <div class="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-3 sm:gap-6 group">
@@ -413,8 +413,8 @@ function getCategoryStyle($color, $colorMap) {
                         <i class="bi bi-shield-lock"></i>
                     </div>
                     <div>
-                        <h5 class="text-xs sm:text-sm font-black uppercase tracking-tight text-slate-900">Safe Shopping</h5>
-                        <p class="text-[9px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest">Secure Payments</p>
+                        <h5 class="text-xs sm:text-sm font-black uppercase tracking-tight text-slate-900">{{ __('Safe Shopping') }}</h5>
+                        <p class="text-[9px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest">{{ __('Secure Payments') }}</p>
                     </div>
                 </div>
                 <div class="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-3 sm:gap-6 group">
@@ -422,8 +422,8 @@ function getCategoryStyle($color, $colorMap) {
                         <i class="bi bi-headset"></i>
                     </div>
                     <div>
-                        <h5 class="text-xs sm:text-sm font-black uppercase tracking-tight text-slate-900">24/7 Support</h5>
-                        <p class="text-[9px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest">Dedicated Support</p>
+                        <h5 class="text-xs sm:text-sm font-black uppercase tracking-tight text-slate-900">{{ __('24/7 Support') }}</h5>
+                        <p class="text-[9px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest">{{ __('Dedicated Support') }}</p>
                     </div>
                 </div>
             </div>
@@ -446,7 +446,7 @@ function getCategoryStyle($color, $colorMap) {
                             <i class="bi bi-lightning-charge-fill text-yellow-300 text-2xl animate-pulse"></i>
                         </div>
                         <div>
-                            <span class="text-[10px] font-black uppercase tracking-[0.3em] text-orange-200">Limited Time Only</span>
+                            <span class="text-[10px] font-black uppercase tracking-[0.3em] text-orange-200">{{ __('Limited Time Only') }}</span>
                             <h2 class="text-2xl sm:text-3xl font-black uppercase tracking-tighter italic">{{ $flashDealTitle }}</h2>
                         </div>
                     </div>
@@ -457,24 +457,24 @@ function getCategoryStyle($color, $colorMap) {
                             <div class="flex items-center gap-3 sm:gap-4">
                                 <div class="flex flex-col items-center">
                                     <div class="bg-slate-900/40 backdrop-blur-md w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center text-base sm:text-lg font-black tracking-tight"><span x-text="days">00</span></div>
-                                    <span class="text-[8px] font-black uppercase tracking-widest text-rose-200 mt-1">Days</span>
+                                    <span class="text-[8px] font-black uppercase tracking-widest text-rose-200 mt-1">{{ __('Days') }}</span>
                                 </div>
                                 <span class="font-black text-xl sm:text-2xl text-white/40 -mt-5">:</span>
                             </div>
                         </template>
                         <div class="flex flex-col items-center">
                             <div class="bg-slate-900/40 backdrop-blur-md w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center text-base sm:text-lg font-black tracking-tight"><span x-text="hours">00</span></div>
-                            <span class="text-[8px] font-black uppercase tracking-widest text-rose-200 mt-1">Hrs</span>
+                            <span class="text-[8px] font-black uppercase tracking-widest text-rose-200 mt-1">{{ __('Hrs') }}</span>
                         </div>
                         <span class="font-black text-xl sm:text-2xl text-white/40 -mt-5">:</span>
                         <div class="flex flex-col items-center">
                             <div class="bg-slate-900/40 backdrop-blur-md w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center text-base sm:text-lg font-black tracking-tight"><span x-text="minutes">00</span></div>
-                            <span class="text-[8px] font-black uppercase tracking-widest text-rose-200 mt-1">Min</span>
+                            <span class="text-[8px] font-black uppercase tracking-widest text-rose-200 mt-1">{{ __('Min') }}</span>
                         </div>
                         <span class="font-black text-xl sm:text-2xl text-white/40 -mt-5">:</span>
                         <div class="flex flex-col items-center">
                             <div class="bg-slate-900/40 backdrop-blur-md w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center text-base sm:text-lg font-black tracking-tight"><span x-text="seconds">00</span></div>
-                            <span class="text-[8px] font-black uppercase tracking-widest text-rose-200 mt-1">Sec</span>
+                            <span class="text-[8px] font-black uppercase tracking-widest text-rose-200 mt-1">{{ __('Sec') }}</span>
                         </div>
                     </div>
                 </div>
@@ -527,11 +527,11 @@ function getCategoryStyle($color, $colorMap) {
         <div class="max-w-7xl mx-auto px-4">
             <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 lg:gap-8 mb-10 sm:mb-16 border-b border-slate-100 pb-4 sm:pb-6">
                 <div class="flex items-center gap-6 sm:gap-10 overflow-x-auto w-full lg:w-auto pb-4 lg:pb-0 scrollbar-hide no-scrollbar -mx-4 px-4 lg:mx-0 lg:px-0">
-                    <button @click="activeTab = 'latest'" :class="activeTab === 'latest' ? 'text-primary after:scale-x-100' : 'text-slate-400 after:scale-x-0'" class="text-xs sm:text-sm font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] whitespace-nowrap relative transition-all duration-300 after:absolute after:bottom-[-20px] sm:after:bottom-[-25px] after:left-0 after:w-full after:h-1.5 after:bg-primary after:rounded-full after:transition-transform after:origin-left">Latest Products</button>
-                    <button @click="activeTab = 'bestseller'" :class="activeTab === 'bestseller' ? 'text-primary after:scale-x-100' : 'text-slate-400 after:scale-x-0'" class="text-xs sm:text-sm font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] whitespace-nowrap relative transition-all duration-300 after:absolute after:bottom-[-20px] sm:after:bottom-[-25px] after:left-0 after:w-full after:h-1.5 after:bg-primary after:rounded-full after:transition-transform after:origin-left">Best Selling</button>
-                    <button @click="activeTab = 'featured'" :class="activeTab === 'featured' ? 'text-primary after:scale-x-100' : 'text-slate-400 after:scale-x-0'" class="text-xs sm:text-sm font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] whitespace-nowrap relative transition-all duration-300 after:absolute after:bottom-[-20px] sm:after:bottom-[-25px] after:left-0 after:w-full after:h-1.5 after:bg-primary after:rounded-full after:transition-transform after:origin-left">Featured Products</button>
+                    <button @click="activeTab = 'latest'" :class="activeTab === 'latest' ? 'text-primary after:scale-x-100' : 'text-slate-400 after:scale-x-0'" class="text-xs sm:text-sm font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] whitespace-nowrap relative transition-all duration-300 after:absolute after:bottom-[-20px] sm:after:bottom-[-25px] after:left-0 after:w-full after:h-1.5 after:bg-primary after:rounded-full after:transition-transform after:origin-left">{{ __('Latest Products') }}</button>
+                    <button @click="activeTab = 'bestseller'" :class="activeTab === 'bestseller' ? 'text-primary after:scale-x-100' : 'text-slate-400 after:scale-x-0'" class="text-xs sm:text-sm font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] whitespace-nowrap relative transition-all duration-300 after:absolute after:bottom-[-20px] sm:after:bottom-[-25px] after:left-0 after:w-full after:h-1.5 after:bg-primary after:rounded-full after:transition-transform after:origin-left">{{ __('Best Selling') }}</button>
+                    <button @click="activeTab = 'featured'" :class="activeTab === 'featured' ? 'text-primary after:scale-x-100' : 'text-slate-400 after:scale-x-0'" class="text-xs sm:text-sm font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] whitespace-nowrap relative transition-all duration-300 after:absolute after:bottom-[-20px] sm:after:bottom-[-25px] after:left-0 after:w-full after:h-1.5 after:bg-primary after:rounded-full after:transition-transform after:origin-left">{{ __('Featured Products') }}</button>
                 </div>
-                <a href="{{ route('products.index') }}" class="text-[10px] sm:text-xs font-black uppercase tracking-widest text-primary hover:text-primary-dark transition-colors flex items-center gap-2 whitespace-nowrap">View All Catalog <i class="bi bi-arrow-right"></i></a>
+                <a href="{{ route('products.index') }}" class="text-[10px] sm:text-xs font-black uppercase tracking-widest text-primary hover:text-primary-dark transition-colors flex items-center gap-2 whitespace-nowrap">{{ __('View All Catalog') }} <i class="bi bi-arrow-right"></i></a>
             </div>
 
             <!-- Grid Container -->
@@ -543,7 +543,7 @@ function getCategoryStyle($color, $colorMap) {
                     @empty
                         <div class="col-span-full py-20 text-center opacity-20">
                             <i class="bi bi-box-seam text-6xl"></i>
-                            <p class="mt-4 font-black uppercase tracking-widest text-xs">No Recent Arrivals</p>
+                            <p class="mt-4 font-black uppercase tracking-widest text-xs">{{ __('No Recent Arrivals') }}</p>
                         </div>
                     @endforelse
                 </div>
@@ -555,7 +555,7 @@ function getCategoryStyle($color, $colorMap) {
                     @empty
                         <div class="col-span-full py-20 text-center opacity-20">
                             <i class="bi bi-lightning-charge text-6xl"></i>
-                            <p class="mt-4 font-black uppercase tracking-widest text-xs">No Best Sellers Marked</p>
+                            <p class="mt-4 font-black uppercase tracking-widest text-xs">{{ __('No Best Sellers Marked') }}</p>
                         </div>
                     @endforelse
                 </div>
@@ -567,7 +567,7 @@ function getCategoryStyle($color, $colorMap) {
                     @empty
                         <div class="col-span-full py-20 text-center opacity-20">
                             <i class="bi bi-star text-6xl"></i>
-                            <p class="mt-4 font-black uppercase tracking-widest text-xs">No Featured Products Yet</p>
+                            <p class="mt-4 font-black uppercase tracking-widest text-xs">{{ __('No Featured Products Yet') }}</p>
                         </div>
                     @endforelse
                 </div>
@@ -579,7 +579,7 @@ function getCategoryStyle($color, $colorMap) {
     <section class="py-10 sm:py-16 bg-white border-y border-slate-100">
         <div class="max-w-7xl mx-auto px-4">
             <div class="text-center mb-8 sm:mb-10">
-                 <span class="text-[9px] sm:text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] sm:tracking-[0.3em]">Official Partner Brands</span>
+                 <span class="text-[9px] sm:text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] sm:tracking-[0.3em]">{{ __('Official Partner Brands') }}</span>
             </div>
             <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-6 sm:gap-10 opacity-60 hover:opacity-100 transition-opacity duration-500 justify-items-center items-center">
                 <div class="grayscale hover:grayscale-0 transition-all duration-300 hover:-translate-y-1 cursor-pointer">

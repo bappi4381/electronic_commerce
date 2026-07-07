@@ -9,13 +9,13 @@
         <div class="absolute top-0 right-0 w-96 h-96 bg-primary rounded-full blur-[150px]"></div>
     </div>
     <div class="max-w-7xl mx-auto px-4 relative z-10 text-center">
-        <h1 class="text-4xl lg:text-5xl font-black text-white tracking-tighter uppercase mb-4">Secure Checkout</h1>
+        <h1 class="text-4xl lg:text-5xl font-black text-white tracking-tighter uppercase mb-4">{{ __('Secure Checkout') }}</h1>
         <div class="flex items-center justify-center gap-2 text-slate-400 font-bold text-xs uppercase tracking-widest">
-            <a href="{{ route('home') }}" class="hover:text-primary transition-colors">Home</a>
+            <a href="{{ route('home') }}" class="hover:text-primary transition-colors">{{ __('Home') }}</a>
             <i class="bi bi-chevron-right text-[10px]"></i>
-            <a href="{{ route('cart.index') }}" class="hover:text-primary transition-colors">Cart</a>
+            <a href="{{ route('cart.index') }}" class="hover:text-primary transition-colors">{{ __('Cart') }}</a>
             <i class="bi bi-chevron-right text-[10px]"></i>
-            <span class="text-white">Checkout</span>
+            <span class="text-white">{{ __('Checkout') }}</span>
         </div>
     </div>
 </div>
@@ -37,20 +37,20 @@
                     <div class="bg-white rounded-[40px] shadow-xl shadow-slate-200/50 border border-slate-100 p-10 lg:p-12">
                         <h3 class="text-2xl font-black text-slate-900 tracking-tighter uppercase mb-10 flex items-center gap-4">
                             <span class="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center text-lg"><i class="bi bi-geo-alt-fill"></i></span>
-                            Shipping Details
+                            {{ __('Shipping Details') }}
                         </h3>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div class="space-y-2">
-                                <label for="name" class="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Full Name</label>
+                                <label for="name" class="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">{{ __('Full Name') }}</label>
                                 <input type="text" name="name" id="name" value="{{ old('name', Auth::user()->name ?? '') }}" 
                                        class="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none" 
-                                       placeholder="Enter your full name" required>
+                                       placeholder="{{ __('Enter your full name') }}" required>
                                 @error('name') <p class="text-[10px] text-red-500 font-bold mt-1 ml-1">{{ $message }}</p> @enderror
                             </div>
 
                             <div class="space-y-2">
-                                <label for="email" class="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Email Address</label>
+                                <label for="email" class="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">{{ __('Email Address') }}</label>
                                 <input type="email" name="email" id="email" value="{{ old('email', Auth::user()->email ?? '') }}" 
                                        class="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none" 
                                        placeholder="you@example.com" required>
@@ -58,7 +58,7 @@
                             </div>
 
                             <div class="space-y-2">
-                                <label for="phone" class="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Phone Number <span class="text-red-500">*</span></label>
+                                <label for="phone" class="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">{{ __('Phone Number') }} <span class="text-red-500">*</span></label>
                                 <input type="text" name="phone" id="phone" value="{{ old('phone', Auth::user()->phone ?? '') }}" 
                                        class="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none" 
                                        placeholder="e.g., 01700000000" required>
@@ -66,36 +66,36 @@
                             </div>
 
                             <div class="space-y-2">
-                                <label for="alt_phone" class="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Alt. Phone <span class="text-[8px] text-slate-300">(Optional)</span></label>
+                                <label for="alt_phone" class="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">{{ __('Alt. Phone') }} <span class="text-[8px] text-slate-300">({{ __('Optional') }})</span></label>
                                 <input type="text" name="alt_phone" id="alt_phone" value="{{ old('alt_phone') }}" 
                                        class="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none" 
-                                       placeholder="Backup number for delivery">
+                                       placeholder="{{ __('Backup number for delivery') }}">
                                 @error('alt_phone') <p class="text-[10px] text-red-500 font-bold mt-1 ml-1">{{ $message }}</p> @enderror
                             </div>
 
                             <div class="space-y-2 col-span-full">
-                                <label for="city" class="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Delivery City <span class="text-red-500">*</span></label>
+                                <label for="city" class="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">{{ __('Delivery City') }} <span class="text-red-500">*</span></label>
                                 <select name="city" id="city" 
                                         class="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none appearance-none cursor-pointer" required>
-                                    <option value="Dhaka" {{ old('city') == 'Dhaka' ? 'selected' : '' }}>Dhaka (Within City)</option>
-                                    <option value="Other" {{ old('city') == 'Other' ? 'selected' : '' }}>Outside Dhaka</option>
+                                    <option value="Dhaka" {{ old('city') == 'Dhaka' ? 'selected' : '' }}>{{ __('Dhaka (Within City)') }}</option>
+                                    <option value="Other" {{ old('city') == 'Other' ? 'selected' : '' }}>{{ __('Outside Dhaka') }}</option>
                                 </select>
                                 @error('city') <p class="text-[10px] text-red-500 font-bold mt-1 ml-1">{{ $message }}</p> @enderror
                             </div>
 
                             <div class="col-span-full space-y-2">
-                                <label for="shipping_address" class="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Full Delivery Address <span class="text-red-500">*</span></label>
+                                <label for="shipping_address" class="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">{{ __('Full Delivery Address') }} <span class="text-red-500">*</span></label>
                                 <textarea name="shipping_address" id="shipping_address" rows="2" 
                                           class="w-full bg-slate-50 border-none rounded-3xl px-6 py-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none resize-none" 
-                                          placeholder="Apt, Street, Area..." required>{{ old('shipping_address') }}</textarea>
+                                          placeholder="{{ __('Apt, Street, Area...') }}" required>{{ old('shipping_address') }}</textarea>
                                 @error('shipping_address') <p class="text-[10px] text-red-500 font-bold mt-1 ml-1">{{ $message }}</p> @enderror
                             </div>
 
                             <div class="col-span-full space-y-2">
-                                <label for="order_notes" class="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Order Notes <span class="text-[8px] text-slate-300">(Optional)</span></label>
+                                <label for="order_notes" class="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">{{ __('Order Notes') }} <span class="text-[8px] text-slate-300">({{ __('Optional') }})</span></label>
                                 <textarea name="order_notes" id="order_notes" rows="2" 
                                           class="w-full bg-slate-50 border-none rounded-3xl px-6 py-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none resize-none" 
-                                          placeholder="Special instructions, unboxing requests, or delivery preferences...">{{ old('order_notes') }}</textarea>
+                                          placeholder="{{ __('Special instructions, unboxing requests, or delivery preferences...') }}">{{ old('order_notes') }}</textarea>
                                 @error('order_notes') <p class="text-[10px] text-red-500 font-bold mt-1 ml-1">{{ $message }}</p> @enderror
                             </div>
                         </div>
@@ -104,7 +104,7 @@
                     <div class="bg-white rounded-[40px] shadow-xl shadow-slate-200/50 border border-slate-100 p-10 lg:p-12">
                         <h3 class="text-2xl font-black text-slate-900 tracking-tighter uppercase mb-10 flex items-center gap-4">
                             <span class="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center text-lg"><i class="bi bi-credit-card-fill"></i></span>
-                            Payment Method
+                            {{ __('Payment Method') }}
                         </h3>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -115,8 +115,8 @@
                                         <i class="bi bi-wallet2"></i>
                                     </div>
                                     <div>
-                                        <h5 class="text-sm font-black text-slate-900">Cash on Delivery</h5>
-                                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Pay when you receive</p>
+                                        <h5 class="text-sm font-black text-slate-900">{{ __('Cash on Delivery') }}</h5>
+                                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{{ __('Pay when you receive') }}</p>
                                     </div>
                                 </div>
                             </label>
@@ -128,8 +128,8 @@
                                         <i class="bi bi-shield-check"></i>
                                     </div>
                                     <div>
-                                        <h5 class="text-sm font-black text-slate-900">Online Payment</h5>
-                                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">SSLCommerz Secure</p>
+                                        <h5 class="text-sm font-black text-slate-900">{{ __('Online Payment') }}</h5>
+                                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{{ __('SSLCommerz Secure') }}</p>
                                     </div>
                                 </div>
                             </label>
@@ -141,8 +141,8 @@
                 <div class="w-full lg:w-1/3">
                     <div class="bg-slate-900 text-white rounded-[48px] p-10 sticky top-24 shadow-2xl shadow-slate-900/50">
                         <h3 class="text-2xl font-black tracking-tighter uppercase mb-10 flex items-center justify-between">
-                            Order Summary
-                            <span class="text-[10px] bg-primary text-white px-3 py-1 rounded-full">{{ count(session('cart', [])) }} items</span>
+                            {{ __('Order Summary') }}
+                            <span class="text-[10px] bg-primary text-white px-3 py-1 rounded-full">{{ count(session('cart', [])) }} {{ __('items') }}</span>
                         </h3>
 
                         <div class="space-y-6 mb-10 max-h-[300px] overflow-y-auto pr-2 no-scrollbar">
@@ -153,7 +153,7 @@
                                     </div>
                                     <div class="flex-grow min-w-0">
                                         <h5 class="text-xs font-bold text-white truncate leading-tight">{{ $item['name'] }}</h5>
-                                        <p class="text-[10px] text-slate-400 font-black uppercase mt-1">Qty: {{ $item['quantity'] }} × {{ number_format($item['price'], 2) }}</p>
+                                        <p class="text-[10px] text-slate-400 font-black uppercase mt-1">{{ __('Qty') }}: {{ $item['quantity'] }} × {{ number_format($item['price'], 2) }}</p>
                                     </div>
                                     <div class="text-sm font-black text-primary tracking-tighter">tk. {{ number_format($item['price'] * $item['quantity'], 2) }}</div>
                                 </div>
@@ -174,26 +174,26 @@
 
                         <div class="space-y-4 mb-10 pt-10 border-t border-white/10">
                             <div class="flex justify-between items-center text-slate-400">
-                                <span class="text-[10px] font-black uppercase tracking-widest">Subtotal</span>
+                                <span class="text-[10px] font-black uppercase tracking-widest">{{ __('Subtotal') }}</span>
                                 <span class="text-sm font-bold text-white">tk. {{ number_format($subtotal, 2) }}</span>
                             </div>
                             <div class="flex justify-between items-center text-slate-400">
-                                <span class="text-[10px] font-black uppercase tracking-widest">Delivery Charge</span>
+                                <span class="text-[10px] font-black uppercase tracking-widest">{{ __('Delivery Charge') }}</span>
                                 <span class="text-sm font-bold text-white" id="deliveryChargeDisplay">tk. {{ number_format($deliveryCharge, 2) }}</span>
                             </div>
                             <div class="flex justify-between items-center pt-4">
-                                <span class="text-sm font-black uppercase tracking-widest text-primary">Final Total</span>
+                                <span class="text-sm font-black uppercase tracking-widest text-primary">{{ __('Final Total') }}</span>
                                 <span class="text-2xl font-black tracking-tighter" id="grandTotalDisplay">tk. {{ number_format($grandTotal, 2) }}</span>
                             </div>
                         </div>
 
                         <button type="submit" class="w-full py-6 bg-primary hover:bg-primary-dark text-white font-black uppercase tracking-[0.2em] text-xs rounded-3xl shadow-xl shadow-primary/30 transition-all active:scale-95 group">
-                            Confirm Order
+                            {{ __('Confirm Order') }}
                             <i class="bi bi-lock-fill ml-2 group-hover:rotate-12 transition-transform"></i>
                         </button>
                         
                         <p class="mt-8 text-[9px] text-center text-slate-500 font-bold uppercase tracking-widest px-4 leading-relaxed">
-                            By placing an order, you agree to our Terms of Service and Privacy Policy.
+                            {{ __('By placing an order, you agree to our Terms of Service and Privacy Policy.') }}
                         </p>
                     </div>
                 </div>

@@ -4,15 +4,17 @@ namespace App\Http\Controllers\Admin\Product;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
-use App\Models\Subcategory;
 use Illuminate\Http\Request;
 
 class CategoriesController extends Controller
 {
-    // Show categories & subcategories
+    // Show categories & subcategories (only top-level parent categories)
     public function index()
     {
-        $categories = Category::with('subcategories')->withCount('products')->get();
+        $categories = Category::with('children')
+            ->withCount('products')
+            ->whereNull('parent_id')
+            ->get();
         return view('admin.product.category_subcategory', compact('categories'));
     }
 
@@ -20,9 +22,9 @@ class CategoriesController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|unique:categories,name',
+            'name'  => 'required|string|max:255',
             'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-            'type'  => 'nullable|in:blog,product', 
+            'type'  => 'nullable|in:blog,product',
         ]);
 
         $imagePath = null;
@@ -31,8 +33,9 @@ class CategoriesController extends Controller
             $imagePath = $request->file('image')->store('categories', 'public');
         }
 
+        // Save name as translatable JSON (EN + BN)
         Category::create([
-            'name'  => $request->name,
+            'name'  => ['en' => $request->name, 'bn' => $request->name_bn ?? $request->name],
             'type'  => $request->type ?? 'product',
             'image' => $imagePath,
             'icon'  => $request->icon ?? 'bi-tag',
@@ -55,27 +58,34 @@ class CategoriesController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'name' => 'required|unique:categories,name,' . $id,
+            'name'  => 'required|string|max:255',
             'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
         $category = Category::findOrFail($id);
-        $category->name = $request->name;
+
+        // Update translatable name, preserving existing BN if not sent
+        $existingName = is_array($category->getTranslations('name')) ? $category->getTranslations('name') : ['en' => $category->name, 'bn' => ''];
+        $category->setTranslation('name', 'en', $request->name);
+        if ($request->filled('name_bn')) {
+            $category->setTranslation('name', 'bn', $request->name_bn);
+        }
 
         if ($request->hasFile('image')) {
             $imagePath = $request->file('image')->store('categories', 'public');
             $category->image = $imagePath;
         }
 
-        $category->icon = $request->icon ?? $category->icon;
+        $category->icon  = $request->icon  ?? $category->icon;
         $category->color = $request->color ?? $category->color;
         $category->save();
 
         return back()->with('success', 'Category updated successfully.');
     }
+
     public function getByType($type)
     {
-        $categories = Category::where('type', $type)->get();
+        $categories = Category::where('type', $type)->whereNull('parent_id')->get();
         return response()->json($categories);
     }
 }

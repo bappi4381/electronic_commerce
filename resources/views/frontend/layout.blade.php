@@ -49,19 +49,29 @@
 
     <div id="header-wrap">
         <!-- Top Bar -->
-        <div class="hidden md:block bg-slate-950 py-2.5 text-[11px] text-white/70 border-b border-white/5">
+        <div class="hidden md:block relative z-[90] bg-slate-950 py-2.5 text-[11px] text-white/70 border-b border-white/5">
             <div class="max-w-7xl mx-auto px-4">
                 <div class="flex flex-row justify-between items-center gap-4">
                     <div class="flex items-center gap-6">
-                        <div class="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-colors">
-                            <img src="https://flagcdn.com/w20/gb.png" width="16" alt="English" class="rounded-sm">
-                            <span class="font-bold uppercase tracking-widest">English</span>
-                            <i class="bi bi-chevron-down text-[8px]"></i>
-                        </div>
-                        <div
-                            class="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-colors border-l border-white/10 pl-6">
-                            <span class="font-bold uppercase tracking-widest">USD</span>
-                            <i class="bi bi-chevron-down text-[8px]"></i>
+                        <div class="relative group">
+                            <div class="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-colors py-2">
+                                @if(app()->getLocale() == 'en')
+                                    <img src="https://flagcdn.com/w20/gb.png" width="16" alt="English" class="rounded-sm">
+                                    <span class="font-bold uppercase tracking-widest">English</span>
+                                @else
+                                    <img src="https://flagcdn.com/w20/bd.png" width="16" alt="বাংলা" class="rounded-sm">
+                                    <span class="font-bold uppercase tracking-widest">বাংলা</span>
+                                @endif
+                                <i class="bi bi-chevron-down text-[8px]"></i>
+                            </div>
+                            <div class="absolute left-0 mt-0 w-32 bg-white rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden border border-slate-100">
+                                <a href="{{ route(Route::currentRouteName() ?? 'home', array_merge(request()->route() ? request()->route()->parameters() : [], ['locale' => 'en'])) }}" class="flex items-center gap-2 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary font-bold transition-colors border-b border-slate-50">
+                                    <img src="https://flagcdn.com/w20/gb.png" width="16" alt="English" class="rounded-sm"> English
+                                </a>
+                                <a href="{{ route(Route::currentRouteName() ?? 'home', array_merge(request()->route() ? request()->route()->parameters() : [], ['locale' => 'bn'])) }}" class="flex items-center gap-2 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary font-bold transition-colors">
+                                    <img src="https://flagcdn.com/w20/bd.png" width="16" alt="বাংলা" class="rounded-sm"> বাংলা
+                                </a>
+                            </div>
                         </div>
                     </div>
                     <div class="flex items-center gap-8">
@@ -127,7 +137,19 @@
                                     Universe</span>
                             </div>
                         </a>
-                        <div class="lg:hidden flex items-center gap-5">
+                        <div class="lg:hidden flex items-center gap-4">
+                            <!-- Mobile Language Switcher -->
+                            <div x-data="{ langOpen: false }" class="relative">
+                                <button @click="langOpen = !langOpen" @click.away="langOpen = false" class="text-white hover:text-primary transition-colors flex items-center gap-1">
+                                    <span class="text-xs font-bold uppercase tracking-widest">{{ app()->getLocale() }}</span>
+                                    <i class="bi bi-chevron-down text-[10px]"></i>
+                                </button>
+                                <div x-show="langOpen" x-transition x-cloak class="absolute right-0 top-full mt-3 w-32 bg-white rounded-xl shadow-2xl z-[100] border border-slate-100 overflow-hidden">
+                                    <a href="{{ route(Route::currentRouteName() ?? 'home', array_merge(request()->route() ? request()->route()->parameters() : [], ['locale' => 'en'])) }}" class="block px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary font-bold transition-colors border-b border-slate-50">English</a>
+                                    <a href="{{ route(Route::currentRouteName() ?? 'home', array_merge(request()->route() ? request()->route()->parameters() : [], ['locale' => 'bn'])) }}" class="block px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary font-bold transition-colors">বাংলা</a>
+                                </div>
+                            </div>
+
                             <a href="#" x-data @click.prevent="$dispatch('open-wishlist')"
                                 class="relative text-white hover:text-primary transition-colors group">
                                 <i class="bi bi-heart text-[22px]"></i>
@@ -165,7 +187,7 @@
                             class="flex flex-col sm:flex-row bg-white rounded-xl lg:rounded-2xl overflow-hidden shadow-2xl min-h-[56px] group">
                             <select name="category"
                                 class="bg-slate-50 px-6 lg:px-8 py-3 sm:py-0 text-slate-900 font-black text-[10px] lg:text-xs uppercase border-b sm:border-b-0 sm:border-r border-slate-100 outline-none appearance-none cursor-pointer hover:bg-slate-100 transition-colors tracking-widest">
-                                <option value="">All Categories</option>
+                                <option value="">{{ __('All Categories') }}</option>
                                 @foreach(\App\Models\Category::where('type', 'product')->get() as $cat)
                                     <option value="{{ $cat->id }}" {{ request('category') == $cat->id ? 'selected' : '' }}>
                                         {{ $cat->name }}</option>
@@ -174,7 +196,7 @@
                             <div class="flex flex-1">
                                 <input type="text" name="search"
                                     class="flex-1 px-6 py-4 sm:py-0 text-slate-900 text-sm font-bold outline-none placeholder-slate-400"
-                                    placeholder="What are you looking for?">
+                                    placeholder="{{ __('What are you looking for?') }}">
                                 <button type="submit"
                                     class="bg-primary hover:bg-primary-dark text-white px-6 lg:px-10 transition-all flex items-center gap-2 active:scale-95">
                                     <i class="bi bi-search text-lg"></i>
@@ -183,6 +205,7 @@
                         </form>
                     </div>
                     <div class="w-full lg:w-1/4 hidden lg:flex justify-end items-center gap-6">
+
                         @php
                             $cartTotal = collect($cart)->sum(function ($item) {
                                 return $item['price'] * $item['quantity'];
@@ -197,8 +220,7 @@
                                     class="absolute -top-2 -right-2 bg-primary text-white text-[10px] font-black w-6 h-6 rounded-full flex items-center justify-center shadow-xl border-2 border-slate-900 group-hover:bg-white group-hover:text-primary transition-colors">{{ $cartCount }}</span>
                             </div>
                             <div class="flex flex-col">
-                                <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">Your
-                                    Cart</span>
+                                <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">{{ __('Your Cart') }}</span>
                                 <span class="font-black text-lg tracking-tighter">{{ number_format($cartTotal, 0) }}
                                     Tk</span>
                             </div>
@@ -216,7 +238,7 @@
                         <div @mouseenter="open = true"
                             class="bg-primary px-10 py-5 font-black text-xs uppercase tracking-[0.2em] flex items-center gap-4 cursor-pointer hover:bg-primary-dark transition-all">
                             <i class="bi bi-grid-3x3-gap-fill text-lg"></i>
-                            Shop By Department
+                            {{ __('Shop By Department') }}
                             <i class="bi bi-chevron-down text-[10px] ml-4 opacity-50"
                                 :class="open ? 'rotate-180' : ''"></i>
                         </div>
@@ -235,31 +257,31 @@
                     <ul class="hidden lg:flex list-none m-0 p-0 gap-10">
                         <li><a href="{{ route('home') }}"
                                 class="text-white no-underline font-black text-xs uppercase tracking-widest py-5 block hover:text-primary transition-all relative group {{ request()->routeIs('home') ? 'text-primary' : '' }}">
-                                Home
+                                {{ __('Home') }}
                                 <span
                                     class="absolute bottom-0 left-0 w-0 h-1 bg-primary group-hover:w-full transition-all {{ request()->routeIs('home') ? 'w-full' : '' }}"></span>
                             </a></li>
                         <li><a href="{{ route('products.index') }}"
                                 class="text-white no-underline font-black text-xs uppercase tracking-widest py-5 block hover:text-primary transition-all relative group {{ request()->routeIs('products.*') ? 'text-primary' : '' }}">
-                                Products
+                                {{ __('Products') }}
                                 <span
                                     class="absolute bottom-0 left-0 w-0 h-1 bg-primary group-hover:w-full transition-all {{ request()->routeIs('products.*') ? 'w-full' : '' }}"></span>
                             </a></li>
                         <li><a href="{{ route('flash-deals') }}"
                                 class="text-white no-underline font-black text-xs uppercase tracking-widest py-5 block hover:text-primary transition-all relative group {{ request()->routeIs('flash-deals') ? 'text-primary' : '' }}">
-                                Discount
+                                {{ __('Discount') }}
                                 <span
                                     class="absolute bottom-0 left-0 w-0 h-1 bg-primary group-hover:w-full transition-all {{ request()->routeIs('flash-deals') ? 'w-full' : '' }}"></span>
                             </a></li>
                         <li><a href="{{ route('frontend.articles') }}"
                                 class="text-white no-underline font-black text-xs uppercase tracking-widest py-5 block hover:text-primary transition-all relative group {{ request()->routeIs('frontend.articles*') ? 'text-primary' : '' }}">
-                                Tech Blog
+                                {{ __('Tech Blog') }}
                                 <span
                                     class="absolute bottom-0 left-0 w-0 h-1 bg-primary group-hover:w-full transition-all {{ request()->routeIs('frontend.articles*') ? 'w-full' : '' }}"></span>
                             </a></li>
                         <li><a href="{{ route('contact') }}"
                                 class="text-white no-underline font-black text-xs uppercase tracking-widest py-5 block hover:text-primary transition-all relative group {{ request()->routeIs('contact') ? 'text-primary' : '' }}">
-                                Contact
+                                {{ __('Contact') }}
                                 <span
                                     class="absolute bottom-0 left-0 w-0 h-1 bg-primary group-hover:w-full transition-all {{ request()->routeIs('contact') ? 'w-full' : '' }}"></span>
                             </a></li>
@@ -268,7 +290,7 @@
                         class="flex items-center gap-3 text-primary-light font-black text-xs uppercase tracking-widest no-underline group relative">
                         <span
                             class="bg-red-500 text-white text-[8px] px-2 py-0.5 rounded-sm absolute -top-5 right-0 uppercase animate-bounce">Limited</span>
-                        Discount Products <i class="bi bi-gift-fill group-hover:rotate-12 transition-transform"></i>
+                        {{ __('Discount Products') }} <i class="bi bi-gift-fill group-hover:rotate-12 transition-transform"></i>
                     </a>
                 </div>
             </div>
@@ -514,19 +536,19 @@
         <a href="{{ route('home') }}"
             class="flex flex-col items-center gap-1 {{ request()->routeIs('home') ? 'text-primary' : 'text-slate-400 hover:text-primary transition-colors' }}">
             <i class="bi {{ request()->routeIs('home') ? 'bi-house-door-fill' : 'bi-house-door' }} text-[22px]"></i>
-            <span class="text-[8px] font-black uppercase tracking-widest">Home</span>
+            <span class="text-[8px] font-black uppercase tracking-widest">{{ __('Home') }}</span>
         </a>
         <a href="{{ route('products.index') }}"
             class="flex flex-col items-center gap-1 {{ request()->routeIs('products.*') ? 'text-primary' : 'text-slate-400 hover:text-primary transition-colors' }}">
             <i class="bi {{ request()->routeIs('products.*') ? 'bi-grid-fill' : 'bi-grid' }} text-[22px]"></i>
-            <span class="text-[8px] font-black uppercase tracking-widest">Shop</span>
+            <span class="text-[8px] font-black uppercase tracking-widest">{{ __('Shop') }}</span>
         </a>
         <a href="{{ route('flash-deals') }}"
             class="flex flex-col items-center gap-1 {{ request()->routeIs('flash-deals') ? 'text-primary' : 'text-slate-400 hover:text-primary transition-colors' }} relative">
             <div class="absolute top-0 right-0 bg-red-500 w-1.5 h-1.5 rounded-full animate-ping"></div>
             <div class="absolute top-0 right-0 bg-red-500 w-1.5 h-1.5 rounded-full"></div>
             <i class="bi {{ request()->routeIs('flash-deals') ? 'bi-tags-fill' : 'bi-tags' }} text-[22px]"></i>
-            <span class="text-[8px] font-black uppercase tracking-widest">Discount</span>
+            <span class="text-[8px] font-black uppercase tracking-widest">{{ __('Discount') }}</span>
         </a>
         <a href="{{ route('cart.index') }}"
             class="flex flex-col items-center gap-1 {{ request()->routeIs('cart.*') ? 'text-primary' : 'text-slate-400 hover:text-primary transition-colors' }} relative">
@@ -538,19 +560,19 @@
                     class="absolute -top-1 -right-2 bg-primary text-white text-[8px] font-black w-[18px] h-[18px] rounded-full flex items-center justify-center">{{ $cartCount }}</span>
             @endif
             <i class="bi {{ request()->routeIs('cart.*') ? 'bi-cart-fill' : 'bi-cart' }} text-[22px]"></i>
-            <span class="text-[8px] font-black uppercase tracking-widest">Cart</span>
+            <span class="text-[8px] font-black uppercase tracking-widest">{{ __('Cart') }}</span>
         </a>
         @auth
             <a href="{{ route('user.dashboard') }}"
                 class="flex flex-col items-center gap-1 {{ request()->routeIs('user.*') ? 'text-primary' : 'text-slate-400 hover:text-primary transition-colors' }}">
                 <i class="bi {{ request()->routeIs('user.*') ? 'bi-person-fill' : 'bi-person' }} text-[22px]"></i>
-                <span class="text-[8px] font-black uppercase tracking-widest">Profile</span>
+                <span class="text-[8px] font-black uppercase tracking-widest">{{ __('Profile') }}</span>
             </a>
         @else
             <a href="{{ route('user.auth.login') }}"
                 class="flex flex-col items-center gap-1 {{ request()->routeIs('user.auth.*') ? 'text-primary' : 'text-slate-400 hover:text-primary transition-colors' }}">
                 <i class="bi {{ request()->routeIs('user.auth.*') ? 'bi-person-fill' : 'bi-person' }} text-[22px]"></i>
-                <span class="text-[8px] font-black uppercase tracking-widest">Login</span>
+                <span class="text-[8px] font-black uppercase tracking-widest">{{ __('Login') }}</span>
             </a>
         @endauth
     </div>

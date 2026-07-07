@@ -1,13 +1,13 @@
 @extends('frontend.layout')
 
-@section('title', 'Discount Products | Premium Electronics Store')
+@section('title', __('Discount Products') . ' | Premium Electronics Store')
 
 @section('content')
 <section class="pt-24 pb-44 sm:py-24 bg-slate-50">
     <div class="max-w-7xl mx-auto px-4">
         <div class="text-center mb-16 space-y-4">
-            <span class="text-red-500 font-black uppercase tracking-[0.2em] text-xs">Don't Miss Out</span>
-            <h2 class="text-4xl lg:text-5xl font-black text-slate-900 tracking-tighter uppercase italic">Discount Products</h2>
+            <span class="text-red-500 font-black uppercase tracking-[0.2em] text-xs">{{ __('Don\'t Miss Out') }}</span>
+            <h2 class="text-4xl lg:text-5xl font-black text-slate-900 tracking-tighter uppercase italic">{{ __('Discount Products') }}</h2>
             <div class="w-20 h-1.5 bg-red-500 rounded-full mx-auto"></div>
         </div>
         
@@ -17,7 +17,7 @@
             @empty
                 <div class="col-span-full py-20 text-center opacity-20">
                     <i class="bi bi-tag text-6xl"></i>
-                    <p class="mt-4 font-black uppercase tracking-widest text-xs">No Discount Products Available Right Now</p>
+                    <p class="mt-4 font-black uppercase tracking-widest text-xs">{{ __('No Discount Products Available Right Now') }}</p>
                 </div>
             @endforelse
         </div>

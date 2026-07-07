@@ -42,7 +42,8 @@ class CouponController extends Controller
             'discounted_price' => $product->price - ($product->price * ($request->discount / 100))
         ]);
 
-        return back()->with('success', 'Discount updated for ' . $product->name);
+        $productName = is_array($product->name) ? ($product->name[app()->getLocale()] ?? $product->name['en'] ?? 'Product') : $product->name;
+        return back()->with('success', 'Discount updated for ' . $productName);
     }
 
     public function store(Request $request)

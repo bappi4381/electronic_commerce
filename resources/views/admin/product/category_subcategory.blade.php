@@ -99,9 +99,9 @@
                                      <i class="{{ $iconClass }} {{ !str_contains($category->color, '#') ? 'text-'.$category->color : '' }}"></i>
                                 </div>
                                 <div>
-                                    <span class="text-xs font-black text-slate-800 block leading-none">{{ $category->name }}</span>
+                                    <span class="text-xs font-black text-slate-800 block leading-none">{{ is_array($category->name) ? ($category->name[app()->getLocale()] ?? $category->name['en'] ?? '') : $category->name }}</span>
                                     <div class="flex items-center gap-2 mt-1.5">
-                                        <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ $category->subcategories->count() }} Sub-Items</span>
+                                        <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ $category->children->count() }} Sub-Items</span>
                                         <span class="w-1 h-1 rounded-full bg-slate-200"></span>
                                         <span class="text-[8px] font-black text-primary uppercase tracking-widest">{{ $category->products_count }} Products</span>
                                     </div>
@@ -141,7 +141,7 @@
                         <select name="category_id" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-bold focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all cursor-pointer" required>
                             <option value="">Select Parent...</option>
                             @foreach($categories as $category)
-                                <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                <option value="{{ $category->id }}">{{ is_array($category->name) ? ($category->name[app()->getLocale()] ?? $category->name['en'] ?? '') : $category->name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -159,13 +159,13 @@
                 <h2 class="text-xs font-black text-slate-900 uppercase tracking-[0.2em] mb-6">Subcategory Mapping</h2>
                 <div class="space-y-3">
                     @foreach($categories as $category)
-                        @foreach($category->subcategories as $sub)
+                        @foreach($category->children as $sub)
                             <div class="flex items-center justify-between p-3 bg-indigo-50/30 rounded-xl border border-indigo-100/50 group">
                                 <div class="flex items-center gap-3">
                                     <div class="w-2 h-2 rounded-full bg-indigo-400"></div>
                                     <div>
-                                        <span class="text-[10px] font-black text-slate-800 block">{{ $sub->name }}</span>
-                                        <span class="text-[7px] font-black text-indigo-400 uppercase tracking-widest block mt-0.5">Under: {{ $category->name }}</span>
+                                        <span class="text-[10px] font-black text-slate-800 block">{{ is_array($sub->name) ? ($sub->name[app()->getLocale()] ?? $sub->name['en'] ?? '') : $sub->name }}</span>
+                                        <span class="text-[7px] font-black text-indigo-400 uppercase tracking-widest block mt-0.5">Under: {{ is_array($category->name) ? ($category->name[app()->getLocale()] ?? $category->name['en'] ?? '') : $category->name }}</span>
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-2">
@@ -241,7 +241,7 @@
                         <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Parent Entity</label>
                         <select name="category_id" x-model="editingSubcategory.category_id" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-bold focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all cursor-pointer" required>
                             @foreach($categories as $category)
-                                <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                <option value="{{ $category->id }}">{{ is_array($category->name) ? ($category->name[app()->getLocale()] ?? $category->name['en'] ?? '') : $category->name }}</option>
                             @endforeach
                         </select>
                     </div>
