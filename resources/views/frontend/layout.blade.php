@@ -49,12 +49,14 @@
 
     <div id="header-wrap">
         <!-- Top Bar -->
-        <div class="hidden md:block relative z-[90] bg-slate-950 py-2.5 text-[11px] text-white/70 border-b border-white/5">
+        <div
+            class="hidden md:block relative z-[90] bg-slate-950 py-2.5 text-[11px] text-white/70 border-b border-white/5">
             <div class="max-w-7xl mx-auto px-4">
                 <div class="flex flex-row justify-between items-center gap-4">
                     <div class="flex items-center gap-6">
                         <div class="relative group">
-                            <div class="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-colors py-2">
+                            <div
+                                class="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-colors py-2">
                                 @if(app()->getLocale() == 'en')
                                     <img src="https://flagcdn.com/w20/gb.png" width="16" alt="English" class="rounded-sm">
                                     <span class="font-bold uppercase tracking-widest">English</span>
@@ -64,12 +66,17 @@
                                 @endif
                                 <i class="bi bi-chevron-down text-[8px]"></i>
                             </div>
-                            <div class="absolute left-0 mt-0 w-32 bg-white rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden border border-slate-100">
-                                <a href="{{ route(Route::currentRouteName() ?? 'home', array_merge(request()->route() ? request()->route()->parameters() : [], ['locale' => 'en'])) }}" class="flex items-center gap-2 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary font-bold transition-colors border-b border-slate-50">
-                                    <img src="https://flagcdn.com/w20/gb.png" width="16" alt="English" class="rounded-sm"> English
+                            <div
+                                class="absolute left-0 mt-0 w-32 bg-white rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden border border-slate-100">
+                                <a href="{{ route(Route::currentRouteName() ?? 'home', array_merge(request()->route() ? request()->route()->parameters() : [], ['locale' => 'en'])) }}"
+                                    class="flex items-center gap-2 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary font-bold transition-colors border-b border-slate-50">
+                                    <img src="https://flagcdn.com/w20/gb.png" width="16" alt="English"
+                                        class="rounded-sm"> English
                                 </a>
-                                <a href="{{ route(Route::currentRouteName() ?? 'home', array_merge(request()->route() ? request()->route()->parameters() : [], ['locale' => 'bn'])) }}" class="flex items-center gap-2 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary font-bold transition-colors">
-                                    <img src="https://flagcdn.com/w20/bd.png" width="16" alt="বাংলা" class="rounded-sm"> বাংলা
+                                <a href="{{ route(Route::currentRouteName() ?? 'home', array_merge(request()->route() ? request()->route()->parameters() : [], ['locale' => 'bn'])) }}"
+                                    class="flex items-center gap-2 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary font-bold transition-colors">
+                                    <img src="https://flagcdn.com/w20/bd.png" width="16" alt="বাংলা" class="rounded-sm">
+                                    বাংলা
                                 </a>
                             </div>
                         </div>
@@ -131,7 +138,8 @@
                             <div class="flex flex-col">
                                 <h1
                                     class="m-0 text-lg lg:text-3xl font-black tracking-tighter leading-none uppercase italic">
-                                    {{ \App\Models\Setting::get('site_name', 'ONEMALL') }}</h1>
+                                    {{ \App\Models\Setting::get('site_name', 'ONEMALL') }}
+                                </h1>
                                 <span
                                     class="text-[6px] lg:text-[9px] text-primary-light font-black tracking-[0.3em] uppercase mt-0.5 lg:mt-1">Digital
                                     Universe</span>
@@ -140,13 +148,18 @@
                         <div class="lg:hidden flex items-center gap-4">
                             <!-- Mobile Language Switcher -->
                             <div x-data="{ langOpen: false }" class="relative">
-                                <button @click="langOpen = !langOpen" @click.away="langOpen = false" class="text-white hover:text-primary transition-colors flex items-center gap-1">
-                                    <span class="text-xs font-bold uppercase tracking-widest">{{ app()->getLocale() }}</span>
+                                <button @click="langOpen = !langOpen" @click.away="langOpen = false"
+                                    class="text-white hover:text-primary transition-colors flex items-center gap-1">
+                                    <span
+                                        class="text-xs font-bold uppercase tracking-widest">{{ app()->getLocale() }}</span>
                                     <i class="bi bi-chevron-down text-[10px]"></i>
                                 </button>
-                                <div x-show="langOpen" x-transition x-cloak class="absolute right-0 top-full mt-3 w-32 bg-white rounded-xl shadow-2xl z-[100] border border-slate-100 overflow-hidden">
-                                    <a href="{{ route(Route::currentRouteName() ?? 'home', array_merge(request()->route() ? request()->route()->parameters() : [], ['locale' => 'en'])) }}" class="block px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary font-bold transition-colors border-b border-slate-50">English</a>
-                                    <a href="{{ route(Route::currentRouteName() ?? 'home', array_merge(request()->route() ? request()->route()->parameters() : [], ['locale' => 'bn'])) }}" class="block px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary font-bold transition-colors">বাংলা</a>
+                                <div x-show="langOpen" x-transition x-cloak
+                                    class="absolute right-0 top-full mt-3 w-32 bg-white rounded-xl shadow-2xl z-[100] border border-slate-100 overflow-hidden">
+                                    <a href="{{ route(Route::currentRouteName() ?? 'home', array_merge(request()->route() ? request()->route()->parameters() : [], ['locale' => 'en'])) }}"
+                                        class="block px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary font-bold transition-colors border-b border-slate-50">English</a>
+                                    <a href="{{ route(Route::currentRouteName() ?? 'home', array_merge(request()->route() ? request()->route()->parameters() : [], ['locale' => 'bn'])) }}"
+                                        class="block px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary font-bold transition-colors">বাংলা</a>
                                 </div>
                             </div>
 
@@ -190,7 +203,8 @@
                                 <option value="">{{ __('All Categories') }}</option>
                                 @foreach(\App\Models\Category::where('type', 'product')->get() as $cat)
                                     <option value="{{ $cat->id }}" {{ request('category') == $cat->id ? 'selected' : '' }}>
-                                        {{ $cat->name }}</option>
+                                        {{ $cat->name }}
+                                    </option>
                                 @endforeach
                             </select>
                             <div class="flex flex-1">
@@ -220,7 +234,8 @@
                                     class="absolute -top-2 -right-2 bg-primary text-white text-[10px] font-black w-6 h-6 rounded-full flex items-center justify-center shadow-xl border-2 border-slate-900 group-hover:bg-white group-hover:text-primary transition-colors">{{ $cartCount }}</span>
                             </div>
                             <div class="flex flex-col">
-                                <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">{{ __('Your Cart') }}</span>
+                                <span
+                                    class="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">{{ __('Your Cart') }}</span>
                                 <span class="font-black text-lg tracking-tighter">{{ number_format($cartTotal, 0) }}
                                     Tk</span>
                             </div>
@@ -290,7 +305,8 @@
                         class="flex items-center gap-3 text-primary-light font-black text-xs uppercase tracking-widest no-underline group relative">
                         <span
                             class="bg-red-500 text-white text-[8px] px-2 py-0.5 rounded-sm absolute -top-5 right-0 uppercase animate-bounce">Limited</span>
-                        {{ __('Discount Products') }} <i class="bi bi-gift-fill group-hover:rotate-12 transition-transform"></i>
+                        {{ __('Discount Products') }} <i
+                            class="bi bi-gift-fill group-hover:rotate-12 transition-transform"></i>
                     </a>
                 </div>
             </div>
@@ -368,7 +384,8 @@
                         </div>
                     @endif
                     <h1 class="m-0 text-2xl font-black tracking-tighter leading-none uppercase italic">
-                        {{ \App\Models\Setting::get('site_name', 'ONEMALL') }}</h1>
+                        {{ \App\Models\Setting::get('site_name', 'ONEMALL') }}
+                    </h1>
                     </a>
                     <p class="text-slate-400 text-sm leading-relaxed font-medium">
                         {{ \App\Models\Setting::get('footer_text', 'Your ultimate destination for the latest technology and gadgets. We bring the digital future to your doorstep with authentic products and premium service.') }}
@@ -449,7 +466,8 @@
                         <div class="flex items-center gap-4">
                             <i class="bi bi-telephone text-primary text-xl"></i>
                             <p class="text-slate-400 text-sm font-bold">
-                                {{ \App\Models\Setting::get('contact_phone', '+1 (555) 123-4567') }}</p>
+                                {{ \App\Models\Setting::get('contact_phone', '+1 (555) 123-4567') }}
+                            </p>
                         </div>
                         <div class="flex items-center gap-4">
                             <i class="bi bi-envelope text-primary text-xl"></i>

@@ -166,11 +166,11 @@
                 <tfoot class="border-t-2 border-slate-100">
                     <tr>
                         <td colspan="3" class="px-6 py-3 text-right text-xs font-black uppercase tracking-widest text-slate-400">Subtotal</td>
-                        <td class="px-6 py-3 text-right text-sm font-bold text-slate-700">Tk {{ number_format($order->total_price - $order->delivery_charge, 2) }}</td>
+                        <td class="px-6 py-3 text-right text-sm font-bold text-slate-700">Tk {{ number_format($order->total_price - ($order->delivery_charge ?? 0), 2) }}</td>
                     </tr>
                     <tr>
                         <td colspan="3" class="px-6 py-3 text-right text-xs font-black uppercase tracking-widest text-slate-400">Delivery Charge</td>
-                        <td class="px-6 py-3 text-right text-sm font-bold text-slate-700">Tk {{ number_format($order->delivery_charge, 2) }}</td>
+                        <td class="px-6 py-3 text-right text-sm font-bold text-slate-700">Tk {{ number_format($order->delivery_charge ?? 0, 2) }}</td>
                     </tr>
                     <tr class="bg-slate-50">
                         <td colspan="3" class="px-6 py-4 text-right text-xs font-black uppercase tracking-widest text-slate-700">Grand Total</td>

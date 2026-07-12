@@ -21,8 +21,8 @@ class DashboardController extends Controller
 
         $recentOrders = Order::with('user')->latest()->take(5)->get();
         
-        $lowStockProducts = Product::withSum('variants', 'stock')
-            ->whereRaw('(SELECT COALESCE(SUM(stock), 0) FROM product_variants WHERE product_variants.product_id = products.id) < low_stock_threshold')
+        $lowStockProducts = Product::with('variants')
+            ->whereHas('variants', fn($q) => $q->where('stock', '>', 0)->whereColumn('stock', '<=', 'products.low_stock_threshold'))
             ->take(5)
             ->get();
         

@@ -53,7 +53,7 @@ class CartController extends Controller
                 return redirect()->back()->with('error', 'This item is out of stock.');
             }
 
-            $image = $product->images->first()->image ?? 'frontend/images/default-book.jpg';
+            $image = $product->images->first()?->image ?? 'frontend/images/default-book.jpg';
 
             $cart[$cartKey] = [
                 'product_id' => $product->id,

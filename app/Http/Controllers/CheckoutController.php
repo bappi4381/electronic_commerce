@@ -141,12 +141,12 @@ class CheckoutController extends Controller
     }
 
 
-    public function success($locale, Order $order)
+    public function success(Order $order)
     {
         return view('frontend.pages.order_success', compact('order'));
     }
 
-    public function downloadInvoice($locale, Order $order)
+    public function downloadInvoice(Order $order)
     {
         // Enforce that only the order owner or admin can download the invoice
         if (Auth::id() !== $order->user_id && !Auth::guard('admin')->check()) {

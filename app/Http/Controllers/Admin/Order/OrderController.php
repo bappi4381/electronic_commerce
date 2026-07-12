@@ -31,12 +31,14 @@ class OrderController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
-            'name' => 'required|string|max:100',
-            'phone' => 'nullable|string|max:20',
-            'address' => 'nullable|string|max:500',
-            'products' => 'required|array|min:1',
-            'products.*' => 'exists:products,id',
+            'email'          => 'required|email',
+            'name'           => 'required|string|max:100',
+            'phone'          => 'nullable|string|max:20',
+            'address'        => 'nullable|string|max:500',
+            'products'       => 'required|array|min:1',
+            'products.*'     => 'exists:products,id',
+            'quantities'     => 'nullable|array',
+            'quantities.*'   => 'integer|min:1|max:999',
             'payment_method' => 'required|in:cod,online',
         ]);
 
@@ -47,23 +49,24 @@ class OrderController extends Controller
         if (!$user) {
             $password = uniqid('pass_');
             $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'phone' => $request->phone,
-                'address' => $request->address,
+                'name'     => $request->name,
+                'email'    => $request->email,
+                'phone'    => $request->phone,
+                'address'  => $request->address,
                 'password' => Hash::make($password),
             ]);
         }
 
-        // 2️⃣ Calculate total price using discounted price if available
+        // 2️⃣ Calculate total price using discounted price & quantity
+        $quantities = $request->input('quantities', []);
         $totalPrice = 0;
         foreach ($request->products as $productId) {
-            $product = Product::findOrFail($productId);
-            // Use discounted_price if it's lower than original price
-            $itemPrice = ($product->discounted_price > 0 && $product->discounted_price < $product->price) 
-                         ? $product->discounted_price 
+            $product  = Product::findOrFail($productId);
+            $qty      = max(1, intval($quantities[$productId] ?? 1));
+            $itemPrice = ($product->discounted_price > 0 && $product->discounted_price < $product->price)
+                         ? $product->discounted_price
                          : $product->price;
-            $totalPrice += $itemPrice;
+            $totalPrice += $itemPrice * $qty;
         }
 
         // 3️⃣ Create unique order ID
@@ -71,10 +74,10 @@ class OrderController extends Controller
 
         // 4️⃣ Create Order
         $order = Order::create([
-            'order_id' => $orderId,
-            'user_id' => $user->id,
-            'total_price' => $totalPrice,
-            'status' => $request->payment_method == 'cod' ? 'pending' : 'processing',
+            'order_id'       => $orderId,
+            'user_id'        => $user->id,
+            'total_price'    => $totalPrice,
+            'status'         => $request->payment_method == 'cod' ? 'pending' : 'processing',
             'payment_method' => $request->payment_method,
             'payment_status' => $request->payment_method == 'cod' ? 'unpaid' : 'pending',
         ]);
@@ -82,44 +85,46 @@ class OrderController extends Controller
         // 5️⃣ Create Order Items and Manage Stock
         foreach ($request->products as $productId) {
             $product = Product::findOrFail($productId);
-            
+            $qty     = max(1, intval($quantities[$productId] ?? 1));
+
             // Determine the actual price paid
-            $actualPrice = ($product->discounted_price > 0 && $product->discounted_price < $product->price) 
-                           ? $product->discounted_price 
+            $actualPrice = ($product->discounted_price > 0 && $product->discounted_price < $product->price)
+                           ? $product->discounted_price
                            : $product->price;
 
             $variant = $product->variants()->first();
 
             OrderItem::create([
-                'order_id' => $order->id,
+                'order_id'   => $order->id,
                 'product_id' => $product->id,
                 'variant_id' => $variant ? $variant->id : null,
-                'quantity' => 1,
-                'price' => $actualPrice,
-                'subtotal' => $actualPrice,
+                'quantity'   => $qty,
+                'price'      => $actualPrice,
+                'subtotal'   => $actualPrice * $qty,
             ]);
 
-            // Professional Stock Deduction (record movement)
+            // Stock Deduction with movement log
             if ($variant && $variant->stock > 0) {
+                $deduct = min($qty, $variant->stock); // do not go negative
                 StockMovement::create([
-                    'variant_id' => $variant->id,
-                    'change' => -1,
-                    'type' => 'order_reserved',
-                    'reason' => 'Reserved on admin order create',
+                    'variant_id'  => $variant->id,
+                    'change'      => -$deduct,
+                    'type'        => 'order_reserved',
+                    'reason'      => 'Reserved on admin order create',
                     'source_type' => \App\Models\Order::class,
-                    'source_id' => $order->id,
-                    'admin_id' => null,
+                    'source_id'   => $order->id,
+                    'admin_id'    => null,
                 ]);
-                $variant->decrement('stock', 1);
+                $variant->decrement('stock', $deduct);
             }
         }
 
-        // 6️⃣ Send email (same structure as user panel)
+        // 6️⃣ Send email
         Mail::send('emails.order_confirmation', [
-            'name' => $user->name,
-            'order_id' => $order->order_id,
-            'total' => $totalPrice,
-            'password' => $password,
+            'name'           => $user->name,
+            'order_id'       => $order->order_id,
+            'total'          => $totalPrice,
+            'password'       => $password,
             'payment_method' => $request->payment_method,
         ], function ($message) use ($user) {
             $message->to($user->email, $user->name)->subject('Order Confirmation - BookSaw');

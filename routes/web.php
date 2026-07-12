@@ -34,7 +34,7 @@ Route::redirect('/', '/en');
 Route::prefix('admin')->group(function () {
     Route::get('/login', [AdminLogin::class, 'showLoginForm'])->name('admin.login');
     Route::post('/login', [AdminLogin::class, 'login'])->name('admin.login.submit');
-    
+
 
     Route::middleware('admin')->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
@@ -56,19 +56,19 @@ Route::prefix('admin')->group(function () {
 
             // Product Resource
             Route::resource('products', ProductController::class)->names([
-                        'children' => [
-                            ['title' => 'Categories', 'route' => 'category_subcategory.index'],
-                            ['title' => 'Attributes', 'route' => 'admin.attributes.index'],
-                            ['title' => 'Add Product', 'route' => 'admin.products.create'],
-                            ['title' => 'Products', 'route' => 'admin.products.index'],
-                            ['title' => 'Bulk Import', 'route' => 'admin.products.import'],
-                        ],
-                'index'   => 'admin.products.index',
-                'create'  => 'admin.products.create',
-                'store'   => 'admin.products.store',
-                'show'    => 'admin.products.show',
-                'edit'    => 'admin.products.edit',
-                'update'  => 'admin.products.update',
+                'children' => [
+                    ['title' => 'Categories', 'route' => 'category_subcategory.index'],
+                    ['title' => 'Attributes', 'route' => 'admin.attributes.index'],
+                    ['title' => 'Add Product', 'route' => 'admin.products.create'],
+                    ['title' => 'Products', 'route' => 'admin.products.index'],
+                    ['title' => 'Bulk Import', 'route' => 'admin.products.import'],
+                ],
+                'index' => 'admin.products.index',
+                'create' => 'admin.products.create',
+                'store' => 'admin.products.store',
+                'show' => 'admin.products.show',
+                'edit' => 'admin.products.edit',
+                'update' => 'admin.products.update',
                 'destroy' => 'admin.products.destroy',
             ]);
 
@@ -154,93 +154,98 @@ Route::prefix('admin')->group(function () {
     });
 });
 
+// Social Authentication Routes
+use App\Http\Controllers\Frontend\SocialAuthController;
+Route::get('/auth/{provider}/redirect', [SocialAuthController::class, 'redirect'])->name('social.redirect');
+Route::get('/auth/{provider}/callback', [SocialAuthController::class, 'callback'])->name('social.callback');
+
 Route::group(['prefix' => '{locale}', 'middleware' => 'set_locale'], function () {
-// User routes
-Route::get('/', [HomeController::class, 'index'])->name('home');
-Route::get('/products', [HomeController::class, 'products'])->name('products.index');
-Route::get('/product/{id}', [HomeController::class, 'show'])->name('products.show');
-Route::post('/product/{id}/comment', [HomeController::class, 'storeProductComment'])->name('product.comment')->middleware('auth');
-Route::put('/product/blog-comments/{id}', [HomeController::class, 'updateProductComment'])->name('product.comment.update')->middleware('auth');
-Route::delete('/product/blog-comments/{id}', [HomeController::class, 'deleteProductComment'])->name('product.comment.delete')->middleware('auth');
-Route::post('/product/{id}/react', [HomeController::class, 'toggleProductReaction'])->name('product.react')->middleware('auth');
-Route::get('/flash-deals', [HomeController::class, 'flashDeals'])->name('flash-deals');
-Route::get('/contact', [HomeController::class, 'contact'])->name('contact');
-Route::post('/newsletter/subscribe', [\App\Http\Controllers\Frontend\NewsletterController::class, 'subscribe'])->name('newsletter.subscribe');
+    // User routes
+    Route::get('/', [HomeController::class, 'index'])->name('home');
+    Route::get('/products', [HomeController::class, 'products'])->name('products.index');
+    Route::get('/product/{id}', [HomeController::class, 'show'])->name('products.show');
+    Route::post('/product/{id}/comment', [HomeController::class, 'storeProductComment'])->name('product.comment')->middleware('auth');
+    Route::put('/product/blog-comments/{id}', [HomeController::class, 'updateProductComment'])->name('product.comment.update')->middleware('auth');
+    Route::delete('/product/blog-comments/{id}', [HomeController::class, 'deleteProductComment'])->name('product.comment.delete')->middleware('auth');
+    Route::post('/product/{id}/react', [HomeController::class, 'toggleProductReaction'])->name('product.react')->middleware('auth');
+    Route::get('/flash-deals', [HomeController::class, 'flashDeals'])->name('flash-deals');
+    Route::get('/contact', [HomeController::class, 'contact'])->name('contact');
+    Route::post('/newsletter/subscribe', [\App\Http\Controllers\Frontend\NewsletterController::class, 'subscribe'])->name('newsletter.subscribe');
 
-// Global Chat Routes
-Route::get('/chat/fetch', [HomeController::class, 'fetchChat'])->name('chat.fetch');
-Route::post('/chat/send', [HomeController::class, 'sendChat'])->name('chat.send');
-Route::post('/chat/mark-read', [HomeController::class, 'markChatAsRead'])->name('chat.markRead');
+    // Global Chat Routes
+    Route::get('/chat/fetch', [HomeController::class, 'fetchChat'])->name('chat.fetch');
+    Route::post('/chat/send', [HomeController::class, 'sendChat'])->name('chat.send');
+    Route::post('/chat/mark-read', [HomeController::class, 'markChatAsRead'])->name('chat.markRead');
 
-Route::get('/articles', [FrontendArticleController::class, 'index'])->name('frontend.articles');
-Route::get('/articles/{slug}', [FrontendArticleController::class, 'show'])->name('frontend.articles.show');
-Route::post('/articles/{id}/comment', [FrontendArticleController::class, 'storeComment'])->name('frontend.articles.comment')->middleware('auth');
-Route::put('/articles/blog-comments/{id}', [FrontendArticleController::class, 'updateComment'])->name('frontend.articles.comment.update')->middleware('auth');
-Route::delete('/articles/blog-comments/{id}', [FrontendArticleController::class, 'deleteComment'])->name('frontend.articles.comment.delete')->middleware('auth');
-Route::post('/articles/{id}/react', [FrontendArticleController::class, 'toggleReaction'])->name('frontend.articles.react')->middleware('auth');
-
-
-Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
-Route::post('/cart/add', [CartController::class, 'add'])->name('cart.add');
-Route::post('/cart/remove/{id}', [CartController::class, 'remove'])->name('cart.remove');
-Route::post('/cart/update/{id}', [CartController::class, 'update'])->name('cart.update');
+    Route::get('/articles', [FrontendArticleController::class, 'index'])->name('frontend.articles');
+    Route::get('/articles/{slug}', [FrontendArticleController::class, 'show'])->name('frontend.articles.show');
+    Route::post('/articles/{id}/comment', [FrontendArticleController::class, 'storeComment'])->name('frontend.articles.comment')->middleware('auth');
+    Route::put('/articles/blog-comments/{id}', [FrontendArticleController::class, 'updateComment'])->name('frontend.articles.comment.update')->middleware('auth');
+    Route::delete('/articles/blog-comments/{id}', [FrontendArticleController::class, 'deleteComment'])->name('frontend.articles.comment.delete')->middleware('auth');
+    Route::post('/articles/{id}/react', [FrontendArticleController::class, 'toggleReaction'])->name('frontend.articles.react')->middleware('auth');
 
 
-// Protected checkout routes
-Route::middleware('user')->group(function () {
-    Route::get('/checkout', [CheckoutController::class, 'checkoutIndex'])->name('checkout.index');
-    Route::post('/place-order', [CheckoutController::class, 'placeOrder'])->name('checkout.placeOrder');
-});
+    Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+    Route::post('/cart/add', [CartController::class, 'add'])->name('cart.add');
+    Route::post('/cart/remove/{id}', [CartController::class, 'remove'])->name('cart.remove');
+    Route::post('/cart/update/{id}', [CartController::class, 'update'])->name('cart.update');
 
-Route::get('/orders/success/{order}', [CheckoutController::class, 'success'])->name('orders.success');
-Route::get('/orders/{order}/invoice/download', [CheckoutController::class, 'downloadInvoice'])->name('orders.invoice.download')->middleware('user');
 
-// Accept both GET and POST for success, fail, cancel
-Route::match(['get','post'], '/ssl-success', [SslcommerzController::class, 'success'])->name('sslc.success');
-Route::match(['get','post'], '/ssl-fail', [SslcommerzController::class, 'fail'])->name('sslc.failure');
-Route::match(['get','post'], '/ssl-cancel', [SslcommerzController::class, 'cancel'])->name('sslc.cancel');
+    // Protected checkout routes
+    Route::middleware('user')->group(function () {
+        Route::get('/checkout', [CheckoutController::class, 'checkoutIndex'])->name('checkout.index');
+        Route::post('/place-order', [CheckoutController::class, 'placeOrder'])->name('checkout.placeOrder');
+    });
 
-// IPN is always POST
-Route::post('/ssl-ipn', [SslcommerzController::class, 'ipn'])->name('sslc.ipn');
+    Route::get('/orders/success/{order}', [CheckoutController::class, 'success'])->name('orders.success');
+    Route::get('/orders/{order}/invoice/download', [CheckoutController::class, 'downloadInvoice'])->name('orders.invoice.download')->middleware('user');
 
-// Pay route
-Route::get('/ssl-pay/{orderId}', [SslcommerzController::class, 'pay'])->name('sslc.pay');
+    // Accept both GET and POST for success, fail, cancel
+    Route::match(['get', 'post'], '/ssl-success', [SslcommerzController::class, 'success'])->name('sslc.success');
+    Route::match(['get', 'post'], '/ssl-fail', [SslcommerzController::class, 'fail'])->name('sslc.failure');
+    Route::match(['get', 'post'], '/ssl-cancel', [SslcommerzController::class, 'cancel'])->name('sslc.cancel');
 
-Route::get('/login', [AuthController::class, 'showAccountPage'])->name('user.auth.login');
-Route::post('/login', [AuthController::class, 'login'])->name('auth.login');
-Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('user.auth.register');
-Route::post('/register', [AuthController::class, 'register'])->name('auth.register');
+    // IPN is always POST
+    Route::post('/ssl-ipn', [SslcommerzController::class, 'ipn'])->name('sslc.ipn');
 
-// Password Recovery
-Route::get('/forgot-password', [AuthController::class, 'showForgotPasswordForm'])->name('password.request');
-Route::post('/forgot-password', [AuthController::class, 'sendResetLinkEmail'])->name('password.email');
-Route::get('/reset-password/{token}', [AuthController::class, 'showResetPasswordForm'])->name('password.reset');
-Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
-Route::prefix('user')->middleware('user')->group(function () {
-    Route::get('/dashboard', [UserDashboardController::class, 'userDashboard'])->name('user.dashboard');
-    Route::get('/profile', [UserDashboardController::class, 'profileIndex'])->name('user.profile');
-    Route::put('/profile', [UserDashboardController::class, 'updateProfile'])->name('profile.update');
-    //order routes
-    Route::get('/orders', [UserDashboardController::class, 'userOrders'])->name('user.orders.index');
-    Route::get('/orders/{order}', [UserDashboardController::class, 'userOrderDetails'])->name('user.orders.details');
-    Route::patch('/orders/{order}/cancel', [UserDashboardController::class, 'cancelOrder'])->name('user.orders.cancel');
-    
-    //track order
-    Route::get('/track-order', [UserDashboardController::class, 'trackOrderForm'])->name('user.orders.track');
-    Route::post('/track-order', [UserDashboardController::class, 'trackOrder'])->name('user.trackOrder.submit');
-    //user.messages.index
-    Route::get('/messages', [UserDashboardController::class, 'userMessages'])->name('user.messages.index');
-    Route::get('/messages/fetch', [UserDashboardController::class, 'fetchMessages'])->name('user.messages.fetch');
-    Route::post('/messages/send', [UserDashboardController::class, 'sendMessage'])->name('user.messages.send');
-    Route::post('/messages/mark-read', [UserDashboardController::class, 'markAsRead'])->name('user.messages.markRead');
+    // Pay route
+    Route::get('/ssl-pay/{orderId}', [SslcommerzController::class, 'pay'])->name('sslc.pay');
 
-    Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');
-});
+    Route::get('/login', [AuthController::class, 'showAccountPage'])->name('user.auth.login');
+    Route::post('/login', [AuthController::class, 'login'])->name('auth.login');
+    Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('user.auth.register');
+    Route::post('/register', [AuthController::class, 'register'])->name('auth.register');
 
-// Public/Shared Wishlist Routes
-Route::get('/wishlist', [\App\Http\Controllers\WishlistController::class, 'index'])->name('wishlist.index');
-Route::get('/wishlist/fetch', [\App\Http\Controllers\WishlistController::class, 'fetchWishlist'])->name('wishlist.fetch');
-Route::post('/wishlist/toggle/{product}', [\App\Http\Controllers\WishlistController::class, 'toggle'])->name('wishlist.toggle');
-Route::delete('/wishlist/remove/{id}', [\App\Http\Controllers\WishlistController::class, 'remove'])->name('wishlist.remove');
+    // Password Recovery
+    Route::get('/forgot-password', [AuthController::class, 'showForgotPasswordForm'])->name('password.request');
+    Route::post('/forgot-password', [AuthController::class, 'sendResetLinkEmail'])->name('password.email');
+    Route::get('/reset-password/{token}', [AuthController::class, 'showResetPasswordForm'])->name('password.reset');
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
+    Route::prefix('user')->middleware('user')->group(function () {
+        Route::get('/dashboard', [UserDashboardController::class, 'userDashboard'])->name('user.dashboard');
+        Route::get('/profile', [UserDashboardController::class, 'profileIndex'])->name('user.profile');
+        Route::put('/profile', [UserDashboardController::class, 'updateProfile'])->name('profile.update');
+        //order routes
+        Route::get('/orders', [UserDashboardController::class, 'userOrders'])->name('user.orders.index');
+        Route::get('/orders/{order}', [UserDashboardController::class, 'userOrderDetails'])->name('user.orders.details');
+        Route::patch('/orders/{order}/cancel', [UserDashboardController::class, 'cancelOrder'])->name('user.orders.cancel');
+
+        //track order
+        Route::get('/track-order', [UserDashboardController::class, 'trackOrderForm'])->name('user.orders.track');
+        Route::post('/track-order', [UserDashboardController::class, 'trackOrder'])->name('user.trackOrder.submit');
+        //user.messages.index
+        Route::get('/messages', [UserDashboardController::class, 'userMessages'])->name('user.messages.index');
+        Route::get('/messages/fetch', [UserDashboardController::class, 'fetchMessages'])->name('user.messages.fetch');
+        Route::post('/messages/send', [UserDashboardController::class, 'sendMessage'])->name('user.messages.send');
+        Route::post('/messages/mark-read', [UserDashboardController::class, 'markAsRead'])->name('user.messages.markRead');
+
+        Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');
+    });
+
+    // Public/Shared Wishlist Routes
+    Route::get('/wishlist', [\App\Http\Controllers\WishlistController::class, 'index'])->name('wishlist.index');
+    Route::get('/wishlist/fetch', [\App\Http\Controllers\WishlistController::class, 'fetchWishlist'])->name('wishlist.fetch');
+    Route::post('/wishlist/toggle/{product}', [\App\Http\Controllers\WishlistController::class, 'toggle'])->name('wishlist.toggle');
+    Route::delete('/wishlist/remove/{id}', [\App\Http\Controllers\WishlistController::class, 'remove'])->name('wishlist.remove');
 
 });

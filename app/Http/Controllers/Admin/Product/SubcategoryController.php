@@ -56,30 +56,4 @@ class SubcategoryController extends Controller
 
         return back()->with('success', 'Subcategory deleted successfully.');
     }
-
-    // AJAX: get child categories by parent category ID
-    public function getSubcategories(Request $request)
-    {
-        $request->validate([
-            'category_id' => 'required|exists:categories,id',
-        ]);
-
-        $subcategories = Category::where('parent_id', $request->category_id)->get();
-
-        return response()->json($subcategories);
-    }
-
-    // AJAX: get categories by type
-    public function getCategoriesByType(Request $request)
-    {
-        $request->validate([
-            'type' => 'required|in:blog,product',
-        ]);
-
-        $categories = Category::where('type', $request->type)
-                               ->whereNull('parent_id')
-                               ->get();
-
-        return response()->json($categories);
-    }
 }

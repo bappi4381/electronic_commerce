@@ -30,6 +30,8 @@ class User extends Authenticatable
         'postal_code',
         'country',
         'is_email_verified',
+        'provider',
+        'provider_id',
     ];
 
     /**

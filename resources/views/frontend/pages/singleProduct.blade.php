@@ -57,65 +57,150 @@
             <span class="text-slate-900">{{ $product->name }}</span>
         </nav>
 
-        <div class="flex flex-col lg:flex-row gap-12 lg:gap-16">
-            <!-- Image Portfolio -->
-            <div class="w-full lg:w-1/2 space-y-6">
-                <div class="relative aspect-square bg-slate-50 rounded-2xl overflow-hidden border border-slate-100 flex items-center justify-center p-8 group">
-                    @if($product->images->count())
-                        <img src="{{ asset('storage/' . $product->images->first()->image) }}" 
-                             id="mainProductImage"
-                             alt="{{ $product->name }}" 
-                             class="w-full h-full object-contain transition-transform duration-500 group-hover:scale-[1.02]">
-                    @else
-                        <i class="bi bi-image text-slate-300 text-6xl"></i>
-                    @endif
-                    
-                    {{-- Reaction Badge --}}
-                    <div class="absolute top-6 left-6 flex items-center gap-2 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-xl border border-slate-100 shadow-sm z-10">
-                        <button @click="toggleLike" 
-                                :class="liked ? 'text-red-500' : 'text-slate-400 hover:text-red-500'"
-                                class="transition-colors outline-none flex items-center justify-center">
-                            <i class="bi text-lg" :class="liked ? 'bi-heart-fill' : 'bi-heart'"></i>
-                        </button>
-                        <span class="text-sm font-semibold text-slate-700" x-text="count"></span>
+        {{-- ═══════════════════════════════════════════════════════
+             Product Detail — Two-column layout (Gallery | Info)
+        ═══════════════════════════════════════════════════════ --}}
+        <div class="flex flex-col lg:flex-row gap-10 relative"
+             x-data="imageGallery()"
+             x-init="init()">
+
+            {{-- ══ LEFT: Gallery column (fixed 380px on desktop) ══ --}}
+            <div class="flex-shrink-0 w-full lg:w-[380px] relative" id="gallery-col">
+
+                {{-- Main image viewer --}}
+                <div id="daraz-main-box"
+                     class="relative w-full rounded-2xl border border-slate-200 bg-white overflow-hidden select-none"
+                     style="aspect-ratio:1/1; cursor:zoom-in;"
+                     @mousemove="onZoomMove($event, $el)"
+                     @mouseenter="zoomVisible = true"
+                     @mouseleave="zoomVisible = false"
+                     @click="openLightbox(activeIndex)">
+
+                    {{-- Product images (each absolutely stacked) --}}
+                    <div class="absolute inset-0 flex items-center justify-center p-4">
+                        @foreach($product->images as $i => $image)
+                        <img id="daraz-src-{{ $i }}"
+                             src="{{ asset('storage/' . $image->image) }}"
+                             alt="{{ $product->name }}"
+                             x-show="activeIndex === {{ $i }}"
+                             x-transition:enter="transition ease-out duration-200"
+                             x-transition:enter-start="opacity-0 scale-[0.98]"
+                             x-transition:enter-end="opacity-100 scale-100"
+                             class="w-full h-full object-contain select-none pointer-events-none"
+                             draggable="false">
+                        @endforeach
+
+                        @if($product->images->count() === 0)
+                        <div class="flex flex-col items-center gap-3 text-slate-300">
+                            <i class="bi bi-image text-6xl"></i>
+                            <span class="text-sm">No images yet</span>
+                        </div>
+                        @endif
                     </div>
 
+                    {{-- Badges --}}
                     @if($product->discount)
-                        <div class="absolute top-6 right-6 bg-[#20A7DB] text-white px-3 py-1 rounded-lg text-sm font-bold shadow-lg shadow-[#20A7DB]/20 border border-white/20">
-                            -{{ $product->discount }}%
-                        </div>
+                    <div class="absolute top-3 left-3 bg-[#F05537] text-white text-xs font-bold px-2.5 py-1 rounded-md shadow pointer-events-none z-10">
+                        -{{ $product->discount }}%
+                    </div>
+                    @endif
+
+                    {{-- Wishlist/Heart --}}
+                    <div class="absolute top-3 right-3 z-10">
+                        <button @click.stop="toggleLike"
+                                :class="liked ? 'text-red-500 border-red-200 bg-red-50' : 'text-slate-400 border-slate-200 bg-white hover:text-red-500 hover:bg-red-50'"
+                                class="w-9 h-9 border rounded-full flex items-center justify-center shadow-sm transition-all">
+                            <i class="bi text-sm" :class="liked ? 'bi-heart-fill' : 'bi-heart'"></i>
+                        </button>
+                        <p class="text-center text-[10px] text-slate-500 mt-0.5 font-semibold" x-text="count"></p>
+                    </div>
+
+                    {{-- Zoom hint icon --}}
+                    @if($product->images->count())
+                    <div class="absolute bottom-3 left-3 flex items-center gap-1 text-slate-400 text-[11px] pointer-events-none select-none">
+                        <i class="bi bi-zoom-in text-sm"></i>
+                        <span class="hidden sm:inline">Hover to zoom</span>
+                    </div>
+                    @endif
+
+                    {{-- Expand to fullscreen --}}
+                    @if($product->images->count())
+                    <button @click.stop="openLightbox(activeIndex)"
+                            class="absolute bottom-3 right-3 w-8 h-8 bg-white/80 backdrop-blur border border-slate-200 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-white transition-all shadow-sm z-10">
+                        <i class="bi bi-arrows-fullscreen text-xs"></i>
+                    </button>
                     @endif
                 </div>
-                
+
+                {{-- ── Thumbnail strip ── --}}
                 @if($product->images->count() > 1)
-                <div class="flex gap-4 overflow-x-auto pb-2 custom-scrollbar snap-x">
-                    @foreach($product->images as $image)
-                        <button type="button" 
-                                class="flex-shrink-0 w-20 h-20 bg-slate-50 rounded-xl border-2 {{ $loop->first ? 'border-primary' : 'border-transparent' }} p-2 transition-colors hover:border-primary snap-center outline-none thumbnail-box"
-                                onclick="
-                                    document.getElementById('mainProductImage').src = '{{ asset('storage/' . $image->image) }}';
-                                    document.querySelectorAll('.thumbnail-box').forEach(el => el.classList.remove('border-primary', 'border-transparent'));
-                                    document.querySelectorAll('.thumbnail-box').forEach(el => el.classList.add('border-transparent'));
-                                    this.classList.remove('border-transparent');
-                                    this.classList.add('border-primary');
-                                ">
-                            <img src="{{ asset('storage/' . $image->image) }}" class="w-full h-full object-contain">
+                <div class="flex items-center gap-2 mt-3">
+                    <button @click="prev()"
+                            :disabled="activeIndex === 0"
+                            :class="activeIndex === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-slate-100 cursor-pointer'"
+                            class="flex-shrink-0 w-8 h-8 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-600 transition-all shadow-sm">
+                        <i class="bi bi-chevron-left text-xs"></i>
+                    </button>
+
+                    <div class="flex-1 flex gap-2 overflow-x-auto" style="scrollbar-width:none;">
+                        @foreach($product->images as $i => $image)
+                        <button @click="activeIndex = {{ $i }}; zoomVisible = false"
+                                :class="activeIndex === {{ $i }}
+                                    ? 'border-[#F05537] shadow-sm ring-2 ring-[#F05537]/20'
+                                    : 'border-slate-200 hover:border-slate-400'"
+                                class="flex-shrink-0 w-[62px] h-[62px] rounded-xl border-2 bg-white overflow-hidden p-1.5 transition-all outline-none">
+                            <img src="{{ asset('storage/' . $image->image) }}"
+                                 class="w-full h-full object-contain" alt="">
                         </button>
+                        @endforeach
+                    </div>
+
+                    <button @click="next()"
+                            :disabled="activeIndex === total - 1"
+                            :class="activeIndex === total - 1 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-slate-100 cursor-pointer'"
+                            class="flex-shrink-0 w-8 h-8 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-600 transition-all shadow-sm">
+                        <i class="bi bi-chevron-right text-xs"></i>
+                    </button>
+                </div>
+                @endif
+
+                {{-- ── Zoom panel (absolutely positioned, overlays right side) ── --}}
+                @if($product->images->count())
+                <div id="daraz-zoom-panel"
+                     x-show="zoomVisible"
+                     x-transition:enter="transition ease-out duration-150"
+                     x-transition:enter-start="opacity-0 scale-[0.98]"
+                     x-transition:enter-end="opacity-100 scale-100"
+                     x-cloak
+                     class="hidden lg:block absolute top-0 rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden z-30"
+                     style="left: calc(380px + 16px); width: 380px; aspect-ratio:1/1; pointer-events:none;">
+                    @foreach($product->images as $i => $image)
+                    <div x-show="activeIndex === {{ $i }}"
+                         class="absolute inset-0"
+                         style="overflow:hidden;">
+                        <img id="daraz-zoom-img-{{ $i }}"
+                             src="{{ asset('storage/' . $image->image) }}"
+                             class="absolute select-none pointer-events-none"
+                             style="width:250%; height:250%; object-fit:contain; top:0; left:0;"
+                             draggable="false">
+                    </div>
                     @endforeach
                 </div>
                 @endif
             </div>
 
-            <!-- Product Intel -->
-            <div class="w-full lg:w-1/2 flex flex-col justify-center">
-                <div class="mb-6 space-y-4">
-                    <div class="flex items-center gap-3">
+            {{-- ══ RIGHT: Product Info column ══ --}}
+            <div class="flex-1 flex flex-col justify-start min-w-0">
+
+                <div class="mb-5 space-y-3">
+                    {{-- Category + Stock status --}}
+                    <div class="flex flex-wrap items-center gap-3">
                         <span class="text-[10px] font-black uppercase tracking-[0.2em] text-primary bg-primary/5 px-3 py-1 rounded-full">{{ $product->category->name ?? 'Electronics' }}</span>
                         <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
-                        
+
                         <template x-if="currentVariantStock > 0">
                             <span class="text-sm font-medium flex items-center gap-1.5" :class="currentVariantStock <= 10 ? 'text-amber-500' : 'text-emerald-600'">
-                                <i class="bi bi-check-circle-fill"></i> 
+                                <i class="bi bi-check-circle-fill"></i>
                                 <span x-text="currentVariantStock <= 10 ? `{{ __('Only') }} ${currentVariantStock} {{ __('left!') }}` : `{{ __('In Stock') }} (${currentVariantStock})`"></span>
                             </span>
                         </template>
@@ -130,93 +215,167 @@
                             </span>
                         </template>
                     </div>
-                    
-                    <h1 class="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-tight uppercase italic">{{ $product->name }}</h1>
-                    
-                    <div class="flex items-baseline gap-4 mt-2">
-                        <span class="text-4xl font-black text-slate-900 tracking-tighter italic" x-text="`৳ ${formatPrice(currentVariantPrice)}`"></span>
+
+                    {{-- Product title --}}
+                    <h1 class="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight leading-tight">{{ $product->name }}</h1>
+
+                    {{-- Price row --}}
+                    <div class="flex flex-wrap items-baseline gap-3 pt-1">
+                        <span class="text-3xl font-black text-slate-900" x-text="`৳ ${formatPrice(currentVariantPrice)}`"></span>
                         <template x-if="currentDiscount > 0">
-                            <div class="flex items-baseline gap-4">
-                                <span class="text-xl text-slate-400 line-through font-bold" x-text="`৳ ${formatPrice(currentBasePrice)}`"></span>
-                                <span class="bg-[#20A7DB] text-white text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-widest shadow-lg shadow-[#20A7DB]/20 border border-white/20" x-text="`{{ __('Save') }} ${currentDiscount}%`"></span>
+                            <div class="flex items-baseline gap-3">
+                                <span class="text-lg text-slate-400 line-through font-semibold" x-text="`৳ ${formatPrice(currentBasePrice)}`"></span>
+                                <span class="bg-[#F05537] text-white text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest" x-text="`-${currentDiscount}%`"></span>
                             </div>
                         </template>
                     </div>
                 </div>
 
-                {{-- Key Specs Grid --}}
-                <div class="grid grid-cols-2 gap-6 py-5 border-y border-slate-100 mb-6">
+                {{-- Divider --}}
+                <div class="border-t border-slate-100 mb-5"></div>
+
+                {{-- Key specs --}}
+                <div class="grid grid-cols-2 gap-x-8 gap-y-4 mb-6">
                     @foreach([['Brand','brand'],['Model','model'],['Warranty','warranty_period']] as $spec)
-                        <div>
-                            <p class="text-sm text-slate-500 mb-1">{{ __($spec[0]) }}</p>
-                            <p class="text-base font-semibold text-slate-900">{{ $product->{$spec[1]} ?? 'N/A' }}</p>
-                        </div>
+                    <div>
+                        <p class="text-xs text-slate-400 uppercase tracking-wide mb-0.5">{{ __($spec[0]) }}</p>
+                        <p class="text-sm font-semibold text-slate-900">{{ $product->{$spec[1]} ?? '—' }}</p>
+                    </div>
                     @endforeach
                     <div>
-                        <p class="text-sm text-slate-500 mb-1">{{ __('SKU') }}</p>
-                        <p class="text-base font-semibold text-slate-900" x-text="currentVariantSku"></p>
+                        <p class="text-xs text-slate-400 uppercase tracking-wide mb-0.5">{{ __('SKU') }}</p>
+                        <p class="text-sm font-semibold text-slate-900" x-text="currentVariantSku"></p>
                     </div>
                 </div>
 
                 {{-- Variant Selector --}}
                 @if($availableAttributes->isNotEmpty())
-                    <div class="space-y-5 mb-8 bg-slate-50 p-5 rounded-2xl border border-slate-100">
-                        @foreach($availableAttributes as $attr)
-                            <div>
-                                <h3 class="text-sm font-bold text-slate-800 mb-3 uppercase tracking-wider">{{ $attr['name'] }}</h3>
-                                <div class="flex flex-wrap gap-2">
-                                    @foreach($attr['values'] as $val)
-                                        <button @click="selectAttribute({{ $attr['id'] }}, {{ $val['id'] }})"
-                                                :class="selectedAttributes[{{ $attr['id'] }}] === {{ $val['id'] }} ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400'"
-                                                class="px-4 py-2 border rounded-xl text-sm font-semibold transition-all">
-                                            {{ $val['value'] }}
-                                        </button>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @endforeach
+                <div class="space-y-4 mb-6 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    @foreach($availableAttributes as $attr)
+                    <div>
+                        <h3 class="text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">{{ $attr['name'] }}</h3>
+                        <div class="flex flex-wrap gap-2">
+                            @foreach($attr['values'] as $val)
+                            <button @click="selectAttribute({{ $attr['id'] }}, {{ $val['id'] }})"
+                                    :class="selectedAttributes[{{ $attr['id'] }}] === {{ $val['id'] }} ? 'bg-slate-900 text-white border-slate-900 shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400'"
+                                    class="px-3.5 py-1.5 border rounded-lg text-sm font-semibold transition-all">
+                                {{ $val['value'] }}
+                            </button>
+                            @endforeach
+                        </div>
                     </div>
+                    @endforeach
+                </div>
                 @endif
 
-                <div class="flex flex-col sm:flex-row gap-3 mb-8">
+                {{-- CTA Buttons --}}
+                <div class="flex flex-col sm:flex-row gap-3 mb-6">
                     <form action="{{ route('cart.add') }}" method="POST" class="flex-1 flex gap-3" @submit="validateCartForm">
                         @csrf
                         <input type="hidden" name="product_id" value="{{ $product->id }}">
                         <input type="hidden" name="variant_id" :value="currentVariantId">
-                        
-                        <button type="submit" :disabled="currentVariantStock <= 0 || (hasVariants && !currentVariantId)"
-                                class="flex-1 bg-slate-900 text-white py-4 px-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:bg-[#20A7DB] transition-all disabled:opacity-50 disabled:cursor-not-allowed group">
-                            <i class="bi bi-cart-plus text-lg group-hover:rotate-12 transition-transform"></i>
+
+                        <button type="submit"
+                                :disabled="currentVariantStock <= 0 || (hasVariants && !currentVariantId)"
+                                class="flex-1 bg-slate-900 text-white py-3.5 px-5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#20A7DB] transition-all disabled:opacity-40 disabled:cursor-not-allowed group">
+                            <i class="bi bi-cart-plus text-base group-hover:rotate-12 transition-transform"></i>
                             <span x-text="(hasVariants && !currentVariantId) ? '{{ __('Select Options') }}' : '{{ __('Add to Cart') }}'"></span>
                         </button>
 
-                        <button type="submit" name="buy_now" value="1" :disabled="currentVariantStock <= 0 || (hasVariants && !currentVariantId)"
-                                class="flex-1 bg-[#20A7DB] text-white py-4 px-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:bg-[#1c96c5] shadow-lg shadow-[#20A7DB]/30 hover:shadow-[#20A7DB]/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                            <i class="bi bi-bag-check text-lg"></i>
+                        <button type="submit" name="buy_now" value="1"
+                                :disabled="currentVariantStock <= 0 || (hasVariants && !currentVariantId)"
+                                class="flex-1 bg-[#20A7DB] text-white py-3.5 px-5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#1c96c5] shadow-lg shadow-[#20A7DB]/30 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                            <i class="bi bi-bag-check text-base"></i>
                             {{ __('Order Now') }}
                         </button>
                     </form>
 
-                    <button @click.prevent="$dispatch('toggle-wishlist', { id: {{ $product->id }} })" 
-                            class="w-full sm:w-auto py-4 px-6 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-colors font-medium flex items-center justify-center gap-2" title="Add to Wishlist">
-                        <i class="bi bi-heart text-lg"></i>
+                    <button @click.prevent="$dispatch('toggle-wishlist', { id: {{ $product->id }} })"
+                            class="sm:w-auto py-3.5 px-5 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-colors flex items-center justify-center gap-2" title="{{ __('Add to Wishlist') }}">
+                        <i class="bi bi-heart text-base"></i>
+                        <span class="sm:hidden text-sm font-medium">Wishlist</span>
                     </button>
                 </div>
 
                 {{-- Trust Badge --}}
-                <div class="p-5 bg-slate-50 rounded-xl border border-slate-100 flex items-center gap-4">
-                    <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-emerald-600 shadow-sm shrink-0">
-                        <i class="bi bi-shield-check text-xl"></i>
+                <div class="p-4 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center gap-3">
+                    <div class="w-9 h-9 bg-white rounded-lg flex items-center justify-center text-emerald-600 shadow-sm shrink-0">
+                        <i class="bi bi-shield-check-fill text-lg"></i>
                     </div>
                     <div>
-                        <h6 class="text-sm font-semibold text-slate-900">{{ __('Authentic Product') }}</h6>
-                        <p class="text-sm text-slate-500 mt-0.5">{{ __('100% Genuine product sourced from official distributors.') }}</p>
+                        <h6 class="text-sm font-bold text-emerald-800">{{ __('Authentic Product') }}</h6>
+                        <p class="text-xs text-emerald-700 mt-0.5">{{ __('100% Genuine product sourced from official distributors.') }}</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        {{-- Interactive Information Hub --}}
+        {{-- ── Lightbox Overlay ── --}}
+
+        @if($product->images->count())
+        <div x-show="lightboxOpen"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             @keydown.escape.window="lightboxOpen = false"
+             @keydown.arrow-left.window="lightboxPrev()"
+             @keydown.arrow-right.window="lightboxNext()"
+             class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-sm"
+             x-cloak>
+
+            {{-- Close --}}
+            <button @click="lightboxOpen = false"
+                    class="absolute top-5 right-5 w-10 h-10 bg-white/10 hover:bg-white/20 text-white rounded-full flex items-center justify-center transition-colors z-10">
+                <i class="bi bi-x-lg text-lg"></i>
+            </button>
+
+            {{-- Counter --}}
+            <div class="absolute top-5 left-1/2 -translate-x-1/2 text-white/70 text-sm font-medium">
+                <span x-text="lightboxIndex + 1"></span> / {{ $product->images->count() }}
+            </div>
+
+            {{-- Main lightbox image --}}
+            <div class="relative max-w-4xl max-h-[80vh] w-full mx-6 flex items-center justify-center">
+                @foreach($product->images as $i => $image)
+                <img x-show="lightboxIndex === {{ $i }}"
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0 scale-95"
+                     x-transition:enter-end="opacity-100 scale-100"
+                     src="{{ asset('storage/' . $image->image) }}"
+                     class="max-w-full max-h-[75vh] object-contain rounded-xl select-none"
+                     alt="{{ $product->name }}" x-cloak>
+                @endforeach
+            </div>
+
+            {{-- Prev / Next --}}
+            @if($product->images->count() > 1)
+            <button @click="lightboxPrev()"
+                    class="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 text-white rounded-full flex items-center justify-center transition-colors">
+                <i class="bi bi-chevron-left text-xl"></i>
+            </button>
+            <button @click="lightboxNext()"
+                    class="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 text-white rounded-full flex items-center justify-center transition-colors">
+                <i class="bi bi-chevron-right text-xl"></i>
+            </button>
+
+            {{-- Thumbnail strip --}}
+            <div class="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-2 overflow-x-auto max-w-sm px-4" style="scrollbar-width:none;">
+                @foreach($product->images as $i => $image)
+                <button @click="lightboxIndex = {{ $i }}"
+                        :class="lightboxIndex === {{ $i }} ? 'border-white opacity-100' : 'border-transparent opacity-50 hover:opacity-80'"
+                        class="flex-shrink-0 w-12 h-12 rounded-lg border-2 overflow-hidden transition-all">
+                    <img src="{{ asset('storage/' . $image->image) }}" class="w-full h-full object-contain bg-white/10">
+                </button>
+                @endforeach
+            </div>
+            @endif
+        </div>
+        @endif
+
+
         <div class="mt-20">
             {{-- Tab Triggers --}}
             <div class="flex flex-wrap justify-start gap-2 mb-8 border-b border-slate-200">
@@ -487,6 +646,68 @@ function productPageHandler() {
             } catch (error) {
                 console.error('Error toggling reaction:', error);
             }
+        }
+    }
+}
+function imageGallery() {
+    return {
+        activeIndex: 0,
+        lightboxOpen: false,
+        lightboxIndex: 0,
+        zoomVisible: false,
+        total: {{ $product->images->count() }},
+
+        init() {
+            this.activeIndex = 0;
+        },
+
+        prev() {
+            if (this.activeIndex > 0) this.activeIndex--;
+        },
+
+        next() {
+            if (this.activeIndex < this.total - 1) this.activeIndex++;
+        },
+
+        openLightbox(index) {
+            this.lightboxIndex = index;
+            this.lightboxOpen = true;
+            this.zoomVisible = false;
+        },
+
+        lightboxPrev() {
+            this.lightboxIndex = (this.lightboxIndex - 1 + this.total) % this.total;
+        },
+
+        lightboxNext() {
+            this.lightboxIndex = (this.lightboxIndex + 1) % this.total;
+        },
+
+        onZoomMove(event, el) {
+            // Get bounding rect of the main image box
+            const rect = el.getBoundingClientRect();
+            const x = event.clientX - rect.left;   // mouse X relative to box
+            const y = event.clientY - rect.top;    // mouse Y relative to box
+            const pctX = x / rect.width;           // 0..1
+            const pctY = y / rect.height;          // 0..1
+
+            // Move the zoomed image inside the zoom box
+            // zoom factor is 2.5x (250% width/height set in CSS)
+            const zoomFactor = 2.5;
+            const zoomBox = document.getElementById('daraz-zoom-box');
+            if (!zoomBox) return;
+            const zoomW = zoomBox.offsetWidth;
+            const zoomH = zoomBox.offsetHeight;
+
+            const imgEl = document.getElementById('daraz-zoom-img-' + this.activeIndex);
+            if (!imgEl) return;
+
+            // The img is 250% of the zoom box, so it overflows by (250%-100%) = 150%
+            const overflowX = zoomW * (zoomFactor - 1);
+            const overflowY = zoomH * (zoomFactor - 1);
+
+            imgEl.style.left = (-pctX * overflowX) + 'px';
+            imgEl.style.top  = (-pctY * overflowY) + 'px';
         }
     }
 }

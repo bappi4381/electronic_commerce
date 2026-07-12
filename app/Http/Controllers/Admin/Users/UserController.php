@@ -98,9 +98,10 @@ class UserController extends Controller
     // Delete user
     public function destroy(User $user)
     {
-        $user->delete();
-        $user->orders()->delete();
+        // Delete related data BEFORE deleting the user
         $user->orderItems()->delete();
+        $user->orders()->delete();
+        $user->delete();
         return redirect()->route('users.index')->with('success', 'User deleted successfully!');
     }
 

@@ -29,6 +29,11 @@ class SetLocale
             URL::defaults(['locale' => 'en']);
         }
 
+        // Forget the locale parameter so it's not injected into every controller method
+        if ($request->route()) {
+            $request->route()->forgetParameter('locale');
+        }
+
         return $next($request);
     }
 }

@@ -79,7 +79,27 @@
                     </button>
                 </form>
 
-                <div class="mt-12 pt-8 border-t border-slate-100 text-center">
+                <div class="relative my-8">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-slate-200"></div>
+                    </div>
+                    <div class="relative flex justify-center text-sm">
+                        <span class="px-4 bg-white text-slate-400 font-bold text-[10px] uppercase tracking-widest">Or continue with</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <a href="{{ route('social.redirect', 'google') }}" class="w-full py-4 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-slate-700 font-bold text-xs rounded-2xl transition-all flex items-center justify-center gap-3 shadow-sm">
+                        <i class="bi bi-google text-red-500 text-base"></i>
+                        Google
+                    </a>
+                    <a href="{{ route('social.redirect', 'facebook') }}" class="w-full py-4 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-slate-700 font-bold text-xs rounded-2xl transition-all flex items-center justify-center gap-3 shadow-sm">
+                        <i class="bi bi-facebook text-blue-600 text-base"></i>
+                        Facebook
+                    </a>
+                </div>
+
+                <div class="mt-8 pt-8 border-t border-slate-100 text-center">
                     <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                         Don't have an account yet? 
                         <a href="{{ route('user.auth.register') }}" class="text-primary hover:underline ml-2">Create Account</a>

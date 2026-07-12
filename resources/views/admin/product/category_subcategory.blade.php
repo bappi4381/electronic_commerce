@@ -5,14 +5,30 @@
 <div class="space-y-10 pb-20" x-data="{ 
     editCategoryModal: false, 
     editSubcategoryModal: false,
-    editingCategory: { id: null, name: '', image: '', icon: '', color: '' },
+    editingCategory: { id: null, name: '', name_bn: '', image: '', icon: '', color: '' },
     editingSubcategory: { id: null, name: '', category_id: '' },
     openCategoryEdit(cat) {
-        this.editingCategory = { ...cat };
+        // name field is a JSON object e.g. {en: '...', bn: '...'} — extract properly
+        let nameEn = '';
+        let nameBn = '';
+        if (cat.name && typeof cat.name === 'object') {
+            nameEn = cat.name.en ?? '';
+            nameBn = cat.name.bn ?? '';
+        } else {
+            nameEn = cat.name ?? '';
+        }
+        this.editingCategory = { ...cat, name: nameEn, name_bn: nameBn };
         this.editCategoryModal = true;
     },
     openSubcategoryEdit(sub) {
-        this.editingSubcategory = { ...sub };
+        // sub.name may also be a JSON object
+        let subName = '';
+        if (sub.name && typeof sub.name === 'object') {
+            subName = sub.name.en ?? '';
+        } else {
+            subName = sub.name ?? '';
+        }
+        this.editingSubcategory = { ...sub, name: subName };
         this.editSubcategoryModal = true;
     }
 }">
@@ -201,9 +217,15 @@
                 <form :action="'{{ route('categories.update', ['category' => 'PLACEHOLDER']) }}'.replace('PLACEHOLDER', editingCategory.id)" method="POST" enctype="multipart/form-data" class="space-y-6">
                     @csrf
                     @method('PUT')
+                    {{-- English Name --}}
                     <div class="space-y-1.5">
-                        <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Category Designation</label>
+                        <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">🇬🇧 Category Name (English) <span class="text-red-400">*</span></label>
                         <input type="text" name="name" x-model="editingCategory.name" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-bold focus:ring-2 focus:ring-primary/10 outline-none transition-all" required>
+                    </div>
+                    {{-- Bangla Name --}}
+                    <div class="space-y-1.5">
+                        <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">🇧🇩 Category Name (বাংলা)</label>
+                        <input type="text" name="name_bn" x-model="editingCategory.name_bn" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-bold focus:ring-2 focus:ring-primary/10 outline-none transition-all" placeholder="বাংলা নাম লিখুন">
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div class="space-y-1.5">

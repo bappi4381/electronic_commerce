@@ -13,7 +13,7 @@ class SslcommerzController extends Controller
     /**
      * Initiate Payment
      */
-    public function pay($locale, $orderId)
+    public function pay($orderId)
     {
         $order = Order::find($orderId);
 
