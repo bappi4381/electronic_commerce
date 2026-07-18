@@ -197,25 +197,14 @@
                     </div>
                     <div class="w-full lg:w-1/2 hidden md:block">
                         <form action="{{ route('products.index') }}" method="GET"
-                            class="flex flex-col sm:flex-row bg-white rounded-xl lg:rounded-2xl overflow-hidden shadow-2xl min-h-[56px] group">
-                            <select name="category"
-                                class="bg-slate-50 px-6 lg:px-8 py-3 sm:py-0 text-slate-900 font-black text-[10px] lg:text-xs uppercase border-b sm:border-b-0 sm:border-r border-slate-100 outline-none appearance-none cursor-pointer hover:bg-slate-100 transition-colors tracking-widest">
-                                <option value="">{{ __('All Categories') }}</option>
-                                @foreach(\App\Models\Category::where('type', 'product')->get() as $cat)
-                                    <option value="{{ $cat->id }}" {{ request('category') == $cat->id ? 'selected' : '' }}>
-                                        {{ $cat->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <div class="flex flex-1">
-                                <input type="text" name="search"
-                                    class="flex-1 px-6 py-4 sm:py-0 text-slate-900 text-sm font-bold outline-none placeholder-slate-400"
-                                    placeholder="{{ __('What are you looking for?') }}">
-                                <button type="submit"
-                                    class="bg-primary hover:bg-primary-dark text-white px-6 lg:px-10 transition-all flex items-center gap-2 active:scale-95">
-                                    <i class="bi bi-search text-lg"></i>
-                                </button>
-                            </div>
+                            class="flex bg-white rounded-xl lg:rounded-2xl overflow-hidden shadow-2xl min-h-[56px] group w-full">
+                            <input type="text" name="search"
+                                class="flex-grow px-8 text-slate-900 text-sm font-semibold outline-none placeholder-slate-400"
+                                placeholder="{{ __('Search in Onemall...') }}">
+                            <button type="submit"
+                                class="bg-primary hover:bg-primary-dark text-white px-8 lg:px-12 transition-all flex items-center gap-2 active:scale-95">
+                                <i class="bi bi-search text-lg"></i>
+                            </button>
                         </form>
                     </div>
                     <div class="w-full lg:w-1/4 hidden lg:flex justify-end items-center gap-6">

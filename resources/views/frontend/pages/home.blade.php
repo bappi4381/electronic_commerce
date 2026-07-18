@@ -262,15 +262,49 @@ function getCategoryStyle($color, $colorMap) {
     <!-- Desktop Original Layout Container -->
     <div class="hidden md:block">
     <!-- Main Hero Slider Area -->
-    <section class="relative bg-white pt-4 sm:pt-8">
+    <section class="relative bg-white pt-6">
         <div class="max-w-7xl mx-auto px-4">
-            <div class="flex flex-col lg:flex-row gap-4 sm:gap-6">
-                <!-- Main Slider (Left 75%) -->
-                <div class="w-full lg:w-3/4">
+            <div class="flex gap-6 h-[380px] md:h-[400px]">
+                
+                <!-- Left Categories Sidebar (Daraz Style) -->
+                <div class="hidden lg:block w-[240px] flex-shrink-0 bg-white border border-slate-200/80 rounded-3xl p-3 shadow-sm h-full overflow-y-auto relative z-50">
+                    <div class="space-y-1">
+                        @foreach(\App\Models\Category::whereNull('parent_id')->where('type', 'product')->with('children')->get() as $cat)
+                            <div class="home-cat-item group/item flex items-center justify-between px-4 py-2.5 rounded-xl cursor-pointer hover:bg-slate-50 hover:text-primary transition-all">
+                                <a href="{{ route('products.index', ['category' => $cat->id]) }}" class="flex items-center gap-3 no-underline text-slate-700 font-bold text-xs uppercase tracking-wider">
+                                    <i class="bi {{ $cat->icon ?? 'bi-grid' }} text-slate-400 text-sm"></i>
+                                    <span>{{ $cat->getTranslation('name', 'en') }}</span>
+                                </a>
+                                @if($cat->children->count() > 0)
+                                    <i class="bi bi-chevron-right text-[9px] opacity-40"></i>
+                                    
+                                    {{-- Subcategories flyout panel --}}
+                                    <div class="absolute left-full top-0 ml-2 w-[480px] bg-white border border-slate-100 shadow-2xl rounded-3xl p-6 hidden group-hover/item:block min-h-[380px] z-50">
+                                        <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
+                                            <h4 class="text-xs font-black uppercase tracking-widest text-slate-900">{{ $cat->getTranslation('name', 'en') }}</h4>
+                                            <a href="{{ route('products.index', ['category' => $cat->id]) }}" class="text-[9px] font-black text-primary uppercase tracking-widest hover:underline">View All</a>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            @foreach($cat->children as $sub)
+                                                <a href="{{ route('products.index', ['category' => $sub->id]) }}" class="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-50 text-slate-600 hover:text-primary no-underline text-xs font-semibold">
+                                                    <i class="bi {{ $sub->icon ?? 'bi-tag' }} text-[10px] text-slate-400"></i>
+                                                    <span>{{ $sub->getTranslation('name', 'en') }}</span>
+                                                </a>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+
+                <!-- Middle Slider (Center 55%) -->
+                <div class="flex-1 min-w-0 h-full">
                     @if($heroBanner)
-                    <div class="relative rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden group bg-slate-900 aspect-[4/5] sm:aspect-square md:aspect-[16/8] lg:aspect-[16/7] flex items-center shadow-2xl shadow-slate-200/50">
+                    <div class="relative rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden group bg-slate-900 h-full flex items-center shadow-2xl shadow-slate-200/50">
                         <div class="absolute inset-0 bg-gradient-to-t sm:bg-gradient-to-r from-slate-900/95 via-slate-900/60 sm:via-slate-900/40 to-transparent z-10"></div>
-                        <div class="relative z-20 p-6 sm:p-8 lg:p-16 space-y-4 sm:space-y-6 max-w-2xl mt-auto sm:mt-0 w-full">
+                        <div class="relative z-20 p-6 sm:p-8 lg:p-12 space-y-4 sm:space-y-6 max-w-2xl mt-auto sm:mt-0 w-full">
                             <div class="inline-flex items-center gap-2 sm:gap-3 px-3 py-1.5 sm:px-4 sm:py-2 bg-primary/20 sm:bg-primary/10 border border-primary/30 sm:border-primary/20 rounded-full backdrop-blur-sm">
                                 <span class="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-primary rounded-full animate-pulse"></span>
                                 <span class="text-white sm:text-primary font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] text-[9px] sm:text-[10px]">{{ $heroBanner->subtitle ?? 'Best Selection' }}</span>
@@ -290,9 +324,9 @@ function getCategoryStyle($color, $colorMap) {
                         <img src="{{ asset('storage/' . $heroBanner->image) }}" class="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-[2000ms]" alt="{{ $heroBanner->title }}">
                     </div>
                     @else
-                    <div class="relative rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden group bg-slate-900 aspect-[4/5] sm:aspect-square md:aspect-[16/8] lg:aspect-[16/7] flex items-center shadow-2xl shadow-slate-200/50">
+                    <div class="relative rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden group bg-slate-900 h-full flex items-center shadow-2xl shadow-slate-200/50">
                         <div class="absolute inset-0 bg-gradient-to-t sm:bg-gradient-to-r from-slate-900/95 via-slate-900/60 sm:via-slate-900/40 to-transparent z-10"></div>
-                        <div class="relative z-20 p-6 sm:p-8 lg:p-16 space-y-4 sm:space-y-6 max-w-2xl mt-auto sm:mt-0 w-full">
+                        <div class="relative z-20 p-6 sm:p-8 lg:p-12 space-y-4 sm:space-y-6 max-w-2xl mt-auto sm:mt-0 w-full">
                             <div class="inline-flex items-center gap-2 sm:gap-3 px-3 py-1.5 sm:px-4 sm:py-2 bg-primary/20 sm:bg-primary/10 border border-primary/30 sm:border-primary/20 rounded-full backdrop-blur-sm">
                                 <span class="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-primary rounded-full animate-pulse"></span>
                                 <span class="text-white sm:text-primary font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] text-[9px] sm:text-[10px]">Premium Selection 2026</span>
@@ -313,36 +347,56 @@ function getCategoryStyle($color, $colorMap) {
                     </div>
                     @endif
                 </div>
-                <!-- Sub Banners (Right 25%) -->
-                <div class="w-full lg:w-1/4 flex flex-col gap-4 sm:gap-6">
-                    @forelse($subBanners as $subBanner)
-                    <div class="flex-1 relative rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden group bg-slate-900 text-white p-6 sm:p-10 flex flex-col justify-end border border-white/5 shadow-xl min-h-[160px]">
-                         <div class="relative z-10 space-y-2 sm:space-y-3">
-                            <span class="text-[9px] sm:text-[10px] font-black text-primary uppercase tracking-[0.2em] sm:tracking-[0.3em] drop-shadow-md">{{ $subBanner->subtitle }}</span>
-                            <h4 class="text-base sm:text-lg lg:text-xl font-black leading-tight uppercase italic tracking-tighter drop-shadow-lg">{{ $subBanner->title }}</h4>
-                            <a href="{{ $subBanner->link ?? '#' }}" class="inline-flex items-center gap-2 text-[10px] font-black uppercase text-white border-b-2 border-primary pb-1 group-hover:gap-4 transition-all">{{ __('Buy Now') }} <i class="bi bi-chevron-right"></i></a>
-                         </div>
-                         <img src="{{ asset('storage/' . $subBanner->image) }}" class="absolute top-0 right-0 w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform duration-700" alt="{{ $subBanner->title }}">
+
+                <!-- Right Sidebar (App download banner, 20%) -->
+                <div class="hidden xl:flex w-[240px] flex-shrink-0 bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-5 text-white flex-col justify-between shadow-2xl relative overflow-hidden h-full">
+                    <!-- Decorative backdrops -->
+                    <div class="absolute -top-10 -right-10 w-32 h-32 bg-primary/10 rounded-full blur-2xl pointer-events-none"></div>
+                    <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-primary/15 rounded-full blur-2xl pointer-events-none"></div>
+                    
+                    <div class="space-y-4 relative z-10">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 bg-primary/20 rounded-xl flex items-center justify-center text-primary shadow-inner">
+                                <i class="bi bi-phone-vibrate text-lg"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-[11px] font-black tracking-widest text-primary uppercase">Onemall App</h4>
+                                <div class="flex items-center gap-1 mt-0.5">
+                                    <div class="flex text-amber-400 text-[8px]">
+                                        <i class="bi bi-star-fill"></i>
+                                        <i class="bi bi-star-fill"></i>
+                                        <i class="bi bi-star-fill"></i>
+                                        <i class="bi bi-star-fill"></i>
+                                        <i class="bi bi-star-fill"></i>
+                                    </div>
+                                    <span class="text-[8px] text-slate-400 font-bold">4.8 Rated</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-300 font-medium leading-relaxed">Download our app to get exclusive deals, free delivery voucher and lightning support.</p>
                     </div>
-                     @empty
-                    <div class="flex-1 relative rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden group bg-slate-900 text-white p-6 sm:p-10 flex flex-col justify-end border border-white/5 shadow-xl min-h-[160px]">
-                         <div class="relative z-10 space-y-2 sm:space-y-3">
-                            <span class="text-[9px] sm:text-[10px] font-black text-primary uppercase tracking-[0.2em] sm:tracking-[0.3em] drop-shadow-md">iPad Pro 2026</span>
-                            <h4 class="text-base sm:text-lg lg:text-xl font-black leading-tight uppercase italic tracking-tighter drop-shadow-lg">12.9-inch Liquid<br>Retina Display</h4>
-                            <a href="#" class="inline-flex items-center gap-2 text-[9px] sm:text-[10px] font-black uppercase text-white border-b-2 border-primary pb-1 group-hover:gap-4 transition-all w-max">{{ __('Buy Now') }} <i class="bi bi-chevron-right"></i></a>
-                         </div>
-                         <img src="https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?q=80&w=500&auto=format&fit=crop" class="absolute top-0 right-0 w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform duration-700" alt="iPad">
+
+                    <div class="bg-white/5 border border-white/10 rounded-2xl p-3 flex items-center gap-3 relative z-10 hover:bg-white/10 transition-colors">
+                        <div class="w-16 h-16 bg-white rounded-lg flex items-center justify-center p-1.5 shadow-md flex-shrink-0">
+                            <i class="bi bi-qr-code text-slate-900 text-3xl"></i>
+                        </div>
+                        <div class="text-left">
+                            <span class="text-[9px] font-black uppercase text-primary tracking-widest block mb-0.5">Scan to get</span>
+                            <span class="text-[10px] font-bold text-white block">Free Delivery</span>
+                            <span class="text-[8px] text-slate-400 font-semibold block mt-0.5">Limited Time Offer</span>
+                        </div>
                     </div>
-                    <div class="flex-1 relative rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden group bg-slate-100 p-6 sm:p-10 flex flex-col justify-end border border-slate-200 shadow-xl min-h-[160px]">
-                         <div class="relative z-10 space-y-2 sm:space-y-3">
-                            <span class="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] sm:tracking-[0.3em]">Beats Solo Pro</span>
-                            <h4 class="text-base sm:text-lg lg:text-xl font-black leading-tight text-slate-900 uppercase italic tracking-tighter">Experience Pure<br>Acoustic Sound</h4>
-                            <a href="#" class="inline-flex items-center gap-2 text-[9px] sm:text-[10px] font-black uppercase text-slate-900 border-b-2 border-primary pb-1 group-hover:gap-4 transition-all w-max">{{ __('Buy Now') }} <i class="bi bi-chevron-right"></i></a>
-                         </div>
-                         <img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=500&auto=format&fit=crop" class="absolute top-0 right-0 w-full h-full object-cover opacity-20 group-hover:scale-110 transition-transform duration-700" alt="Headphones">
+
+                    <div class="space-y-2 relative z-10">
+                        <a href="#" class="flex items-center justify-center gap-2 bg-white text-slate-900 py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-primary hover:text-white transition-all shadow-md">
+                            <i class="bi bi-apple"></i> App Store
+                        </a>
+                        <a href="#" class="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 border border-white/10 text-white py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all">
+                            <i class="bi bi-play-btn-fill text-primary"></i> Google Play
+                        </a>
                     </div>
-                    @endforelse
                 </div>
+
             </div>
         </div>
     </section>
@@ -672,21 +726,25 @@ function getCategoryStyle($color, $colorMap) {
         </div>
     </section>
 
-    <!-- Top Collection / Categories Icons -->
-    <section class="py-12 sm:py-24 bg-white">
+    <!-- Categories Grid (Daraz Style) -->
+    <section class="py-12 sm:py-20 bg-white">
         <div class="max-w-7xl mx-auto px-4">
-            <div class="text-center mb-10 sm:mb-16 space-y-3 sm:space-y-4">
-                <span class="text-primary font-black uppercase tracking-[0.2em] text-[10px] sm:text-xs">Browse By Category</span>
-                <h2 class="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tighter">Top Collections</h2>
-                <div class="w-12 sm:w-20 h-1.5 bg-primary rounded-full mx-auto"></div>
+            <div class="mb-8">
+                <h2 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Categories</h2>
             </div>
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6">
+            <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 border-t border-l border-slate-100 bg-white shadow-sm rounded-3xl overflow-hidden">
                 @foreach($allCategories as $cat)
-                    <a href="{{ route('products.index', ['category' => $cat->id]) }}" class="group p-6 sm:p-8 bg-slate-50 rounded-[2rem] sm:rounded-[40px] border border-transparent hover:border-primary hover:bg-white transition-all text-center no-underline">
-                        <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-[1.2rem] sm:rounded-3xl mx-auto mb-4 sm:mb-6 flex items-center justify-center text-3xl sm:text-4xl group-hover:scale-110 transition-transform" style="{{ getCategoryStyle($cat->color, $colorMap) }}">
-                            <i class="bi {{ $cat->icon ?? 'bi-tag' }}"></i>
+                    <a href="{{ route('products.index', ['category' => $cat->id]) }}" class="group block bg-white border-r border-b border-slate-100 p-4 hover:shadow-md transition-all text-center no-underline">
+                        <div class="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 flex items-center justify-center overflow-hidden">
+                            @if($cat->image)
+                                <img src="{{ asset('storage/' . $cat->image) }}" class="w-full h-full object-contain transition-transform duration-300 group-hover:scale-110" alt="{{ $cat->name }}">
+                            @else
+                                <div class="w-full h-full rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400">
+                                    <i class="bi {{ $cat->icon ?? 'bi-tag' }} text-2xl"></i>
+                                </div>
+                            @endif
                         </div>
-                        <h5 class="text-[10px] sm:text-xs font-black uppercase tracking-widest text-slate-900">{{ $cat->name }}</h5>
+                        <h5 class="text-[11px] sm:text-xs font-bold text-slate-700 group-hover:text-primary transition-colors line-clamp-2 leading-snug px-1">{{ $cat->name }}</h5>
                     </a>
                 @endforeach
             </div>
