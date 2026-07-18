@@ -50,12 +50,12 @@
 
         <!-- Top Bar -->
         <div
-            class="hidden md:block relative z-[90] bg-slate-950 py-2.5 text-[11px] text-white/70 border-b border-white/5">
+            class="hidden md:block sticky top-0 z-[1000] bg-slate-950 py-2.5 text-[11px] text-white/70 border-b border-white/5">
             <div class="max-w-7xl mx-auto px-4">
                 <div class="flex flex-row justify-between items-center gap-4">
                     <div class="flex items-center gap-6">
-                        <div class="relative group">
-                            <div
+                        <div x-data="{ langOpen: false }" class="relative">
+                            <button @click="langOpen = !langOpen" @click.away="langOpen = false"
                                 class="flex items-center gap-1.5 cursor-pointer hover:text-primary transition-colors py-2">
                                 @if(app()->getLocale() == 'en')
                                     <img src="https://flagcdn.com/w20/gb.png" width="16" alt="English" class="rounded-sm">
@@ -64,19 +64,17 @@
                                     <img src="https://flagcdn.com/w20/bd.png" width="16" alt="বাংলা" class="rounded-sm">
                                     <span class="font-bold uppercase tracking-widest">বাংলা</span>
                                 @endif
-                                <i class="bi bi-chevron-down text-[8px]"></i>
-                            </div>
-                            <div
-                                class="absolute left-0 mt-0 w-32 bg-white rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden border border-slate-100">
+                                <i class="bi bi-chevron-down text-[8px]" :class="langOpen ? 'rotate-180' : ''" style="transition: transform 0.2s"></i>
+                            </button>
+                            <div x-show="langOpen" x-transition x-cloak
+                                class="absolute left-0 top-full mt-1 w-36 bg-white rounded-xl shadow-2xl z-[200] overflow-hidden border border-slate-100">
                                 <a href="{{ route(Route::currentRouteName() ?? 'home', array_merge(request()->route() ? request()->route()->parameters() : [], ['locale' => 'en'])) }}"
                                     class="flex items-center gap-2 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary font-bold transition-colors border-b border-slate-50">
-                                    <img src="https://flagcdn.com/w20/gb.png" width="16" alt="English"
-                                        class="rounded-sm"> English
+                                    <img src="https://flagcdn.com/w20/gb.png" width="16" alt="English" class="rounded-sm"> English
                                 </a>
                                 <a href="{{ route(Route::currentRouteName() ?? 'home', array_merge(request()->route() ? request()->route()->parameters() : [], ['locale' => 'bn'])) }}"
                                     class="flex items-center gap-2 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary font-bold transition-colors">
-                                    <img src="https://flagcdn.com/w20/bd.png" width="16" alt="বাংলা" class="rounded-sm">
-                                    বাংলা
+                                    <img src="https://flagcdn.com/w20/bd.png" width="16" alt="বাংলা" class="rounded-sm"> বাংলা
                                 </a>
                             </div>
                         </div>
@@ -119,7 +117,7 @@
         </div>
 
         <!-- Main Header -->
-        <header class="bg-slate-900 py-4 lg:py-6 text-white sticky top-0 z-[999] shadow-2xl">
+        <header class="bg-slate-900 py-4 lg:py-6 text-white sticky top-[38px] z-[999] shadow-2xl">
             <div class="max-w-7xl mx-auto px-4">
                 <div class="flex flex-col lg:flex-row items-center justify-between gap-4 lg:gap-8">
                     <div class="w-full lg:w-1/4 flex items-center justify-between">

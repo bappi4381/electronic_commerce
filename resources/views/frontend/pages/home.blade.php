@@ -175,8 +175,8 @@
     <!-- Desktop Original Layout Container -->
     <div class="hidden md:block">
         <!-- Main Hero Slider Area -->
-        <section class="relative bg-white pt-6">
-            <div class="max-w-7xl mx-auto px-4">
+        <section class="relative">
+            <div class="max-w-7xl mx-auto px-4 pt-6">
                 <!-- Full Width Sliding Hero Banner (Desktop) -->
                 <div class="w-full h-[380px] md:h-[400px] relative rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden bg-slate-900 shadow-2xl group"
                     x-data="{ 
