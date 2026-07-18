@@ -126,8 +126,6 @@ class ProductSeeder extends Seeder
                 'price' => $price,
                 'discount' => $discount,
                 'discounted_price' => $discounted_price,
-                'is_featured' => rand(1, 10) <= 3, 
-                'is_best_seller' => rand(1, 10) <= 2, 
                 'is_flash_deal' => $isFlashDeal, 
                 'specifications' => $specifications,
                 'low_stock_threshold' => 5

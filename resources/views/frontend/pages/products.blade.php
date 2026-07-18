@@ -120,7 +120,7 @@
                     </div>
                 
                     <!-- Product Grid (Optimized for 2 Columns on Mobile, 4 on Desktop) -->
-                    <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6 lg:gap-8">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-6 lg:gap-8">
                         @forelse($products as $product)
                             <div class="group bg-white rounded-[20px] sm:rounded-[32px] border border-slate-100 p-3 sm:p-4 hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.1)] transition-all lg:hover:-translate-y-2 relative overflow-hidden flex flex-col justify-between">
                                 <div class="relative">

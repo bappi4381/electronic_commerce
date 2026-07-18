@@ -361,7 +361,7 @@
                     <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm">
                         <label class="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-4">Publish Settings</label>
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            @foreach(['is_featured' => ['⭐', 'Featured Product'], 'is_best_seller' => ['🔥', 'Best Seller'], 'is_flash_deal' => ['⚡', 'Flash Deal']] as $field => [$icon, $label])
+                            @foreach(['is_flash_deal' => ['⚡', 'Flash Deal']] as $field => [$icon, $label])
                             <label class="flex items-center gap-3 p-4 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-primary/40 hover:shadow-sm transition-all group">
                                 <input type="checkbox" name="{{ $field }}" value="1"
                                     {{ old($field, isset($product) && $product->$field ? '1' : '0') === '1' ? 'checked' : '' }}

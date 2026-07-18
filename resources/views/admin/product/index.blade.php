@@ -105,12 +105,7 @@
                                         @if($product->is_flash_deal)
                                             <span class="bg-slate-900 text-white text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-tighter">⚡ Flash</span>
                                         @endif
-                                        @if($product->is_featured)
-                                            <span class="bg-amber-100 text-amber-700 text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-tighter">⭐ Featured</span>
-                                        @endif
-                                        @if($product->is_best_seller)
-                                            <span class="bg-orange-100 text-orange-700 text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-tighter">🔥 Best Seller</span>
-                                        @endif
+
                                     </div>
                                 </div>
                             </div>

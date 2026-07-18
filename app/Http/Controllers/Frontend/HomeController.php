@@ -13,14 +13,8 @@ class HomeController extends Controller
 {
     public function index()
     {
-        // Get latest 8 products for the main tab
-        $latestProducts = Product::with('images')->latest()->take(8)->get();
-
-        // Get Best Selling products (Manual)
-        $bestSellers = Product::where('is_best_seller', true)->with('images')->latest()->take(8)->get();
-
-        // Get Featured products (Manual)
-        $featuredProducts = Product::where('is_featured', true)->with('images')->latest()->take(8)->get();
+        // Get initial 12 products for Just For You section
+        $latestProducts = Product::with('images')->latest()->take(15)->get();
 
         // Get top 4 categories with their latest 4 products for "New Arrivals" section
         $arrivalCategories = Category::where('type', 'product')
@@ -51,7 +45,7 @@ class HomeController extends Controller
         $flashDealEndTime = \App\Models\Setting::where('key', 'flash_deal_end_time')->first()?->value ?? "2026-06-30 23:59:59";
 
         // Get banners
-        $heroBanner = \App\Models\Banner::where('type', 'hero')->where('status', true)->orderBy('order', 'asc')->first();
+        $heroBanners = \App\Models\Banner::where('type', 'hero')->where('status', true)->orderBy('order', 'asc')->get();
         $subBanners = \App\Models\Banner::where('type', 'sub_banner')->where('status', true)->orderBy('order', 'asc')->take(2)->get();
         $promoBanners = \App\Models\Banner::where('type', 'promo')->where('status', true)->orderBy('order', 'asc')->get();
 
@@ -60,12 +54,10 @@ class HomeController extends Controller
 
         return view('frontend.pages.home', compact(
             'latestProducts', 
-            'bestSellers', 
-            'featuredProducts', 
             'arrivalCategories', 
             'articles', 
             'wishlistIds', 
-            'heroBanner', 
+            'heroBanners', 
             'subBanners', 
             'promoBanners', 
             'flashDealProducts',
@@ -223,6 +215,23 @@ class HomeController extends Controller
         // Fetch all products with actual discounts (discount > 0)
         $products = Product::where('discount', '>', 0)->with('images')->latest()->paginate(12);
         return view('frontend.pages.flash-deals', compact('products'));
+    }
+
+    public function loadMoreProducts(Request $request)
+    {
+        $skip = $request->get('skip', 15);
+        
+        $products = Product::with('images')->latest()->skip($skip)->take(5)->get();
+        
+        $html = '';
+        foreach($products as $product) {
+            $html .= view('frontend.partials.product-card', compact('product'))->render();
+        }
+        
+        return response()->json([
+            'html' => $html,
+            'has_more' => Product::count() > ($skip + 5)
+        ]);
     }
 
     public function contact()

@@ -29,14 +29,29 @@
         </div>
     @endif
 
+    @if($errors->any())
+        <div class="bg-red-50 border border-red-100 p-4 rounded-2xl animate-fadeIn mb-6">
+            <div class="flex items-center gap-4 mb-2">
+                <div class="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center text-white text-xl shadow-lg shadow-red-500/20">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                </div>
+                <h4 class="text-sm font-bold text-red-700">Please correct the following errors:</h4>
+            </div>
+            <ul class="list-disc list-inside text-xs text-red-600 ml-14">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <div class="grid grid-cols-1 gap-10">
         {{-- Banner Matrix --}}
         <div class="bg-white rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
             <div class="px-10 py-8 border-b border-slate-50 bg-slate-50/30 flex items-center justify-between">
-                <h2 class="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Active Visual Assets</h2>
+                <h2 class="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Active Banners</h2>
                 <div class="flex gap-4">
-                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest px-3 py-1 bg-white rounded-full border border-slate-100">Hero: {{ $banners->where('type', 'hero')->count() }}</span>
-                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest px-3 py-1 bg-white rounded-full border border-slate-100">Promo: {{ $banners->where('type', 'promo')->count() }}</span>
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest px-3 py-1 bg-white rounded-full border border-slate-100">Total: {{ $banners->count() }}</span>
                 </div>
             </div>
             
@@ -52,19 +67,8 @@
                             </div>
                             <div class="min-w-0">
                                 <div class="flex items-center gap-3 mb-2">
-                                    <span class="px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border {{ $banner->type == 'hero' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : ($banner->type == 'promo' ? 'bg-orange-50 text-orange-600 border-orange-100' : 'bg-slate-100 text-slate-600 border-slate-200') }}">
-                                        {{ $banner->type }}
-                                    </span>
-                                    <span class="text-[10px] font-black text-slate-300">#{{ $banner->order }}</span>
+                                    <span class="text-[10px] font-black text-slate-500">Order: #{{ $banner->order }}</span>
                                 </div>
-                                <h3 class="text-sm font-black text-slate-900 truncate uppercase tracking-tighter">{{ $banner->title ?? 'Untitled Asset' }}</h3>
-                                <p class="text-[10px] font-bold text-slate-400 mt-1 truncate">{{ $banner->subtitle ?? 'No secondary caption provided' }}</p>
-                                @if($banner->link)
-                                    <div class="flex items-center gap-1 mt-2 text-[9px] font-black text-primary uppercase italic">
-                                        <i class="bi bi-link-45deg text-sm"></i>
-                                        {{ Str::limit($banner->link, 30) }}
-                                    </div>
-                                @endif
                             </div>
                         </div>
                         
@@ -123,29 +127,10 @@
 
             <form action="{{ route('banners.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
                 @csrf
-                <div class="grid grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 gap-6">
                     <div class="space-y-1.5">
-                        <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Asset Title</label>
-                        <input type="text" name="title" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-bold focus:ring-2 focus:ring-indigo-600/20 outline-none transition-all">
-                    </div>
-                    <div class="space-y-1.5">
-                        <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Sub Title</label>
-                        <input type="text" name="subtitle" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-bold focus:ring-2 focus:ring-indigo-600/20 outline-none transition-all">
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-6">
-                    <div class="space-y-1.5">
-                        <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Banner Type</label>
-                        <select name="type" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-bold focus:ring-2 focus:ring-indigo-600/20 outline-none transition-all cursor-pointer">
-                            <option value="hero">Main Hero Slider</option>
-                            <option value="promo">Promotional Banner</option>
-                            <option value="sub_banner">Sidebar/Sub Banner</option>
-                        </select>
-                    </div>
-                    <div class="space-y-1.5">
-                        <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Redirect Link</label>
-                        <input type="text" name="link" placeholder="https://..." class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-bold focus:ring-2 focus:ring-indigo-600/20 outline-none transition-all">
+                        <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Order</label>
+                        <input type="number" name="order" value="1" min="1" required class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-bold focus:ring-2 focus:ring-indigo-600/20 outline-none transition-all">
                     </div>
                 </div>
 

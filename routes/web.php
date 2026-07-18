@@ -169,6 +169,7 @@ Route::group(['prefix' => '{locale}', 'middleware' => 'set_locale'], function ()
     Route::delete('/product/blog-comments/{id}', [HomeController::class, 'deleteProductComment'])->name('product.comment.delete')->middleware('auth');
     Route::post('/product/{id}/react', [HomeController::class, 'toggleProductReaction'])->name('product.react')->middleware('auth');
     Route::get('/flash-deals', [HomeController::class, 'flashDeals'])->name('flash-deals');
+    Route::get('/load-more-products', [HomeController::class, 'loadMoreProducts'])->name('load.more.products');
     Route::get('/contact', [HomeController::class, 'contact'])->name('contact');
     Route::post('/newsletter/subscribe', [\App\Http\Controllers\Frontend\NewsletterController::class, 'subscribe'])->name('newsletter.subscribe');
 

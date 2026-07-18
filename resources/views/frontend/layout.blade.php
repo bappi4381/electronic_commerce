@@ -47,7 +47,7 @@
 
 <body class="bg-gray-50 font-sans text-slate-900 flex flex-col min-h-screen">
 
-    <div id="header-wrap">
+
         <!-- Top Bar -->
         <div
             class="hidden md:block relative z-[90] bg-slate-950 py-2.5 text-[11px] text-white/70 border-b border-white/5">
@@ -119,7 +119,7 @@
         </div>
 
         <!-- Main Header -->
-        <header class="bg-slate-900 py-4 lg:py-6 text-white sticky top-0 z-[80]">
+        <header class="bg-slate-900 py-4 lg:py-6 text-white sticky top-0 z-[999] shadow-2xl">
             <div class="max-w-7xl mx-auto px-4">
                 <div class="flex flex-col lg:flex-row items-center justify-between gap-4 lg:gap-8">
                     <div class="w-full lg:w-1/4 flex items-center justify-between">
@@ -408,7 +408,7 @@
                 </div>
             </div>
         </nav>
-    </div>
+
 
     <main class="flex-grow">
         @yield('content')

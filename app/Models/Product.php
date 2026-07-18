@@ -13,15 +13,13 @@ class Product extends Model
     protected $fillable = [
         'category_id', 'name', 'description',
         'price', 'discount', 'discounted_price', 'product_id', 'brand', 'model', 'warranty_period',
-        'specifications', 'video_link', 'low_stock_threshold', 'is_featured', 'is_best_seller', 'is_flash_deal'
+        'specifications', 'video_link', 'low_stock_threshold', 'is_flash_deal'
     ];
 
     public $translatable = ['name', 'description'];
 
     protected $casts = [
         'specifications'  => 'array',
-        'is_featured'     => 'boolean',
-        'is_best_seller'  => 'boolean',
         'is_flash_deal'   => 'boolean',
     ];
 

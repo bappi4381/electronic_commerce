@@ -18,14 +18,13 @@ class BannerController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'title' => 'nullable|string|max:255',
-            'subtitle' => 'nullable|string|max:255',
-            'image' => 'required|image|max:2048',
-            'link' => 'nullable|string|max:255',
-            'type' => 'required|in:hero,promo,sub_banner',
+            'image' => 'required|image|max:5120',
+            'order' => 'required|integer',
         ]);
 
-        $data = $request->all();
+        $data = $request->only(['order']);
+        $data['type'] = 'hero'; // Default type for frontend compatibility
+        $data['status'] = true;
 
         if ($request->hasFile('image')) {
             $data['image'] = $request->file('image')->store('banners', 'public');
@@ -39,14 +38,11 @@ class BannerController extends Controller
     public function update(Request $request, Banner $banner)
     {
         $request->validate([
-            'title' => 'nullable|string|max:255',
-            'subtitle' => 'nullable|string|max:255',
             'image' => 'nullable|image|max:2048',
-            'link' => 'nullable|string|max:255',
-            'type' => 'required|in:hero,promo,sub_banner',
+            'order' => 'required|integer',
         ]);
 
-        $data = $request->all();
+        $data = $request->only(['order']);
 
         if ($request->hasFile('image')) {
             if ($banner->image) {

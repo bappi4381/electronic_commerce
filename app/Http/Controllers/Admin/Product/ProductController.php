@@ -101,8 +101,6 @@ class ProductController extends Controller
                 'warranty_period' => $request->warranty_period,
                 'video_link'  => $request->video_link,
                 'low_stock_threshold' => $request->input('low_stock_threshold', 5),
-                'is_featured'   => $request->boolean('is_featured'),
-                'is_best_seller' => $request->boolean('is_best_seller'),
                 'is_flash_deal' => $request->boolean('is_flash_deal'),
             ]);
 
@@ -188,8 +186,6 @@ class ProductController extends Controller
                 'warranty_period' => $request->warranty_period,
                 'video_link'  => $request->video_link,
                 'low_stock_threshold' => $request->input('low_stock_threshold', 5),
-                'is_featured'    => $request->boolean('is_featured'),
-                'is_best_seller' => $request->boolean('is_best_seller'),
                 'is_flash_deal'  => $request->boolean('is_flash_deal'),
             ]);
 
