@@ -30,7 +30,10 @@
                 <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-6">
                     <div class="flex items-start justify-between gap-4 mb-6">
                         <div>
-                            <h2 class="text-xl font-black text-slate-900">Create Attribute</h2>
+                            <h2 class="flex items-center gap-2 text-xl font-black text-slate-900">
+                                <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">1</span>
+                                Create Attribute
+                            </h2>
                             <p class="text-sm text-slate-500 mt-1">Add new product attributes that can be used across categories.</p>
                         </div>
                         <span class="inline-flex items-center rounded-full bg-primary/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Quick Add</span>
@@ -69,7 +72,10 @@
 
                 <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-6">
                     <div class="mb-6">
-                        <h2 class="text-xl font-black text-slate-900">Map Attributes to Category</h2>
+                        <h2 class="flex items-center gap-2 text-xl font-black text-slate-900">
+                            <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">3</span>
+                            Map Attributes to Category
+                        </h2>
                         <p class="text-sm text-slate-500 mt-1">Choose which attributes should be available for each category or subcategory.</p>
                     </div>
 
@@ -161,7 +167,10 @@
             <div class="space-y-6">
                 <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-6">
                     <div class="mb-6">
-                        <h2 class="text-xl font-black text-slate-900">Attribute Library</h2>
+                        <h2 class="flex items-center gap-2 text-xl font-black text-slate-900">
+                            <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">2</span>
+                            Attribute Library (Add Values)
+                        </h2>
                         <p class="text-sm text-slate-500 mt-1">Manage all attributes, update settings, and add values in one place.</p>
                     </div>
 
@@ -189,7 +198,7 @@
                             <div class="grid gap-4 px-6 py-5 md:grid-cols-[1fr_auto] md:items-start md:px-8">
                                 <div class="space-y-4">
                                     <div x-show="editOpen" x-cloak x-transition class="rounded-[1.5rem] border border-primary/10 bg-primary/5 p-4">
-                                        <form action="{{ route('admin.attributes.update', $attribute) }}" method="POST" class="grid gap-4 md:grid-cols-[1.5fr_1fr_minmax(120px,auto)] md:items-end">
+                                        <form action="{{ route('admin.attributes.update', $attribute) }}" method="POST" class="grid gap-4 sm:grid-cols-2">
                                             @csrf @method('PUT')
                                             <div>
                                                 <label class="text-xs font-black uppercase tracking-[0.2em] text-slate-600">Name</label>
@@ -205,13 +214,13 @@
                                                     <option value="text" {{ $attribute->type === 'text' ? 'selected' : '' }}>Text</option>
                                                 </select>
                                             </div>
-                                            <div class="flex items-center gap-3">
-                                                <label class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700">
+                                            <div class="sm:col-span-2 flex items-center justify-between gap-3 mt-2">
+                                                <label class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 cursor-pointer">
                                                     <input type="checkbox" name="is_filterable" value="1" {{ $attribute->is_filterable ? 'checked' : '' }} class="h-4 w-4 accent-primary rounded">
                                                     Filterable
                                                 </label>
-                                                <button type="submit" class="inline-flex items-center justify-center rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-white transition hover:bg-primary-dark">
-                                                    Save
+                                                <button type="submit" class="inline-flex items-center justify-center rounded-2xl bg-primary px-6 py-3 text-sm font-bold text-white transition hover:bg-primary-dark shadow-sm">
+                                                    Save Changes
                                                 </button>
                                             </div>
                                         </form>
@@ -234,6 +243,10 @@
                                 </div>
 
                                 <div class="space-y-3">
+                                    <button @click.prevent="addValueOpen = !addValueOpen"
+                                        class="w-full rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700 transition hover:bg-emerald-100">
+                                        <i class="bi bi-plus-lg mr-1"></i> <span x-text="addValueOpen ? 'Cancel' : 'Add Value'"></span>
+                                    </button>
                                     <button @click.prevent="editOpen = !editOpen"
                                         class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:border-slate-300">
                                         <span x-text="editOpen ? 'Hide' : 'Edit'"></span> Attribute
