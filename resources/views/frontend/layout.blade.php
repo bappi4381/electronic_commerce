@@ -249,26 +249,134 @@
         <nav class="bg-slate-800 text-white border-t border-white/5 hidden lg:block">
             <div class="max-w-7xl mx-auto px-4">
                 <div class="flex items-center justify-between">
-                    <div x-data="{ open: false }" @mouseleave="open = false" class="relative">
-                        <div @mouseenter="open = true"
-                            class="bg-primary px-10 py-5 font-black text-xs uppercase tracking-[0.2em] flex items-center gap-4 cursor-pointer hover:bg-primary-dark transition-all">
+                    {{-- ══ Shop By Department — Daraz-style Mega Menu ══ --}}
+                    @php
+                        $deptCategories = \App\Models\Category::whereNull('parent_id')
+                            ->where('type', 'product')
+                            ->with('children')
+                            ->get();
+                        $firstCatId = $deptCategories->first()?->id;
+                    @endphp
+
+                    <div class="relative z-[200]" id="shop-dept-wrapper"
+                         onmouseenter="document.getElementById('shop-dept-panel').style.display='flex';"
+                         onmouseleave="document.getElementById('shop-dept-panel').style.display='none';">
+
+                        {{-- Trigger Button --}}
+                        <div class="bg-primary px-10 py-5 font-black text-xs uppercase tracking-[0.2em] flex items-center gap-4 cursor-pointer hover:bg-primary-dark transition-all select-none">
                             <i class="bi bi-grid-3x3-gap-fill text-lg"></i>
                             {{ __('Shop By Department') }}
-                            <i class="bi bi-chevron-down text-[10px] ml-4 opacity-50"
-                                :class="open ? 'rotate-180' : ''"></i>
+                            <i class="bi bi-chevron-down text-[10px] ml-4 opacity-60"></i>
                         </div>
-                        <!-- Dynamic Categories Dropdown -->
-                        <div x-show="open" x-transition x-cloak
-                            class="absolute top-full left-0 w-64 bg-white shadow-2xl rounded-b-3xl border border-slate-100 py-4 z-[100]">
-                            @foreach(\App\Models\Category::where('type', 'product')->get() as $cat)
-                                <a href="{{ route('products.index', ['category' => $cat->id]) }}"
-                                    class="flex items-center justify-between px-8 py-3 text-slate-700 hover:text-primary hover:bg-slate-50 font-bold text-xs uppercase tracking-widest no-underline transition-all">
-                                    {{ $cat->name }}
-                                    <i class="bi bi-chevron-right text-[8px] opacity-30"></i>
-                                </a>
-                            @endforeach
+
+                        {{-- Mega Menu Panel (hidden by default) --}}
+                        <div id="shop-dept-panel"
+                             style="display:none; min-width:720px; max-height:480px;"
+                             class="absolute top-full left-0 bg-white shadow-2xl shadow-slate-900/15 border border-slate-100 rounded-b-2xl overflow-hidden">
+
+                            <div class="flex h-full">
+                                {{-- LEFT PANEL: Parent Categories --}}
+                                <div class="w-[230px] flex-shrink-0 bg-slate-50 border-r border-slate-100 overflow-y-auto py-2">
+                                    @foreach($deptCategories as $cat)
+                                    <div class="dept-cat-item flex items-center justify-between px-5 py-3.5 cursor-pointer font-bold text-[11px] uppercase tracking-widest transition-all duration-100 group text-slate-600 hover:bg-white hover:text-slate-900"
+                                         data-cat-id="{{ $cat->id }}"
+                                         onmouseenter="switchDeptCat({{ $cat->id }})">
+                                        <div class="flex items-center gap-3">
+                                            <i class="bi {{ $cat->icon ?? 'bi-grid' }} text-base text-slate-400 dept-cat-icon transition-colors"></i>
+                                            <span>{{ $cat->getTranslation('name', 'en') }}</span>
+                                        </div>
+                                        @if($cat->children->count() > 0)
+                                            <i class="bi bi-chevron-right text-[9px] opacity-30 group-hover:opacity-70 transition-opacity"></i>
+                                        @endif
+                                    </div>
+                                    @endforeach
+                                </div>
+
+                                {{-- RIGHT PANEL: Subcategories --}}
+                                <div class="flex-1 overflow-y-auto">
+                                    @foreach($deptCategories as $i => $cat)
+                                    <div class="dept-cat-panel p-6 {{ $i > 0 ? 'hidden' : '' }}" data-cat-panel="{{ $cat->id }}">
+                                        {{-- Header --}}
+                                        <div class="flex items-center justify-between mb-5 pb-4 border-b border-slate-100">
+                                            <div>
+                                                <h3 class="text-base font-black text-slate-900">{{ $cat->getTranslation('name', 'en') }}</h3>
+                                                <p class="text-[10px] text-slate-400 font-semibold mt-0.5">
+                                                    {{ $cat->children->count() > 0 ? $cat->children->count() . ' Subcategories' : 'All Products' }}
+                                                </p>
+                                            </div>
+                                            <a href="{{ route('products.index', ['category' => $cat->id]) }}"
+                                               class="text-[11px] font-black text-primary uppercase tracking-widest flex items-center gap-1 px-3 py-1.5 bg-primary/5 hover:bg-primary/15 rounded-lg transition-colors no-underline">
+                                                View All <i class="bi bi-arrow-right-short text-sm"></i>
+                                            </a>
+                                        </div>
+
+                                        @if($cat->children->count() > 0)
+                                            <div class="grid grid-cols-2 gap-2">
+                                                @foreach($cat->children as $sub)
+                                                <a href="{{ route('products.index', ['category' => $sub->id]) }}"
+                                                   class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-600 hover:text-primary no-underline group transition-all duration-150 border border-transparent hover:border-slate-100">
+                                                    <div class="w-10 h-10 rounded-xl bg-slate-100 group-hover:bg-primary/10 flex items-center justify-center text-slate-400 group-hover:text-primary transition-all flex-shrink-0">
+                                                        <i class="bi {{ $sub->icon ?? 'bi-tag-fill' }} text-sm"></i>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-[12px] font-bold text-slate-700 group-hover:text-primary leading-tight">
+                                                            {{ $sub->getTranslation('name', 'en') }}
+                                                        </p>
+                                                    </div>
+                                                </a>
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            <div class="flex flex-col items-center justify-center py-10">
+                                                <div class="w-14 h-14 rounded-full bg-slate-50 flex items-center justify-center mb-4">
+                                                    <i class="bi bi-collection text-2xl text-slate-300"></i>
+                                                </div>
+                                                <p class="text-xs font-bold text-slate-400 mb-4">Browse all {{ $cat->getTranslation('name', 'en') }} products</p>
+                                                <a href="{{ route('products.index', ['category' => $cat->id]) }}"
+                                                   class="px-6 py-2.5 bg-primary text-white text-xs font-black rounded-full hover:bg-primary-dark transition-colors no-underline">
+                                                   View Products
+                                                </a>
+                                            </div>
+                                        @endif
+                                    </div>
+                                    @endforeach
+                                </div>
+                            </div>
                         </div>
                     </div>
+                    <script>
+                    // Set first category as active on init
+                    @if($firstCatId)
+                    document.addEventListener('DOMContentLoaded', function() {
+                        switchDeptCat({{ $firstCatId }});
+                    });
+                    @endif
+
+                    function switchDeptCat(catId) {
+                        // Update left panel active state
+                        document.querySelectorAll('.dept-cat-item').forEach(function(el) {
+                            var isActive = parseInt(el.dataset.catId) === catId;
+                            el.classList.toggle('bg-white', isActive);
+                            el.classList.toggle('text-primary', isActive);
+                            el.classList.toggle('border-r-[3px]', isActive);
+                            el.classList.toggle('border-primary', isActive);
+                            el.classList.toggle('text-slate-600', !isActive);
+                            // Icon
+                            var icon = el.querySelector('.dept-cat-icon');
+                            if (icon) {
+                                icon.classList.toggle('text-primary', isActive);
+                                icon.classList.toggle('text-slate-400', !isActive);
+                            }
+                        });
+                        // Show matching right panel
+                        document.querySelectorAll('.dept-cat-panel').forEach(function(el) {
+                            var isActive = parseInt(el.dataset.catPanel) === catId;
+                            el.classList.toggle('hidden', !isActive);
+                        });
+                    }
+                    </script>
+
+
                     <ul class="hidden lg:flex list-none m-0 p-0 gap-10">
                         <li><a href="{{ route('home') }}"
                                 class="text-white no-underline font-black text-xs uppercase tracking-widest py-5 block hover:text-primary transition-all relative group {{ request()->routeIs('home') ? 'text-primary' : '' }}">
