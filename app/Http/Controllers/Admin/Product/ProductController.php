@@ -117,16 +117,18 @@ class ProductController extends Controller
             // Save variants
             if ($request->has('variants')) {
                 foreach ($request->input('variants') as $variantData) {
-                    if (empty($variantData['attribute_value_ids'])) continue;
-
+                    // Do NOT skip if empty attribute_value_ids. Simple products need a variant for stock.
+                    
                     $variant = $product->variants()->create([
                         'sku'   => $variantData['sku'] ?? null,
                         'price' => $variantData['price'] ?? null,
                         'stock' => $variantData['stock'] ?? 0,
                     ]);
 
-                    // Sync the attribute values (Color=Red, Size=M)
-                    $variant->attributeValues()->sync($variantData['attribute_value_ids']);
+                    // Sync the attribute values (Color=Red, Size=M) if any exist
+                    if (!empty($variantData['attribute_value_ids'])) {
+                        $variant->attributeValues()->sync($variantData['attribute_value_ids']);
+                    }
 
                     // Record initial stock movement if stock > 0
                     $stock = intval($variantData['stock'] ?? 0);
@@ -207,15 +209,17 @@ class ProductController extends Controller
 
             if ($request->has('variants')) {
                 foreach ($request->input('variants') as $variantData) {
-                    if (empty($variantData['attribute_value_ids'])) continue;
-
+                    // Do NOT skip if empty attribute_value_ids. Simple products need a variant for stock.
+                    
                     $variant = $product->variants()->create([
                         'sku'   => $variantData['sku'] ?? null,
                         'price' => $variantData['price'] ?? null,
                         'stock' => $variantData['stock'] ?? 0,
                     ]);
 
-                    $variant->attributeValues()->sync($variantData['attribute_value_ids']);
+                    if (!empty($variantData['attribute_value_ids'])) {
+                        $variant->attributeValues()->sync($variantData['attribute_value_ids']);
+                    }
 
                     // Record initial stock movement for recreated variant
                     $stock = intval($variantData['stock'] ?? 0);
