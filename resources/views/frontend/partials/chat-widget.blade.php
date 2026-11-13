@@ -1,7 +1,9 @@
-<div x-data="globalChat()" class="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-[100]">
+<div x-data="globalChat()" x-show="!$store.ui.searchOpen"
+     class="fixed right-4 z-[var(--sf-z-fab)] bottom-[calc(var(--sf-bottom-nav-h)+var(--sf-safe-bottom)+16px)] md:bottom-6 md:right-6">
     <!-- Chat Button -->
-    <button @click="open = !open" :class="open ? 'scale-0 opacity-0' : 'scale-100 opacity-100'" class="w-14 h-14 md:w-16 md:h-16 bg-primary text-white rounded-full flex items-center justify-center text-2xl shadow-2xl shadow-primary/40 hover:scale-110 active:scale-95 transition-all absolute bottom-0 right-0 z-[100]">
-        <i class="bi bi-chat-dots-fill"></i>
+    <button type="button" @click="open = !open" :class="open ? 'scale-0 opacity-0' : 'scale-100 opacity-100'" aria-label="{{ __('Live chat with support') }}" :aria-expanded="open.toString()"
+            class="w-14 h-14 md:w-16 md:h-16 bg-primary text-white rounded-full flex items-center justify-center text-2xl shadow-2xl shadow-primary/40 hover:scale-110 active:scale-95 transition-all absolute bottom-0 right-0 z-[100] sf-focus">
+        <i class="bi bi-chat-dots-fill" aria-hidden="true"></i>
     </button>
 
     <!-- Chat Window -->
@@ -62,17 +64,13 @@
             open: false,
             messages: [],
             newMessage: '',
-            identifier: '{{ auth()->id() ?? session()->getId() }}',
+            channel: @json(auth()->check() ? \App\Support\ChatChannel::forUser(auth()->id()) : \App\Support\ChatChannel::forGuestSession(session()->getId())),
             init() {
                 this.fetchMessages();
                 
                 if (window.Echo) {
-                    const channelId = String(this.identifier);
-                    console.log('📡 Subscribing to: chat.' + channelId);
-                    
-                    window.Echo.channel(`chat.${channelId}`)
+                    window.Echo.private(this.channel)
                         .listen('.message.sent', (e) => {
-                            console.log('⚡ REAL-TIME MESSAGE RECEIVED:', e);
                             if(e.is_admin) {
                                 this.messages.push(e);
                                 this.scrollToBottom();
@@ -83,7 +81,8 @@
                         });
                 }
 
-                window.addEventListener('open-chat', () => {
+                window.addEventListener('open-chat', (event) => {
+                    if (event.detail?.message && !this.newMessage) this.newMessage = event.detail.message;
                     this.open = true;
                     this.scrollToBottom();
                     this.markAsRead();

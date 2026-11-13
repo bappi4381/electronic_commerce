@@ -24,16 +24,15 @@
   const hamburger = document.querySelector(".hamburger");
   const navMenu = document.querySelector(".menu-list");
 
-  hamburger.addEventListener("click", mobileMenu);
+  if (hamburger && navMenu) {
+    hamburger.addEventListener("click", mobileMenu);
+    document.querySelectorAll(".nav-link").forEach(n => n.addEventListener("click", closeMenu));
+  }
 
   function mobileMenu() {
       hamburger.classList.toggle("active");
       navMenu.classList.toggle("responsive");
   }
-
-  const navLink = document.querySelectorAll(".nav-link");
-
-  navLink.forEach(n => n.addEventListener("click", closeMenu));
 
   function closeMenu() {
       hamburger.classList.remove("active");
