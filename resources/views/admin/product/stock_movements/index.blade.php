@@ -1,131 +1,81 @@
 @extends('admin.layouts')
-@section('title', 'Stock Movements')
+@section('title', 'Stock movements')
+@section('ui-v2', '1')
 
 @section('content')
-<div class="max-w-6xl mx-auto space-y-6">
-    <div class="flex items-center justify-between">
-        <div>
-            <h1 class="text-2xl font-black text-slate-800">Stock Movements</h1>
-            <p class="text-sm text-slate-500 mt-1">View recent stock changes and perform manual adjustments.</p>
-        </div>
-        <a href="{{ route('admin.products.index') }}" class="text-sm font-bold text-slate-600 bg-white border border-slate-200 px-4 py-2 rounded-xl hover:bg-slate-50">Back to Products</a>
-    </div>
+@php
+    $typeTones = ['adjustment' => 'blue', 'correction' => 'indigo', 'return' => 'orange', 'sale' => 'green', 'order' => 'green', 'other' => 'gray'];
+@endphp
 
-    @if(session('success'))
-        <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 text-emerald-700">{{ session('success') }}</div>
-    @endif
+<x-admin.page-header title="Stock movements" description="Every stock change, and manual adjustments for stock takes or corrections."
+                     :breadcrumbs="['Products' => route('admin.products.index'), 'Stock movements' => null]" />
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-            <h2 class="text-lg font-black text-slate-900 mb-3">Manual Stock Adjustment</h2>
-            <form action="{{ route('admin.products.stock_movements.store') }}" method="POST" class="space-y-4">
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    @can('products.edit')
+        <x-admin.card title="Adjust stock" class="self-start"
+                      x-data="{ stock: {{ \Illuminate\Support\Js::from($selectedVariant['stock'] ?? null) }}, change: {{ \Illuminate\Support\Js::from(old('change', '')) }} }">
+            <form method="POST" action="{{ route('admin.products.stock_movements.store') }}" class="space-y-4"
+                  @variant-selected="stock = $event.detail ? $event.detail.stock : null">
                 @csrf
-                <div>
-                    <label class="block text-xs font-black uppercase tracking-[0.2em] text-slate-600 mb-2">Variant</label>
-                    <select id="variant-select" name="variant_id" required class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-700">
-                        <option value="">Select variant</option>
-                        @foreach($variants as $v)
-                            <option value="{{ $v->id }}" data-stock="{{ $v->stock }}">{{ $v->product->getTranslation('name','en') }} — {{ $v->sku ?? 'no-sku' }} (stock: {{ $v->stock }})</option>
-                        @endforeach
-                    </select>
-                    <p id="variant-current-stock" class="text-sm text-slate-500 mt-2">Current stock: —</p>
+                <x-admin.field label="Variant" error="variant_id" required>
+                    <x-admin.variant-picker name="variant_id" :required="true" :inactive="true" :selected="$selectedVariant" placeholder="Search product, code or SKU…" />
+                </x-admin.field>
+
+                <x-admin.input name="change" type="number" label="Change" required step="1" placeholder="e.g. 10 or -5" x-model.number="change"
+                               hint="Use a negative number to decrease stock."
+                               x-effect="$el.setCustomValidity(stock !== null && stock + (parseInt(change) || 0) < 0 ? 'This adjustment would make stock negative.' : '')" />
+
+                <div class="grid grid-cols-3 gap-2 rounded-lg bg-gray-50 p-3 text-center text-sm dark:bg-gray-800/60" x-show="stock !== null" x-cloak>
+                    <div><p class="text-xs text-gray-500 dark:text-gray-400">Current</p><p class="font-medium tabular-nums" x-text="stock"></p></div>
+                    <div><p class="text-xs text-gray-500 dark:text-gray-400">Change</p><p class="font-medium tabular-nums" :class="(parseInt(change) || 0) < 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'" x-text="((parseInt(change) || 0) > 0 ? '+' : '') + (parseInt(change) || 0)"></p></div>
+                    <div><p class="text-xs text-gray-500 dark:text-gray-400">New</p><p class="font-semibold tabular-nums" :class="stock + (parseInt(change) || 0) < 0 && 'text-red-600 dark:text-red-400'" x-text="stock + (parseInt(change) || 0)"></p></div>
                 </div>
 
-                <div>
-                    <label class="block text-xs font-black uppercase tracking-[0.2em] text-slate-600 mb-2">Change (use negative to decrease)</label>
-                    <input type="number" name="change" required class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-700" placeholder="e.g. 10 or -5">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-black uppercase tracking-[0.2em] text-slate-600 mb-2">Reason</label>
-                    <input type="text" name="reason" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-700" placeholder="e.g. Stock take correction">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-black uppercase tracking-[0.2em] text-slate-600 mb-2">Type</label>
-                    <select name="type" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-700">
-                        <option value="adjustment">Adjustment</option>
-                        <option value="correction">Correction</option>
-                        <option value="return">Return</option>
-                        <option value="other">Other</option>
-                    </select>
-                </div>
-
-                <button type="submit" class="w-full bg-primary text-white font-bold py-3 rounded-xl">Apply Adjustment</button>
+                <x-admin.input name="reason" label="Reason" optional placeholder="e.g. Stock take correction" />
+                <x-admin.select name="type" label="Type" :options="['adjustment' => 'Adjustment', 'correction' => 'Correction', 'return' => 'Return', 'other' => 'Other']" value="adjustment" />
+                <x-admin.button type="submit" icon="bi-check-lg" class="w-full">Apply adjustment</x-admin.button>
             </form>
-        </div>
+        </x-admin.card>
+    @endcan
 
-        <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-            <h2 class="text-lg font-black text-slate-900 mb-4">Recent Movements</h2>
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="text-left text-xs text-slate-500 uppercase tracking-wider">
-                            <th class="px-3 py-2">When</th>
-                            <th class="px-3 py-2">Product / SKU</th>
-                            <th class="px-3 py-2">Change</th>
-                            <th class="px-3 py-2">Type</th>
-                            <th class="px-3 py-2">Reason</th>
-                            <th class="px-3 py-2">By</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($movements as $m)
-                            <tr class="border-t border-slate-100">
-                                <td class="px-3 py-3 text-slate-500">{{ $m->created_at->format('Y-m-d H:i') }}</td>
-                                <td class="px-3 py-3">
-                                    <div class="font-semibold">{{ optional($m->variant->product)->getTranslation('name','en') }}</div>
-                                    <div class="text-xs text-slate-400">{{ $m->variant->sku ?? '—' }}</div>
-                                </td>
-                                <td class="px-3 py-3">{{ $m->change > 0 ? '+' . $m->change : $m->change }}</td>
-                                <td class="px-3 py-3 text-slate-600">{{ $m->type }}</td>
-                                <td class="px-3 py-3 text-slate-600">{{ $m->reason }}</td>
-                                <td class="px-3 py-3 text-slate-600">{{ $m->admin->name ?? 'System' }}</td>
-                            </tr>
-                        @empty
-                            <tr><td colspan="6" class="px-3 py-6 text-center text-slate-400">No stock movements yet.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="mt-4">{{ $movements->links() }}</div>
+    <div @class(['min-w-0', 'lg:col-span-2' => auth()->user()->can('products.edit'), 'lg:col-span-3' => !auth()->user()->can('products.edit')])>
+        <div class="mb-3 flex items-center justify-between gap-4">
+            <h2 class="min-w-0 truncate text-base font-semibold text-gray-900 dark:text-white">{{ $filterVariant ? 'Movements for ' . $filterVariant['label'] : 'Recent movements' }}</h2>
+            @if($filterVariant)
+                <x-admin.button variant="link" :href="route('admin.products.stock_movements.index')" icon="bi-x-lg">Show all</x-admin.button>
+            @endif
         </div>
+        <x-admin.data-table :paginator="$movements->withQueryString()"
+            :columns="[
+                ['label' => 'Product', 'sortable' => true],
+                ['label' => 'Change', 'sortable' => true, 'align' => 'right'],
+                ['label' => 'Type'],
+                ['label' => 'Reason'],
+                ['label' => 'By'],
+                ['label' => 'When', 'sortable' => true, 'align' => 'right'],
+            ]"
+            empty-title="No stock movements yet" empty-description="Sales, returns and manual adjustments are logged here." empty-icon="bi-arrow-left-right">
+            @foreach($movements as $m)
+                @php($productName = optional($m->variant?->product)->getTranslation('name', 'en') ?? 'Deleted product')
+                <tr class="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                    <td data-primary data-sort="{{ $productName }}">
+                        <div class="min-w-0">
+                            <a href="{{ route('admin.products.stock_movements.index', ['variant' => $m->variant_id]) }}" class="block truncate rounded font-medium text-gray-900 hover:text-brand-600 focus-ring dark:text-white dark:hover:text-brand-400">{{ $productName }}</a>
+                            <span class="block truncate font-mono text-xs font-normal text-gray-500 dark:text-gray-400">{{ $m->variant?->sku ?? '—' }}</span>
+                        </div>
+                    </td>
+                    <td data-label="Change" data-sort="{{ $m->change }}" @class(['whitespace-nowrap text-right font-semibold tabular-nums', 'text-green-600 dark:text-green-400' => $m->change > 0, 'text-red-600 dark:text-red-400' => $m->change < 0])>
+                        {{ $m->change > 0 ? '+' . $m->change : $m->change }}
+                    </td>
+                    <td data-label="Type"><x-admin.status-badge :tone="$typeTones[$m->type] ?? 'gray'" :status="$m->type" :dot="false" /></td>
+                    <td data-label="Reason" class="max-w-xs truncate">{{ $m->reason ?: '—' }}</td>
+                    <td data-label="By" class="whitespace-nowrap">{{ $m->admin->name ?? 'System' }}</td>
+                    <td data-label="When" data-sort="{{ $m->created_at->timestamp }}" class="whitespace-nowrap text-right text-gray-500 dark:text-gray-400">
+                        <time datetime="{{ $m->created_at->toIso8601String() }}" title="{{ $m->created_at->format('d M Y, H:i') }}">{{ $m->created_at->format('d M Y, H:i') }}</time>
+                    </td>
+                </tr>
+            @endforeach
+        </x-admin.data-table>
     </div>
 </div>
-@push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const select = document.getElementById('variant-select');
-        const stockEl = document.getElementById('variant-current-stock');
-        const changeInput = document.querySelector('input[name="change"]');
-
-        function updateStockDisplay() {
-            const opt = select.options[select.selectedIndex];
-            if (!opt || !opt.value) {
-                stockEl.textContent = 'Current stock: —';
-                return;
-            }
-            const stock = opt.getAttribute('data-stock') || '0';
-            stockEl.textContent = 'Current stock: ' + stock;
-        }
-
-        select.addEventListener('change', updateStockDisplay);
-        updateStockDisplay();
-
-        // simple validation: warn when decreasing below zero (client-side only)
-        changeInput.addEventListener('input', function () {
-            const delta = parseInt(this.value || 0, 10);
-            const opt = select.options[select.selectedIndex];
-            if (!opt || !opt.value) return;
-            const stock = parseInt(opt.getAttribute('data-stock') || '0', 10);
-            if (stock + delta < 0) {
-                this.setCustomValidity('This adjustment would make stock negative.');
-            } else {
-                this.setCustomValidity('');
-            }
-        });
-    });
-</script>
-@endpush
 @endsection

@@ -122,16 +122,10 @@
                                         </td>
                                         <td class="px-8 py-5 text-right">
                                             @php
-                                                $statusStyles = match($order->status) {
-                                                    'pending' => 'bg-amber-50 text-amber-600 border-amber-100',
-                                                    'processing' => 'bg-blue-50 text-blue-600 border-blue-100',
-                                                    'completed' => 'bg-green-50 text-green-600 border-green-100',
-                                                    'cancelled' => 'bg-rose-50 text-rose-600 border-rose-100',
-                                                    default => 'bg-slate-50 text-slate-600 border-slate-100',
-                                                };
+                                                $statusStyles = \App\Enums\OrderStatus::badge($order->status);
                                             @endphp
                                             <span class="px-3 py-1 rounded-full border text-[8px] font-black uppercase tracking-widest border {{ $statusStyles }}">
-                                                {{ $order->status }}
+                                                {{ $order->statusEnum()?->label() ?? $order->status }}
                                             </span>
                                         </td>
                                     </tr>
@@ -144,13 +138,7 @@
                     <div class="block sm:hidden divide-y divide-slate-50">
                         @foreach($recentOrders as $order)
                             @php
-                                $statusStyles = match($order->status) {
-                                    'pending' => 'bg-amber-50 text-amber-600 border-amber-100',
-                                    'processing' => 'bg-blue-50 text-blue-600 border-blue-100',
-                                    'completed' => 'bg-green-50 text-green-600 border-green-100',
-                                    'cancelled' => 'bg-rose-50 text-rose-600 border-rose-100',
-                                    default => 'bg-slate-50 text-slate-600 border-slate-100',
-                                };
+                                $statusStyles = \App\Enums\OrderStatus::badge($order->status);
                             @endphp
                             <a href="{{ route('user.orders.details', $order->id) }}" class="flex items-center justify-between px-5 py-4 hover:bg-slate-50/50 transition-colors">
                                 <div>
@@ -159,7 +147,7 @@
                                 </div>
                                 <div class="flex items-center gap-3">
                                     <span class="text-xs font-black text-slate-900">tk. {{ number_format($order->total_price, 2) }}</span>
-                                    <span class="px-2.5 py-1 rounded-full border text-[8px] font-black uppercase tracking-widest {{ $statusStyles }}">{{ $order->status }}</span>
+                                    <span class="px-2.5 py-1 rounded-full border text-[8px] font-black uppercase tracking-widest {{ $statusStyles }}">{{ $order->statusEnum()?->label() ?? $order->status }}</span>
                                 </div>
                             </a>
                         @endforeach

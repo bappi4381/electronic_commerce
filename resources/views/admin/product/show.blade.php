@@ -1,82 +1,76 @@
 @extends('admin.layouts')
-@section('title', 'Community Moderation: ' . $product->name)
+@section('title', 'Reviews · ' . $product->getTranslation('name', 'en'))
+@section('ui-v2', '1')
 
 @section('content')
-<div class="max-w-7xl mx-auto pb-20">
-    <div class="flex items-center justify-between mb-12">
-        <div class="flex items-center gap-5">
-            <div class="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-slate-900/10">
-                <i class="bi bi-chat-left-dots text-2xl"></i>
-            </div>
-            <div>
-                <h1 class="text-2xl font-black tracking-tight text-slate-900 leading-none">Product Engagement</h1>
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">Moderating Discussion for: {{ $product->name }}</p>
-            </div>
+@php
+    $name = $product->getTranslation('name', 'en');
+    $image = $product->images->first();
+    $comments = $product->comments->sortByDesc('created_at');
+    $byStatus = $comments->countBy('status');
+@endphp
+
+<x-admin.page-header :title="$name" description="Customer reviews and comments for this product."
+                     :breadcrumbs="['Products' => route('admin.products.index'), 'Reviews' => null]">
+    @can('reviews.view')
+        <x-admin.button variant="secondary" :href="route('admin.reviews.index', ['search' => $name])" icon="bi-star-half">Open moderation queue</x-admin.button>
+    @endcan
+    @can('products.edit')
+        <x-admin.button :href="route('admin.products.edit', $product)" icon="bi-pencil">Edit product</x-admin.button>
+    @endcan
+</x-admin.page-header>
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <x-admin.card :padding="false" class="self-start">
+        <div class="aspect-square overflow-hidden rounded-t-xl bg-gray-100 dark:bg-gray-800">
+            @if($image)
+                <img src="{{ asset('storage/' . $image->image) }}" alt="{{ $name }}" class="size-full object-contain p-4">
+            @else
+                <div class="flex size-full items-center justify-center text-5xl text-gray-300 dark:text-gray-600"><i class="bi bi-image" aria-hidden="true"></i></div>
+            @endif
         </div>
-        <a href="{{ route('admin.products.index') }}" class="px-6 py-3 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Back to Inventory</a>
-    </div>
+        <dl class="divide-y divide-gray-200 px-6 text-sm dark:divide-gray-800">
+            <div class="flex justify-between py-3"><dt class="text-gray-500 dark:text-gray-400">Price</dt><dd class="font-medium tabular-nums">Tk {{ number_format($product->discounted_price ?: $product->price, 2) }}</dd></div>
+            <div class="flex justify-between py-3"><dt class="text-gray-500 dark:text-gray-400">Average rating</dt><dd class="font-medium">{{ $product->rating_count ? number_format($product->rating_avg, 1) . ' ★' : '—' }}</dd></div>
+            <div class="flex justify-between py-3"><dt class="text-gray-500 dark:text-gray-400">Published reviews</dt><dd class="font-medium tabular-nums">{{ $byStatus['approved'] ?? 0 }}</dd></div>
+            <div class="flex justify-between py-3"><dt class="text-gray-500 dark:text-gray-400">Awaiting approval</dt><dd class="font-medium tabular-nums">{{ $byStatus['pending'] ?? 0 }}</dd></div>
+            <div class="flex justify-between py-3"><dt class="text-gray-500 dark:text-gray-400">Reactions</dt><dd class="font-medium tabular-nums">{{ $product->reactions->count() }}</dd></div>
+        </dl>
+    </x-admin.card>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        {{-- Product Preview --}}
-        <div class="lg:col-span-1 space-y-8">
-            <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40">
-                <div class="aspect-square bg-slate-50 rounded-3xl overflow-hidden mb-6">
-                    <img src="{{ asset('storage/' . $product->images->first()->image) }}" class="w-full h-full object-contain p-4">
-                </div>
-                <h4 class="text-xs font-black uppercase tracking-widest text-slate-900 mb-2">{{ $product->name }}</h4>
-                <p class="text-[10px] font-black text-primary uppercase tracking-widest mb-6">{{ number_format($product->price, 0) }} Tk</p>
-                
-                <div class="space-y-3">
-                    <div class="flex justify-between items-center py-3 border-b border-slate-50">
-                        <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total Comments</span>
-                        <span class="text-xs font-black text-slate-900">{{ $product->comments->count() }}</span>
-                    </div>
-                    <div class="flex justify-between items-center py-3 border-b border-slate-50">
-                        <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total Reactions</span>
-                        <span class="text-xs font-black text-slate-900">{{ $product->reactions->count() }}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {{-- Comments List --}}
-        <div class="lg:col-span-2">
-            <div class="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/40">
-                <h3 class="text-xs font-black uppercase tracking-[0.2em] text-slate-700 mb-10 pb-4 border-b border-slate-50">Community Feedback</h3>
-
-                <div class="space-y-8">
-                    @forelse($product->comments as $comment)
-                        <div class="flex gap-6 p-6 rounded-3xl hover:bg-slate-50/50 transition-all border border-transparent hover:border-slate-100 group">
-                            <div class="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 font-black">
-                                {{ substr($comment->user->name, 0, 1) }}
-                            </div>
-                            <div class="flex-1">
-                                <div class="flex items-center justify-between mb-2">
-                                    <div>
-                                        <h5 class="text-[10px] font-black text-slate-900 uppercase tracking-widest">{{ $comment->user->name }}</h5>
-                                        <p class="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-1">{{ $comment->created_at->format('M d, Y - H:i') }}</p>
-                                    </div>
-                                    <form action="{{ route('admin.products.comment.destroy', $comment->id) }}" method="POST" onsubmit="return confirm('Delete this comment?')">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="w-8 h-8 bg-red-50 text-red-500 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 hover:text-white">
-                                            <i class="bi bi-trash text-sm"></i>
-                                        </button>
-                                    </form>
-                                </div>
-                                <p class="text-xs text-slate-600 leading-relaxed">{{ $comment->comment }}</p>
-                                @if($comment->user->status !== 'active')
-                                    <span class="inline-block mt-3 px-2 py-0.5 bg-red-100 text-red-600 text-[8px] font-black uppercase tracking-widest rounded">Blocked User</span>
-                                @endif
-                            </div>
+    <x-admin.card title="Reviews" :description="$comments->count() . ' ' . \Illuminate\Support\Str::plural('review', $comments->count())" :padding="false" class="lg:col-span-2">
+        <ul class="divide-y divide-gray-200 dark:divide-gray-800">
+            @forelse($comments as $comment)
+                <li class="flex gap-4 px-6 py-5">
+                    <span class="flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300" aria-hidden="true">
+                        {{ mb_strtoupper(mb_substr($comment->user?->name ?? '?', 0, 1)) }}
+                    </span>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <p class="font-medium text-gray-900 dark:text-white">{{ $comment->user?->name ?? 'Deleted user' }}</p>
+                            @if($comment->rating)
+                                <span class="text-sm text-yellow-500" aria-label="{{ $comment->rating }} out of 5 stars">{{ str_repeat('★', $comment->rating) }}<span class="text-gray-300 dark:text-gray-600">{{ str_repeat('★', 5 - $comment->rating) }}</span></span>
+                            @endif
+                            <x-admin.status-badge :status="$comment->status" />
+                            @if($comment->user && $comment->user->status !== 'active')
+                                <x-admin.status-badge status="blocked" label="Blocked user" />
+                            @endif
                         </div>
-                    @empty
-                        <div class="text-center py-20">
-                            <p class="text-[10px] font-black text-slate-300 uppercase tracking-widest">No discussions yet for this product.</p>
-                        </div>
-                    @endforelse
-                </div>
-            </div>
-        </div>
-    </div>
+                        <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ $comment->created_at->format('d M Y, H:i') }}</p>
+                        <p class="mt-2 whitespace-pre-line text-sm text-gray-700 dark:text-gray-300">{{ $comment->comment }}</p>
+                    </div>
+                    @can('products.delete')
+                        <form method="POST" action="{{ route('admin.products.comment.destroy', $comment->id) }}" class="shrink-0"
+                              data-confirm="The review is permanently removed and the product rating is recalculated." data-confirm-title="Delete this review?" data-confirm-button="Delete">
+                            @csrf @method('DELETE')
+                            <x-admin.button type="submit" variant="ghost" size="sm" icon="bi-trash" :loading="false" class="text-red-600 dark:text-red-400" aria-label="Delete review by {{ $comment->user?->name }}" />
+                        </form>
+                    @endcan
+                </li>
+            @empty
+                <li><x-admin.empty-state title="No reviews yet" description="Reviews customers leave on this product will appear here." icon="bi-chat-left-text" /></li>
+            @endforelse
+        </ul>
+    </x-admin.card>
 </div>
 @endsection

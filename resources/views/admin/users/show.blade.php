@@ -1,163 +1,85 @@
 @extends('admin.layouts')
-@section('title', 'Customer Profile')
+@section('title', $user->name)
+@section('ui-v2', '1')
 
 @section('content')
-<div class="space-y-10 pb-20">
-    {{-- Header --}}
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div class="flex items-center gap-5">
-            <div class="w-16 h-16 bg-slate-900 rounded-[2rem] flex items-center justify-center text-white shadow-2xl shadow-slate-900/20">
-                <i class="bi bi-person-badge text-2xl"></i>
-            </div>
-            <div>
-                <h1 class="text-3xl font-black tracking-tight text-slate-900 leading-none">{{ $user->name }}</h1>
-                <div class="flex items-center gap-2 mt-2">
-                    <span class="w-1 h-1 bg-primary rounded-full"></span>
-                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Customer Profile & Audit</p>
+@php
+    $isActive = $user->status === 'active';
+    $dt = 'text-xs font-medium text-gray-500 dark:text-gray-400';
+    $dd = 'mt-1 text-sm text-gray-900 dark:text-white';
+@endphp
+
+<x-admin.page-header :title="$user->name" :description="'Customer since ' . $user->created_at->format('d M Y')"
+                     :breadcrumbs="['Customers' => route('users.index'), $user->name => null]">
+    @can('users.edit')
+        <form method="POST" action="{{ route('users.toggleStatus', $user) }}"
+              data-confirm="{{ $isActive ? 'They will no longer be able to log in or place orders.' : 'They will be able to log in and order again.' }}"
+              data-confirm-title="{{ $isActive ? 'Block' : 'Unblock' }} {{ $user->name }}?" data-confirm-button="{{ $isActive ? 'Block' : 'Unblock' }}">
+            @csrf @method('PATCH')
+            <x-admin.button type="submit" variant="secondary" :icon="$isActive ? 'bi-lock' : 'bi-unlock'">{{ $isActive ? 'Block' : 'Unblock' }}</x-admin.button>
+        </form>
+        <x-admin.button :href="route('users.edit', $user)" icon="bi-pencil">Edit customer</x-admin.button>
+    @endcan
+</x-admin.page-header>
+
+<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <div class="space-y-6">
+        <x-admin.card>
+            <div class="flex items-center gap-4">
+                <span class="flex size-14 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xl font-semibold text-brand-700 dark:bg-brand-500/10 dark:text-brand-300" aria-hidden="true">
+                    {{ mb_strtoupper(mb_substr($user->name, 0, 1)) }}
+                </span>
+                <div class="min-w-0">
+                    <p class="truncate font-semibold text-gray-900 dark:text-white">{{ $user->name }}</p>
+                    <p class="mt-1"><x-admin.status-badge :status="$isActive ? 'active' : 'blocked'" /></p>
                 </div>
             </div>
-        </div>
+            <dl class="mt-6 space-y-4 border-t border-gray-200 pt-6 dark:border-gray-800">
+                <div><dt class="{{ $dt }}">Email</dt><dd class="{{ $dd }} break-all">{{ $user->email }}</dd></div>
+                <div><dt class="{{ $dt }}">Phone</dt><dd class="{{ $dd }} tabular-nums">{{ $user->phone ?? '—' }}</dd></div>
+                <div><dt class="{{ $dt }}">Customer ID</dt><dd class="{{ $dd }} font-mono">#{{ $user->user_id }}</dd></div>
+                <div><dt class="{{ $dt }}">Member since</dt><dd class="{{ $dd }}">{{ $user->created_at->format('d M Y') }}</dd></div>
+            </dl>
+        </x-admin.card>
 
-        <a href="{{ route('users.index') }}" class="px-6 py-3 rounded-xl bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all flex items-center gap-2">
-            <i class="bi bi-arrow-left"></i> Back to Registry
-        </a>
+        <x-admin.card title="Address">
+            <p class="whitespace-pre-line text-sm text-gray-700 dark:text-gray-300">{{ $user->address ?: 'No address on file.' }}</p>
+            @if($user->city || $user->state || $user->postal_code || $user->country)
+                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ collect([$user->city, $user->state, $user->postal_code, $user->country])->filter()->implode(', ') }}</p>
+            @endif
+        </x-admin.card>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        {{-- Identity Card --}}
-        <div class="space-y-8">
-            <div class="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden">
-                <div class="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -mr-16 -mt-16 blur-3xl opacity-50"></div>
-                
-                <h4 class="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-8">01. Identity Core</h4>
-                
-                <div class="space-y-6 relative">
-                    <div class="flex flex-col">
-                        <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest">Legal Name</span>
-                        <span class="text-sm font-black text-slate-900 mt-1">{{ $user->name }}</span>
-                    </div>
-                    <div class="flex flex-col">
-                        <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest">Email Endpoint</span>
-                        <span class="text-sm font-black text-slate-900 mt-1">{{ $user->email }}</span>
-                    </div>
-                    <div class="flex flex-col">
-                        <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest">Primary Contact</span>
-                        <span class="text-sm font-black text-slate-900 mt-1">{{ $user->phone ?? 'Not Linked' }}</span>
-                    </div>
-                    <div class="pt-6 border-t border-slate-50 flex items-center justify-between">
-                        <div>
-                            <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest">Registry Status</span>
-                            <div class="flex items-center gap-2 mt-1">
-                                <div class="w-2 h-2 rounded-full {{ $user->status === 'active' ? 'bg-emerald-500' : 'bg-red-500' }}"></div>
-                                <span class="text-[10px] font-black uppercase tracking-widest text-slate-900">{{ $user->status }}</span>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest">Member Since</span>
-                            <span class="text-[10px] font-black block mt-1 text-slate-900 italic tracking-tighter">{{ $user->created_at->format('M d, Y') }}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-slate-900 p-10 rounded-[3rem] text-white shadow-2xl shadow-slate-900/30">
-                <i class="bi bi-geo-alt text-3xl text-primary"></i>
-                <h4 class="mt-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Logistics Data</h4>
-                <div class="mt-4 space-y-4">
-                    <p class="text-[11px] font-medium leading-relaxed opacity-80 uppercase tracking-tight">
-                        {{ $user->address ?? 'No physical address provided in registry.' }}
-                    </p>
-                    @if($user->city || $user->country)
-                        <div class="flex items-center gap-2">
-                            <span class="bg-white/10 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">{{ $user->city }}</span>
-                            <span class="bg-white/10 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">{{ $user->country }}</span>
-                        </div>
-                    @endif
-                </div>
-            </div>
+    <div class="min-w-0 lg:col-span-2">
+        <div class="mb-3 flex items-center justify-between gap-4">
+            <h2 class="text-base font-semibold text-gray-900 dark:text-white">Orders <span class="font-normal text-gray-500 dark:text-gray-400">({{ $orders->total() }})</span></h2>
+            @if($orders->total())
+                <x-admin.button variant="link" :href="route('users.orders', $user)" icon-right="bi-arrow-right">All orders</x-admin.button>
+            @endif
         </div>
-
-        {{-- Order History --}}
-        <div class="lg:col-span-2 space-y-8">
-            <div class="bg-white rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
-                <div class="px-10 py-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
-                    <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-                            <i class="bi bi-clock-history text-xl"></i>
-                        </div>
-                        <div>
-                            <h2 class="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Transaction Audit</h2>
-                            <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest">Historical Order Record</p>
-                        </div>
-                    </div>
-                    <span class="text-[10px] font-black text-slate-900 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100 italic tracking-tighter">
-                        Total Orders: {{ $user->orders->count() }}
-                    </span>
-                </div>
-                
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="border-b border-slate-50">
-                                <th class="px-10 py-5 text-[9px] font-black uppercase tracking-widest text-slate-400">Order Ref</th>
-                                <th class="px-10 py-5 text-[9px] font-black uppercase tracking-widest text-slate-400">Settlement</th>
-                                <th class="px-10 py-5 text-[9px] font-black uppercase tracking-widest text-slate-400 text-center">Status</th>
-                                <th class="px-10 py-5 text-[9px] font-black uppercase tracking-widest text-slate-400 text-right">Date</th>
-                                <th class="px-10 py-5 text-[9px] font-black uppercase tracking-widest text-slate-400 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-50">
-                            @forelse($orders as $order)
-                                <tr class="hover:bg-slate-50/50 transition-colors group">
-                                    <td class="px-10 py-6">
-                                        <span class="text-[11px] font-black text-slate-900 tracking-tighter uppercase">{{ $order->order_id }}</span>
-                                    </td>
-                                    <td class="px-10 py-6">
-                                        <span class="text-[11px] font-black text-slate-900 italic tracking-tight">TK {{ number_format($order->total_price, 2) }}</span>
-                                    </td>
-                                    <td class="px-10 py-6 text-center">
-                                        @php
-                                            $color = match($order->status) {
-                                                'completed', 'delivered' => 'bg-emerald-50 text-emerald-600 border-emerald-100',
-                                                'pending', 'processing' => 'bg-orange-50 text-orange-600 border-orange-100',
-                                                'cancelled' => 'bg-red-50 text-red-600 border-red-100',
-                                                default => 'bg-slate-50 text-slate-500 border-slate-100'
-                                            };
-                                        @endphp
-                                        <span class="px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border {{ $color }}">
-                                            {{ $order->status }}
-                                        </span>
-                                    </td>
-                                    <td class="px-10 py-6 text-right">
-                                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ $order->created_at->format('M d, Y') }}</span>
-                                    </td>
-                                    <td class="px-10 py-6 text-right">
-                                        <a href="{{ route('orders.show', $order->id) }}" class="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-primary hover:text-slate-900 transition-all">
-                                            Audit <i class="bi bi-arrow-right"></i>
-                                        </a>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="5" class="px-10 py-20 text-center">
-                                        <div class="flex flex-col items-center opacity-20">
-                                            <i class="bi bi-cart-x text-5xl"></i>
-                                            <p class="text-[10px] font-black uppercase tracking-widest mt-4">No Transaction History</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-                
-                @if($orders->hasPages())
-                    <div class="px-10 py-6 bg-slate-50/30 border-t border-slate-50">
-                        {{ $orders->links() }}
-                    </div>
-                @endif
-            </div>
-        </div>
+        <x-admin.data-table :paginator="$orders"
+            :columns="[
+                ['label' => 'Order', 'sortable' => true],
+                ['label' => 'Total', 'sortable' => true, 'align' => 'right'],
+                ['label' => 'Status'],
+                ['label' => 'Placed', 'sortable' => true],
+                ['label' => 'Actions', 'srOnly' => true, 'align' => 'right'],
+            ]"
+            empty-title="No orders yet" empty-description="This customer hasn't placed an order." empty-icon="bi-cart">
+            @foreach($orders as $order)
+                <tr class="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                    <td data-primary data-sort="{{ $order->order_id }}">
+                        <a href="{{ route('orders.show', $order->id) }}" class="rounded font-medium text-gray-900 hover:text-brand-600 focus-ring dark:text-white dark:hover:text-brand-400">#{{ $order->order_id }}</a>
+                    </td>
+                    <td data-label="Total" data-sort="{{ $order->total_price }}" class="whitespace-nowrap text-right font-medium tabular-nums">Tk {{ number_format($order->total_price, 2) }}</td>
+                    <td data-label="Status"><x-admin.status-badge type="order" :status="$order->status" /></td>
+                    <td data-label="Placed" data-sort="{{ $order->created_at->timestamp }}" class="whitespace-nowrap">{{ $order->created_at->format('d M Y') }}</td>
+                    <td class="text-right">
+                        <x-admin.button variant="ghost" size="sm" :href="route('orders.show', $order->id)" icon="bi-eye" aria-label="View order #{{ $order->order_id }}" />
+                    </td>
+                </tr>
+            @endforeach
+        </x-admin.data-table>
     </div>
 </div>
 @endsection

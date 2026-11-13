@@ -3,8 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
+use App\Models\Permission;
+use App\Models\Role;
+use App\Support\AdminPermissions;
 use App\Http\Requests\Admin\StorePermissionRequest;
 use App\Http\Requests\Admin\UpdatePermissionRequest;
 use Illuminate\Http\Request;
@@ -73,8 +74,7 @@ class PermissionController extends Controller
     public function update(UpdatePermissionRequest $request, Permission $permission)
     {
         // Prevent renaming core seeded permissions
-        $corePermissions = ['manage-products', 'manage-orders', 'manage-users', 'manage-roles'];
-        if (in_array($permission->name, $corePermissions) && $request->name !== $permission->name) {
+        if (AdminPermissions::isCore($permission->name) && $request->name !== $permission->name) {
             return redirect()->back()->withErrors([
                 'name' => 'The permission "' . $permission->name . '" is a core system permission and cannot be renamed.',
             ]);
@@ -91,8 +91,7 @@ class PermissionController extends Controller
      */
     public function destroy(Permission $permission)
     {
-        $corePermissions = ['manage-products', 'manage-orders', 'manage-users', 'manage-roles'];
-        if (in_array($permission->name, $corePermissions)) {
+        if (AdminPermissions::isCore($permission->name)) {
             return redirect()->back()
                 ->with('error', 'Core system permission "' . $permission->name . '" cannot be deleted.');
         }

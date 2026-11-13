@@ -17,6 +17,7 @@ class WishlistController extends Controller
                     $q->with('images');
                 }
             ])
+            ->whereHas('product')
             ->latest()
             ->get();
 
@@ -27,6 +28,7 @@ class WishlistController extends Controller
     {
         $wishlistItems = Wishlist::where('user_id', Auth::id())
             ->with(['product.images'])
+            ->whereHas('product')
             ->latest()
             ->get();
 

@@ -177,7 +177,7 @@
 
                         <!-- Step 2: Processing -->
                         @php
-                            $isProcessing = in_array($order->status, ['processing', 'shipped', 'completed', 'delivered']);
+                            $isProcessing = in_array($order->status, ['confirmed', 'processing', 'shipped', 'delivered', 'returned', 'refunded']);
                         @endphp
                         <div class="flex items-start gap-4">
                             <div class="flex flex-col items-center shrink-0">
@@ -198,7 +198,7 @@
 
                         <!-- Step 3: Shipped -->
                         @php
-                            $isShipped = in_array($order->status, ['shipped', 'completed', 'delivered']);
+                            $isShipped = in_array($order->status, ['shipped', 'delivered', 'returned', 'refunded']);
                         @endphp
                         <div class="flex items-start gap-4">
                             <div class="flex flex-col items-center shrink-0">
@@ -219,7 +219,7 @@
 
                         <!-- Step 4: Delivered -->
                         @php
-                            $isDelivered = in_array($order->status, ['completed', 'delivered']);
+                            $isDelivered = in_array($order->status, ['delivered', 'returned', 'refunded']);
                         @endphp
                         <div class="flex items-start gap-4">
                             <div class="flex flex-col items-center shrink-0">

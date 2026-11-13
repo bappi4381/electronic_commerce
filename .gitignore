@@ -1,0 +1,41 @@
+# Environment / secrets
+.env
+.env.backup
+.env.production
+.env.*.local
+auth.json
+
+# Dependencies
+/vendor
+/node_modules
+
+# Storage (directory skeleton is kept by the .gitignore files inside storage/)
+/storage/*.key
+/storage/pail
+/public/storage
+/public/hot
+
+# Database dumps and archives
+single.sql
+*.sql
+*.sql.gz
+*.zip
+
+# Tooling binaries
+composer.phar
+composer-setup.php
+
+# Caches, logs, test output
+.phpunit.cache
+.phpunit.result.cache
+/.phpactor.json
+npm-debug.log
+yarn-error.log
+Homestead.json
+Homestead.yaml
+/.fleet
+/.idea
+/.nova
+/.zed
+.DS_Store
+Thumbs.db

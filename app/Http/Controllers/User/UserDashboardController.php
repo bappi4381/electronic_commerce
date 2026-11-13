@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Enums\OrderStatus;
 use App\Models\Order;
+use App\Services\OrderStatusService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests; 
 
@@ -46,7 +49,7 @@ class UserDashboardController extends Controller
             'postal_code' => 'nullable|string|max:20',
             'country' => 'nullable|string|max:100',
             'is_email_verified' => 'sometimes|boolean',
-            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'avatar' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'password' => 'nullable|string|min:6|confirmed',
             
         ]);
@@ -65,8 +68,8 @@ class UserDashboardController extends Controller
         // Update avatar if uploaded
         if ($request->hasFile('avatar')) {
             // Delete old avatar if exists
-            if ($user->avatar && file_exists(storage_path('app/public/' . $user->avatar))) {
-                unlink(storage_path('app/public/' . $user->avatar));
+            if ($user->avatar) {
+                Storage::disk('public')->delete($user->avatar);
             }
             $avatarPath = $request->file('avatar')->store('avatars', 'public');
             $user->avatar = $avatarPath;
@@ -93,18 +96,24 @@ class UserDashboardController extends Controller
 
     public function userOrderDetails(Order $order) {
         $this->authorize('view', $order); // ensure user owns order
+        $order->load('orderItems.product', 'orderItems.variant.attributeValues.attribute', 'statusHistories', 'orderCourier');
         return view('user.orders.details', compact('order'));
     }
 
-    public function cancelOrder(Order $order)
+    public function cancelOrder(Order $order, OrderStatusService $orderStatus)
     {
         $this->authorize('update', $order); // make sure policy exists
 
-        if ($order->status === 'cancelled') {
+        if ($order->status === OrderStatus::Cancelled->value) {
             return redirect()->back()->with('info', 'Order is already cancelled.');
         }
 
-        $order->update(['status' => 'cancelled']);
+        // Paid, shipped or fulfilled orders need a refund/return handled by support.
+        if (!$order->statusEnum()?->holdsStock() || $order->paymentStatusEnum()?->isCollected()) {
+            return redirect()->back()->with('error', 'This order can no longer be cancelled online. Please contact support.');
+        }
+
+        $orderStatus->transition($order, OrderStatus::Cancelled, null, 'Cancelled by customer');
 
         return redirect()->back()->with('success', 'Order cancelled successfully!');
     }
@@ -115,7 +124,7 @@ class UserDashboardController extends Controller
 
     public function trackOrder(Request $request) {
         $request->validate(['order_id' => 'required|string']);
-        $order = Order::where('order_id', $request->order_id)->first();
+        $order = Auth::user()->orders()->with('statusHistories', 'orderCourier')->where('order_id', $request->order_id)->first();
         return $order 
             ? view('user.orders.track', compact('order'))
             : redirect()->back()->with('error', 'Order not found!');
@@ -135,17 +144,23 @@ class UserDashboardController extends Controller
         $request->validate(['message' => 'required|string']);
         $user = Auth::user();
 
+        $hadUnread = \App\Models\Message::where('user_id', $user->id)->where('is_admin', false)->where('is_read', false)->exists();
+
+        // is_read on a customer message tracks whether an admin has read it.
         $message = \App\Models\Message::create([
             'user_id' => $user->id,
             'is_admin' => false,
             'message' => $request->message,
-            'is_read' => true, // Sender's own message is read
         ]);
 
         try {
             broadcast(new \App\Events\MessageSent($message));
         } catch (\Exception $e) {
             // Pusher not configured; message still saved to DB
+        }
+
+        if (!$hadUnread) {
+            app(\App\Services\AdminNotifier::class)->newChatMessage($message);
         }
 
         return response()->json(['status' => 'Message Sent!', 'message' => $message]);

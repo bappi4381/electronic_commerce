@@ -7,6 +7,7 @@ use App\Models\Article;
 use App\Models\Category;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ArticleController extends Controller
 {
@@ -54,6 +55,8 @@ class ArticleController extends Controller
             'status'       => 'nullable|in:draft,published',
         ]);
 
+        $validated['published_at'] = $validated['published_at'] ?? now();
+
         // Image upload
         if ($request->hasFile('image')) {
             $validated['image'] = $request->file('image')->store('articles', 'public');
@@ -62,7 +65,11 @@ class ArticleController extends Controller
             Article::create($validated);
             return redirect()->route('articles.index')->with('success', 'Article created successfully!');
         } catch (\Exception $e) {
-            dd($e->getMessage(), $validated);
+            if (!empty($validated['image'])) {
+                Storage::disk('public')->delete($validated['image']);
+            }
+            report($e);
+            return back()->withInput()->withErrors(['article' => 'The article could not be saved. Please check the fields and try again.']);
         }
     }
 
@@ -98,11 +105,26 @@ class ArticleController extends Controller
             'status'       => 'nullable|in:draft,published',
         ]);
 
+        $validated['published_at'] = $validated['published_at'] ?? $article->published_at ?? now();
+
+        $oldImage = $article->image;
         if ($request->hasFile('image')) {
             $validated['image'] = $request->file('image')->store('articles', 'public');
         }
-        // dd($validated);
-        $article->update($validated);
+
+        try {
+            $article->update($validated);
+        } catch (\Exception $e) {
+            if (!empty($validated['image'])) {
+                Storage::disk('public')->delete($validated['image']);
+            }
+            report($e);
+            return back()->withInput()->withErrors(['article' => 'The article could not be updated. Please check the fields and try again.']);
+        }
+
+        if (!empty($validated['image']) && $oldImage) {
+            Storage::disk('public')->delete($oldImage);
+        }
 
         return redirect()->route('articles.index')->with('success', 'Article updated successfully!');
     }
@@ -112,8 +134,8 @@ class ArticleController extends Controller
      */
     public function destroy(Article $article)
     {
-        if ($article->image && file_exists(public_path('storage/' . $article->image))) {
-            unlink(public_path('storage/' . $article->image));
+        if ($article->image) {
+            Storage::disk('public')->delete($article->image);
         }
 
         $article->delete();

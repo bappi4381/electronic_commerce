@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use Illuminate\Auth\GenericUser;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 use App\Models\Admin;
@@ -26,6 +29,15 @@ class AppServiceProvider extends ServiceProvider
                 return true;
             }
             return null;
+        });
+
+        // Lets guests authenticate private broadcast channels; access is decided in routes/channels.php.
+        Auth::viaRequest('chat-guest', function (Request $request) {
+            if (! $request->hasSession() || ! $request->session()->getId()) {
+                return null;
+            }
+
+            return new GenericUser(['id' => 'guest']);
         });
     }
 }

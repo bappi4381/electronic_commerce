@@ -21,7 +21,7 @@ class UpdatePermissionRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
-                'regex:/^[a-z0-9\-]+$/',
+                'regex:/^[a-z0-9]+([.\-][a-z0-9]+)*$/',
                 'unique:permissions,name,' . $permissionId . ',id,guard_name,admin',
             ],
         ];
@@ -32,7 +32,7 @@ class UpdatePermissionRequest extends FormRequest
         return [
             'name.required' => 'The permission name is required.',
             'name.unique'   => 'This permission name already exists.',
-            'name.regex'    => 'Permission name may only contain lowercase letters, numbers, and hyphens.',
+            'name.regex'    => 'Permission name may only contain lowercase letters, numbers, dots and hyphens (e.g. reports.view).',
         ];
     }
 }

@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Invoice #{{ $order->id }}</title>
+    <title>Invoice {{ $order->order_id }}</title>
     <style>
         @page {
             margin: 40px;
@@ -202,119 +202,117 @@
     <table class="info-table">
         <tr>
             <td style="width: 50%;">
+                <div class="meta-title">Invoice #:</div>
+                <div class="meta-value">{{ $order->order_id }}</div>
+
                 <div class="meta-title">Date:</div>
                 <div class="meta-value">{{ $order->created_at->format('F d, Y') }}</div>
-                
-                <div class="meta-title">Invoice #:</div>
-                <div class="meta-value">{{ $order->id }}</div>
-                
-                <div class="meta-title">Customer ID:</div>
-                <div class="meta-value">CUST-{{ str_pad($order->user_id ?? 1, 5, '0', STR_PAD_LEFT) }}</div>
+
+                <div class="meta-title">Status:</div>
+                <div class="meta-value">{{ $order->statusEnum()?->label() ?? $order->status }} / {{ $order->paymentStatusEnum()?->label() ?? $order->payment_status }}</div>
             </td>
             <td style="width: 50%; text-align: right;">
-                <div style="display: inline-block; text-align: left; width: 220px;">
-                    <div class="to-title">To:</div>
+                <div style="display: inline-block; text-align: left; width: 240px;">
+                    <div class="to-title">Ship To:</div>
                     <div class="to-value">
-                        <strong>{{ $order->user->name ?? 'Customer Name' }}</strong><br>
-                        @if(isset($order->user->phone))
-                            {{ $order->user->phone }}<br>
-                        @endif
-                        @if(isset($order->user->email))
-                            {{ $order->user->email }}<br>
-                        @endif
-                        {{ $order->shipping_address ?? 'Shipping Address Not Available' }}
+                        <strong>{{ $order->customerDisplayName() }}</strong><br>
+                        @if($order->customerDisplayPhone()){{ $order->customerDisplayPhone() }}<br>@endif
+                        @if($order->alt_phone)Alt: {{ $order->alt_phone }}<br>@endif
+                        @if($order->customerDisplayEmail()){{ $order->customerDisplayEmail() }}<br>@endif
+                        {{ $order->shipping_address ?? 'Shipping address not available' }}<br>
+                        {{ collect([$order->region, $order->city])->filter()->implode(', ') }}
                     </div>
                 </div>
             </td>
         </tr>
     </table>
 
-    <!-- Horizontal metadata panel matching image styling -->
     <table class="mid-bar">
         <thead>
             <tr>
-                <th style="width: 25%;">Salesperson</th>
-                <th style="width: 25%;">Job</th>
-                <th style="width: 25%;">Payment Terms</th>
-                <th style="width: 25%;">Due Date</th>
+                <th style="width: 25%;">Payment Method</th>
+                <th style="width: 25%;">Payment Status</th>
+                <th style="width: 25%;">Courier</th>
+                <th style="width: 25%;">Tracking</th>
             </tr>
         </thead>
         <tbody>
             <tr>
-                <td>ONEMALL Sales Team</td>
-                <td>Online Purchase</td>
                 <td>{{ strtoupper($order->payment_method ?? 'COD') }}</td>
-                <td>Due on receipt</td>
+                <td>{{ $order->paymentStatusEnum()?->label() ?? $order->payment_status }}</td>
+                <td>{{ $order->orderCourier?->courierLabel() ?? '—' }}</td>
+                <td>{{ $order->orderCourier?->tracking_code ?: ($order->orderCourier?->consignment_id ?? '—') }}</td>
             </tr>
         </tbody>
     </table>
 
-    <!-- Main items grid -->
     <table class="items-table">
         <thead>
             <tr>
-                <th style="width: 10%;" class="text-center">Qty</th>
-                <th style="width: 50%;">Description</th>
-                <th style="width: 20%;" class="text-right">Unit Price</th>
-                <th style="width: 20%;" class="text-right">Line Total</th>
+                <th style="width: 8%;" class="text-center">Qty</th>
+                <th style="width: 42%;">Description</th>
+                <th style="width: 20%;">SKU / Variant</th>
+                <th style="width: 15%;" class="text-right">Unit Price</th>
+                <th style="width: 15%;" class="text-right">Line Total</th>
             </tr>
         </thead>
         <tbody>
             @foreach($order->orderItems as $item)
             <tr>
                 <td class="text-center">{{ $item->quantity }}</td>
-                <td>{{ $item->product ? (is_array($item->product->name) ? ($item->product->name['en'] ?? 'N/A') : $item->product->name) : 'Product N/A' }}</td>
+                <td>{{ $item->product?->name ?? 'Product N/A' }}</td>
+                <td>
+                    {{ $item->variant?->sku ?: '—' }}
+                    @if($item->variant && $item->variant->attributeValues->isNotEmpty())
+                        <br><span style="font-size: 9px; color: #6b6f92;">{{ $item->variant->attributeValues->map(fn ($v) => $v->attribute?->name . ': ' . $v->value)->implode(', ') }}</span>
+                    @endif
+                </td>
                 <td class="text-right">{{ number_format($item->price, 2) }}</td>
                 <td class="text-right">{{ number_format($item->subtotal, 2) }}</td>
             </tr>
             @endforeach
-            
-            <!-- Smart padding loop to fill empty lines (up to 6 total rows) matching the classic design aesthetic -->
-            @php
-                $blankRowsCount = 6 - count($order->orderItems);
-            @endphp
-            @if($blankRowsCount > 0)
-                @for($i = 0; $i < $blankRowsCount; $i++)
-                <tr>
-                    <td class="text-center" style="color: transparent;">&nbsp;</td>
-                    <td>&nbsp;</td>
-                    <td class="text-right" style="color: transparent;">&nbsp;</td>
-                    <td class="text-right" style="color: transparent;">&nbsp;</td>
-                </tr>
-                @endfor
-            @endif
+
+            @for($i = count($order->orderItems); $i < 6; $i++)
+            <tr>
+                <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+            </tr>
+            @endfor
         </tbody>
     </table>
 
-    <!-- Bottom summary values -->
     <div class="summary-wrapper">
         <table class="summary-table">
             <tr>
                 <td class="summary-label">Subtotal</td>
-                <td class="summary-value">{{ number_format($order->total_price - ($order->delivery_charge ?? 0), 2) }}</td>
+                <td class="summary-value">{{ number_format($order->orderItems->sum('subtotal'), 2) }}</td>
             </tr>
+            @if((float) $order->discount_amount > 0)
+            <tr>
+                <td class="summary-label">Discount ({{ $order->coupon_code }})</td>
+                <td class="summary-value">-{{ number_format($order->discount_amount, 2) }}</td>
+            </tr>
+            @endif
             <tr>
                 <td class="summary-label">Delivery Charge</td>
                 <td class="summary-value">{{ number_format($order->delivery_charge ?? 0, 2) }}</td>
             </tr>
             <tr>
-                <td class="summary-label">Total</td>
+                <td class="summary-label">Total (BDT)</td>
                 <td class="summary-value" style="background-color: #d1e5dd; border-width: 2px;">{{ number_format($order->total_price, 2) }}</td>
             </tr>
         </table>
         <div class="clear"></div>
     </div>
 
-    <!-- Centered bottom headers -->
-    <div class="footer-payable">
-        Make all checks payable to ONEMALL CO.
-    </div>
     <div class="footer-thankyou">
         Thank you for your business!
     </div>
-    
+
     <div class="footer-company">
-        ONEMALL CO. | 123 Tech Avenue, Silicon Valley, CA | Phone: +1 (555) 123-4567 | Fax: +1 (555) 123-4568
+        {{ \App\Models\Setting::get('site_name', config('app.name')) }}
+        @if(\App\Models\Setting::get('contact_address')) | {{ \App\Models\Setting::get('contact_address') }}@endif
+        @if(\App\Models\Setting::get('contact_phone')) | Phone: {{ \App\Models\Setting::get('contact_phone') }}@endif
+        @if(\App\Models\Setting::get('contact_email')) | {{ \App\Models\Setting::get('contact_email') }}@endif
     </div>
 
 </body>

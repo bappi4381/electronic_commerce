@@ -18,7 +18,7 @@ class StorePermissionRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
-                'regex:/^[a-z0-9\-]+$/',
+                'regex:/^[a-z0-9]+([.\-][a-z0-9]+)*$/',
                 'unique:permissions,name,NULL,id,guard_name,admin',
             ],
         ];
@@ -29,7 +29,7 @@ class StorePermissionRequest extends FormRequest
         return [
             'name.required' => 'The permission name is required.',
             'name.unique'   => 'This permission already exists under the admin guard.',
-            'name.regex'    => 'Permission name may only contain lowercase letters, numbers, and hyphens (e.g. manage-products).',
+            'name.regex'    => 'Permission name may only contain lowercase letters, numbers, dots and hyphens (e.g. reports.view).',
         ];
     }
 }

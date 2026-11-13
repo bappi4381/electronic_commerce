@@ -6,45 +6,51 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\StockMovement;
 use App\Models\ProductVariant;
-use Illuminate\Support\Facades\DB;
+use App\Services\StockService;
 
 class StockMovementController extends Controller
 {
     public function index(Request $request)
     {
-        $variants = ProductVariant::with('product')->orderBy('id')->get();
-        $movements = StockMovement::with(['variant.product', 'admin'])->latest()->paginate(30);
+        $filters = $request->validate(['variant' => 'nullable|integer']);
 
-        return view('admin.product.stock_movements.index', compact('variants', 'movements'));
+        $movements = StockMovement::with(['variant.product' => fn ($query) => $query->withTrashed(), 'admin'])
+            ->when($filters['variant'] ?? null, fn ($q, $id) => $q->where('variant_id', $id))
+            ->latest()
+            ->paginate(30);
+
+        $filterVariant = $this->pickerItem($filters['variant'] ?? null);
+        // Pre-select the variant being filtered, or the one from a failed submit.
+        $selectedVariant = $this->pickerItem(old('variant_id')) ?? $filterVariant;
+
+        return view('admin.product.stock_movements.index', compact('movements', 'filterVariant', 'selectedVariant'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, StockService $stock)
     {
         $data = $request->validate([
             'variant_id' => 'required|exists:product_variants,id',
             'change' => 'required|integer|not_in:0',
-            'type' => 'nullable|string',
+            'type' => 'nullable|in:adjustment,correction,return,other',
             'reason' => 'nullable|string|max:255',
         ]);
 
-        DB::transaction(function () use ($data) {
-            $variant = ProductVariant::findOrFail($data['variant_id']);
-
-            $movement = StockMovement::create([
-                'variant_id' => $variant->id,
-                'change' => intval($data['change']),
-                'type' => $data['type'] ?? 'adjustment',
-                'reason' => $data['reason'] ?? null,
-                'source_type' => null,
-                'source_id' => null,
-                'admin_id' => null,
-            ]);
-
-            // apply change
-            $variant->stock = max(0, $variant->stock + intval($data['change']));
-            $variant->save();
-        });
+        $stock->adjust(
+            (int) $data['variant_id'],
+            (int) $data['change'],
+            null,
+            $data['reason'] ?? 'Manual stock adjustment',
+            auth('admin')->id(),
+            $data['type'] ?? 'adjustment',
+        );
 
         return back()->with('success', 'Stock adjusted successfully.');
+    }
+
+    private function pickerItem(mixed $variantId): ?array
+    {
+        return $variantId
+            ? ProductVariant::with(['product' => fn ($q) => $q->withTrashed()])->find($variantId)?->toPickerArray()
+            : null;
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin\Product;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * SubcategoryController
@@ -52,7 +53,16 @@ class SubcategoryController extends Controller
     public function destroy($id)
     {
         $subcategory = Category::findOrFail($id);
+
+        if ($reason = $subcategory->deletionBlocker()) {
+            return back()->with('error', $reason);
+        }
+
         $subcategory->delete();
+
+        if ($subcategory->image) {
+            Storage::disk('public')->delete($subcategory->image);
+        }
 
         return back()->with('success', 'Subcategory deleted successfully.');
     }

@@ -1,129 +1,177 @@
 @extends('admin.layouts')
-@section('title', 'Order Management')
+@section('title', 'Orders')
+@section('ui-v2', '1')
+
+@use('App\Enums\OrderStatus')
+@use('App\Enums\PaymentStatus')
 
 @section('content')
-<div class="space-y-8">
-    {{-- Header Section --}}
-    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-        <div>
-            <h1 class="text-3xl font-black tracking-tight text-slate-900 leading-none">Order Logistics</h1>
-            <p class="text-sm font-bold text-slate-400 uppercase tracking-[0.2em] mt-3">Track and process customer transactions</p>
-        </div>
-        <div class="flex items-center gap-4">
-            <button class="bg-white border border-slate-200 text-slate-600 px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-2">
-                <i class="bi bi-filter"></i> Advanced Filters
-            </button>
-            <a href="{{ route('orders.create') }}" class="bg-primary text-white px-8 py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 flex items-center gap-2">
-                <i class="bi bi-plus-lg"></i> Manual Order
-            </a>
-        </div>
-    </div>
+@php
+    $filterControl = 'h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-700 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200';
+    $canEdit = auth()->user()->can('orders.edit');
+@endphp
 
-    {{-- Feedback Messages --}}
-    @if(session('success'))
-        <div class="bg-green-50 border border-green-100 p-4 rounded-2xl flex items-center gap-4 animate-fadeIn">
-            <div class="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center text-white text-xl shadow-lg shadow-green-500/20">
-                <i class="bi bi-check-lg"></i>
-            </div>
-            <div>
-                <p class="text-xs font-black uppercase tracking-widest text-green-700">Order System</p>
-                <p class="text-sm font-bold text-green-600">{{ session('success') }}</p>
-            </div>
-        </div>
+<div x-data="{ selected: [], all: false }">
+    <x-admin.page-header title="Orders" :description="number_format($orders->total()) . ' ' . \Illuminate\Support\Str::plural('order', $orders->total()) . ' match the current filters.'">
+        @can('orders.create')
+            <x-admin.button :href="route('orders.create')" icon="bi-plus-lg">Create order</x-admin.button>
+        @endcan
+    </x-admin.page-header>
+
+    <nav aria-label="Filter by status" class="scrollbar-thin mb-4 flex gap-2 overflow-x-auto pb-1">
+        @php($allActive = empty($filters['status']))
+        <a href="{{ route('orders.index', request()->except('status', 'page')) }}" @if($allActive) aria-current="page" @endif
+           @class(['inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium focus-ring',
+                   'border-gray-900 bg-gray-900 text-white dark:border-white dark:bg-white dark:text-gray-900' => $allActive,
+                   'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:text-white' => !$allActive])>
+            All <span class="tabular-nums opacity-60">{{ $statusCounts->sum() }}</span>
+        </a>
+        @foreach(OrderStatus::cases() as $status)
+            @php($active = ($filters['status'] ?? null) === $status->value)
+            <a href="{{ route('orders.index', array_merge(request()->except('page'), ['status' => $status->value])) }}" @if($active) aria-current="page" @endif
+               @class(['inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium focus-ring',
+                       'border-gray-900 bg-gray-900 text-white dark:border-white dark:bg-white dark:text-gray-900' => $active,
+                       'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:text-white' => !$active])>
+                {{ $status->label() }} <span class="tabular-nums opacity-60">{{ $statusCounts[$status->value] ?? 0 }}</span>
+            </a>
+        @endforeach
+    </nav>
+
+    @if(session('bulk_failures'))
+        <x-admin.alert tone="warning" title="Some orders were skipped" class="mb-4">
+            <ul class="list-inside list-disc space-y-0.5">
+                @foreach(session('bulk_failures') as $orderRef => $reason)
+                    <li>#{{ $orderRef }}: {{ $reason }}</li>
+                @endforeach
+            </ul>
+        </x-admin.alert>
     @endif
 
-    {{-- Orders Table Card --}}
-    <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-slate-50 border-b border-slate-100">
-                        <th class="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Order Ref</th>
-                        <th class="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Customer Info</th>
-                        <th class="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Total Amount</th>
-                        <th class="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Fulfillment</th>
-                        <th class="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Timestamp</th>
-                        <th class="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Operations</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                    @forelse($orders as $order)
-                        <tr class="hover:bg-slate-50 transition-colors group">
-                            <td class="px-8 py-6">
-                                <div class="flex flex-col">
-                                    <span class="text-sm font-black text-slate-900 tracking-tight italic uppercase group-hover:text-primary transition-colors">#{{ $order->order_id }}</span>
-                                    <span class="text-[8px] font-black text-slate-300 uppercase tracking-widest mt-1">Ref ID: {{ $order->id }}</span>
-                                </div>
-                            </td>
-                            <td class="px-8 py-6">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-xs font-black text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-all">
-                                        {{ strtoupper(substr($order->user->name ?? 'G', 0, 1)) }}
-                                    </div>
-                                    <div class="flex flex-col min-w-0">
-                                        <span class="text-sm font-bold text-slate-700 truncate">{{ $order->user->name ?? 'Guest Customer' }}</span>
-                                        <span class="text-[10px] text-slate-400 font-bold truncate">{{ $order->user->email ?? 'No email provided' }}</span>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="px-8 py-6 text-center">
-                                <span class="text-sm font-black text-slate-900 tracking-tight italic uppercase">TK {{ number_format($order->total_price, 2) }}</span>
-                            </td>
-                            <td class="px-8 py-6 text-center">
-                                @php
-                                    $statusClasses = match($order->status) {
-                                        'pending' => 'bg-amber-100 text-amber-600',
-                                        'processing' => 'bg-cyan-100 text-cyan-600',
-                                        'completed' => 'bg-green-100 text-green-600',
-                                        'cancelled' => 'bg-red-100 text-red-600',
-                                        default => 'bg-slate-100 text-slate-600'
-                                    };
-                                @endphp
-                                <span class="px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] {{ $statusClasses }}">
-                                    {{ $order->status }}
-                                </span>
-                            </td>
-                            <td class="px-8 py-6 text-center">
-                                <div class="flex flex-col">
-                                    <span class="text-xs font-bold text-slate-600">{{ $order->created_at->format('d M, Y') }}</span>
-                                    <span class="text-[9px] text-slate-400 font-bold">{{ $order->created_at->format('h:i A') }}</span>
-                                </div>
-                            </td>
-                            <td class="px-8 py-6">
-                                <div class="flex justify-end items-center gap-2">
-                                    <a href="{{ route('orders.show', $order->id) }}" class="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-primary hover:text-white transition-all shadow-sm">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
-                                    <form action="{{ route('orders.destroy', $order->id) }}" method="POST" onsubmit="return confirm('Purge this order record?')">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-red-500 hover:text-white transition-all shadow-sm">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="6" class="px-8 py-24 text-center">
-                                <div class="flex flex-col items-center opacity-20">
-                                    <i class="bi bi-collection text-6xl"></i>
-                                    <span class="text-xs font-black uppercase tracking-widest mt-4">Zero Orders Recorded</span>
-                                </div>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-
-        {{-- Table Footer / Pagination --}}
-        @if($orders->hasPages())
-            <div class="px-8 py-6 bg-slate-50/50 border-t border-slate-100">
-                {{ $orders->links() }}
+    @if($canEdit)
+        <form method="POST" action="{{ route('orders.bulkStatus') }}" x-show="selected.length" x-cloak
+              class="sticky top-20 z-30 mb-4 flex flex-col gap-3 rounded-xl bg-gray-900 p-3 text-white shadow-lg md:flex-row md:items-center dark:bg-gray-800 dark:ring-1 dark:ring-gray-700">
+            @csrf
+            <template x-for="id in selected" :key="id"><input type="hidden" name="order_ids[]" :value="id"></template>
+            <span class="px-1 text-sm font-medium"><span x-text="selected.length"></span> selected</span>
+            <label for="bulk-status" class="sr-only">New status</label>
+            <select id="bulk-status" name="status" required class="h-9 rounded-lg border border-white/20 bg-white/10 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-white/40">
+                <option value="" class="text-gray-900">Move to status…</option>
+                @foreach(OrderStatus::options() as $value => $label)
+                    <option value="{{ $value }}" class="text-gray-900">{{ $label }}</option>
+                @endforeach
+            </select>
+            <label for="bulk-note" class="sr-only">Note</label>
+            <input id="bulk-note" type="text" name="note" maxlength="255" placeholder="Note for the status history (optional)"
+                   class="h-9 flex-1 rounded-lg border border-white/20 bg-white/10 px-3 text-sm text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/40">
+            <div class="flex gap-2">
+                <x-admin.button type="submit" size="sm">Update</x-admin.button>
+                <button type="button" @click="selected = []; all = false" class="h-8 rounded-lg px-3 text-xs font-medium text-white/80 hover:bg-white/10 focus-ring">Clear</button>
             </div>
+        </form>
+    @endif
+
+    <x-admin.data-table :paginator="$orders" search="q" search-placeholder="Order ID, customer, email or phone…" :preserve="['status']"
+        :columns="array_values(array_filter([
+            $canEdit ? ['label' => 'Select', 'srOnly' => true, 'class' => 'w-10'] : null,
+            ['label' => 'Order', 'sortable' => true],
+            ['label' => 'Customer', 'sortable' => true],
+            ['label' => 'Total', 'sortable' => true, 'align' => 'right'],
+            ['label' => 'Status'],
+            ['label' => 'Payment'],
+            ['label' => 'Placed', 'sortable' => true],
+            ['label' => 'Actions', 'srOnly' => true, 'align' => 'right'],
+        ]))"
+        empty-title="No orders yet" empty-description="Orders from the store and manual orders appear here." empty-icon="bi-receipt">
+        <x-slot:filters>
+            <label for="filter-payment" class="sr-only">Payment status</label>
+            <select id="filter-payment" name="payment_status" class="{{ $filterControl }} pr-9">
+                <option value="">Any payment</option>
+                @foreach(PaymentStatus::options() as $value => $label)
+                    <option value="{{ $value }}" @selected(($filters['payment_status'] ?? null) === $value)>{{ $label }}</option>
+                @endforeach
+            </select>
+            <label for="filter-from" class="sr-only">From date</label>
+            <input id="filter-from" type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}" class="{{ $filterControl }}" title="From">
+            <label for="filter-to" class="sr-only">To date</label>
+            <input id="filter-to" type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}" class="{{ $filterControl }}" title="To">
+            <label for="filter-per-page" class="sr-only">Rows per page</label>
+            <select id="filter-per-page" name="per_page" onchange="this.form.requestSubmit()" class="{{ $filterControl }} pr-9">
+                @foreach([10, 25, 50, 100] as $n)
+                    <option value="{{ $n }}" @selected(($filters['per_page'] ?? 25) == $n)>{{ $n }} / page</option>
+                @endforeach
+            </select>
+        </x-slot:filters>
+        @if($canEdit && $orders->count())
+            <x-slot:toolbar>
+                <label class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                    <input type="checkbox" x-model="all" @change="selected = all ? @js($orders->pluck('id')->map(fn ($id) => (string) $id)) : []"
+                           class="size-4 rounded border-gray-300 text-brand-600 focus:ring-2 focus:ring-brand-500/40 dark:border-gray-600 dark:bg-gray-800">
+                    Select all on this page
+                </label>
+            </x-slot:toolbar>
         @endif
-    </div>
+
+        @foreach($orders as $order)
+            <tr class="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/40" :class="selected.includes('{{ $order->id }}') && 'bg-brand-50/60 dark:bg-brand-500/5'">
+                @if($canEdit)
+                    <td class="w-10">
+                        <label class="sr-only" for="select-{{ $order->id }}">Select order #{{ $order->order_id }}</label>
+                        <input id="select-{{ $order->id }}" type="checkbox" value="{{ $order->id }}" x-model="selected"
+                               class="size-4 rounded border-gray-300 text-brand-600 focus:ring-2 focus:ring-brand-500/40 dark:border-gray-600 dark:bg-gray-800">
+                    </td>
+                @endif
+                <td data-primary data-sort="{{ $order->order_id }}">
+                    <div class="min-w-0">
+                        <a href="{{ route('orders.show', $order) }}" class="rounded font-medium text-gray-900 hover:text-brand-600 focus-ring dark:text-white dark:hover:text-brand-400">#{{ $order->order_id }}</a>
+                        @if($order->orderCourier)
+                            <span class="mt-0.5 flex items-center gap-1 truncate text-xs font-normal text-gray-500 dark:text-gray-400">
+                                <i class="bi bi-truck" aria-hidden="true"></i> {{ $order->orderCourier->courierLabel() }} · {{ $order->orderCourier->tracking_code ?: $order->orderCourier->consignment_id }}
+                            </span>
+                        @endif
+                    </div>
+                </td>
+                <td data-label="Customer" data-sort="{{ $order->customerDisplayName() }}">
+                    <div class="min-w-0 text-right md:text-left">
+                        <span class="block truncate font-medium text-gray-900 dark:text-white">{{ $order->customerDisplayName() }}</span>
+                        <span class="block truncate text-xs text-gray-500 dark:text-gray-400">{{ $order->customerDisplayPhone() ?? $order->customerDisplayEmail() ?? '—' }}</span>
+                    </div>
+                </td>
+                <td data-label="Total" data-sort="{{ $order->total_price }}" class="whitespace-nowrap text-right">
+                    <div>
+                        <span class="font-medium text-gray-900 tabular-nums dark:text-white">Tk {{ number_format($order->total_price, 2) }}</span>
+                        @if((float) $order->discount_amount > 0)
+                            <span class="block text-xs text-green-600 dark:text-green-400">{{ $order->coupon_code }} −{{ number_format($order->discount_amount, 0) }}</span>
+                        @endif
+                    </div>
+                </td>
+                <td data-label="Status"><x-admin.status-badge type="order" :status="$order->status" /></td>
+                <td data-label="Payment">
+                    <div class="flex flex-col items-end gap-1 md:items-start">
+                        <x-admin.status-badge type="payment" :status="$order->payment_status" />
+                        @if($order->payment_method)<span class="text-xs uppercase text-gray-500 dark:text-gray-400">{{ $order->payment_method }}</span>@endif
+                    </div>
+                </td>
+                <td data-label="Placed" data-sort="{{ $order->created_at->timestamp }}" class="whitespace-nowrap">
+                    <div class="text-right md:text-left">
+                        <span class="block text-gray-700 dark:text-gray-300">{{ $order->created_at->format('d M Y') }}</span>
+                        <span class="block text-xs text-gray-500 dark:text-gray-400">{{ $order->created_at->format('h:i A') }}</span>
+                    </div>
+                </td>
+                <td class="whitespace-nowrap text-right">
+                    <div class="inline-flex items-center gap-1">
+                        <x-admin.button variant="ghost" size="sm" :href="route('orders.show', $order)" icon="bi-eye" title="View" aria-label="View order #{{ $order->order_id }}" />
+                        @can('orders.delete')
+                            <form method="POST" action="{{ route('orders.destroy', $order) }}"
+                                  data-confirm="The order moves to the trash. Stock still in the warehouse is released back to inventory."
+                                  data-confirm-title="Delete order #{{ $order->order_id }}?" data-confirm-button="Delete">
+                                @csrf @method('DELETE')
+                                <x-admin.button type="submit" variant="ghost" size="sm" icon="bi-trash" :loading="false" class="text-red-600 dark:text-red-400" title="Delete" aria-label="Delete order #{{ $order->order_id }}" />
+                            </form>
+                        @endcan
+                    </div>
+                </td>
+            </tr>
+        @endforeach
+    </x-admin.data-table>
 </div>
 @endsection
-

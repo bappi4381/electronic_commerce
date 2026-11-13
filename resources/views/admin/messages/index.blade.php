@@ -1,238 +1,229 @@
 @extends('admin.layouts')
-
 @section('title', 'Messages')
+@section('ui-v2', '1')
 
 @section('content')
-<div class="h-[calc(100vh-260px)] flex gap-6" x-data="adminChat()">
+<x-admin.page-header title="Messages" :description="number_format($conversations->total()) . ' ' . \Illuminate\Support\Str::plural('conversation', $conversations->total()) . ' with customers.'" />
 
-    {{-- Conversations List --}}
-    <div class="w-80 bg-white rounded-3xl shadow-sm border border-slate-100 flex flex-col shrink-0">
-        <div class="p-6 border-b border-slate-100">
-            <h3 class="text-sm font-black tracking-[0.2em] uppercase text-slate-900">Conversations</h3>
-            <p class="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-widest">{{ $conversations->count() }} active</p>
+<div class="flex h-[calc(100vh-15rem)] min-h-[28rem] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900" x-data="adminChat()">
+    {{-- Conversations --}}
+    <aside class="flex w-full shrink-0 flex-col border-r border-gray-200 md:w-80 dark:border-gray-800" :class="selectedId && 'max-md:hidden'" aria-label="Conversations">
+        <div class="border-b border-gray-200 px-4 py-3 dark:border-gray-800">
+            <label for="convo-filter" class="sr-only">Filter conversations</label>
+            <div class="relative">
+                <i class="bi bi-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true"></i>
+                <input id="convo-filter" type="search" x-model="filter" placeholder="Filter by name…"
+                       class="h-9 w-full rounded-lg border border-gray-300 bg-white pl-9 pr-3 text-sm shadow-xs placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-gray-700 dark:bg-gray-900">
+            </div>
         </div>
-        <div class="flex-1 overflow-y-auto divide-y divide-slate-50">
+        <ul class="flex-1 divide-y divide-gray-100 overflow-y-auto dark:divide-gray-800">
             @forelse($conversations as $convo)
-            <button @click="selectConvo('{{ $convo->identifier }}', '{{ addslashes($convo->name) }}')"
-                :class="selectedId === '{{ $convo->identifier }}' ? 'bg-primary/5 border-l-4 border-primary' : 'hover:bg-slate-50'"
-                class="w-full text-left px-5 py-4 transition-all">
-                <div class="flex justify-between items-center mb-1">
-                    <span class="font-black text-[11px] uppercase tracking-widest text-slate-900" :class="selectedId === '{{ $convo->identifier }}' ? 'text-primary' : ''">{{ $convo->name }}</span>
-                    <span class="text-[9px] text-slate-400 font-bold">{{ $convo->last_message_at->diffForHumans(null, true) }}</span>
-                </div>
-                <div class="flex justify-between items-center gap-2">
-                    <p class="text-xs text-slate-500 truncate font-medium flex-1">
-                        @if($convo->last_msg->is_admin)<span class="text-primary font-bold">You: </span>@endif
-                        {{ $convo->last_msg->message }}
-                    </p>
-                    @if($convo->unread_count > 0)
-                    <span class="bg-primary text-white text-[9px] font-black px-2 py-1 rounded-full min-w-[20px] text-center" x-show="selectedId !== '{{ $convo->identifier }}'">
-                        {{ $convo->unread_count }}
-                    </span>
-                    @endif
-                </div>
-            </button>
+                <li x-show="!filter || @js(mb_strtolower($convo->name)).includes(filter.toLowerCase())">
+                    <button type="button" @click="selectConvo(@js($convo->identifier), @js($convo->name), @js($convo->channel))"
+                            :aria-current="selectedId === @js($convo->identifier) ? 'true' : null"
+                            class="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors focus-ring"
+                            :class="selectedId === @js($convo->identifier) ? 'bg-brand-50 dark:bg-brand-500/10' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'">
+                        <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300" aria-hidden="true">
+                            {{ mb_strtoupper(mb_substr($convo->name, 0, 1)) }}
+                        </span>
+                        <span class="min-w-0 flex-1">
+                            <span class="flex items-baseline justify-between gap-2">
+                                <span class="truncate text-sm font-medium text-gray-900 dark:text-white">{{ $convo->name }}</span>
+                                <span class="shrink-0 text-xs text-gray-500 dark:text-gray-400">{{ $convo->last_message_at->diffForHumans(null, true) }}</span>
+                            </span>
+                            <span class="mt-0.5 flex items-center justify-between gap-2">
+                                <span class="truncate text-sm text-gray-500 dark:text-gray-400">
+                                    @if($convo->last_msg?->is_admin)<span class="font-medium text-gray-700 dark:text-gray-300">You: </span>@endif{{ $convo->last_msg?->message }}
+                                </span>
+                                @if($convo->unread_count > 0)
+                                    <span class="min-w-5 shrink-0 rounded-full bg-brand-600 px-1.5 py-0.5 text-center text-xs font-medium text-white dark:bg-brand-500 dark:text-gray-950"
+                                          x-show="!read.includes(@js($convo->identifier))">
+                                        {{ $convo->unread_count }}<span class="sr-only"> unread</span>
+                                    </span>
+                                @endif
+                            </span>
+                        </span>
+                    </button>
+                </li>
             @empty
-            <div class="p-10 text-center opacity-40">
-                <i class="bi bi-chat-left text-4xl text-slate-300"></i>
-                <p class="text-xs font-bold uppercase tracking-widest text-slate-400 mt-3">No conversations yet</p>
-            </div>
+                <li><x-admin.empty-state title="No conversations yet" description="Messages customers send from their account appear here." icon="bi-chat-left" /></li>
             @endforelse
+        </ul>
+        @if($conversations->hasPages())
+            <nav class="flex items-center justify-between border-t border-gray-200 px-4 py-2 text-sm dark:border-gray-800" aria-label="Conversation pages">
+                <x-admin.button variant="ghost" size="sm" :href="$conversations->previousPageUrl()" icon="bi-chevron-left" :class="$conversations->onFirstPage() ? 'pointer-events-none opacity-40' : ''">Newer</x-admin.button>
+                <span class="text-xs text-gray-500 dark:text-gray-400">{{ $conversations->currentPage() }} / {{ $conversations->lastPage() }}</span>
+                <x-admin.button variant="ghost" size="sm" :href="$conversations->nextPageUrl()" icon-right="bi-chevron-right" :class="$conversations->hasMorePages() ? '' : 'pointer-events-none opacity-40'">Older</x-admin.button>
+            </nav>
+        @endif
+    </aside>
+
+    {{-- Chat --}}
+    <section class="flex min-w-0 flex-1 flex-col" :class="!selectedId && 'max-md:hidden'" aria-label="Conversation">
+        <div x-show="!selectedId" class="flex h-full items-center justify-center">
+            <x-admin.empty-state title="Select a conversation" description="Pick a customer on the left to read and reply." icon="bi-chat-square-dots" />
         </div>
-    </div>
 
-    {{-- Chat Window --}}
-    <div class="flex-1 bg-white rounded-3xl shadow-sm border border-slate-100 flex flex-col overflow-hidden relative">
+        <template x-if="selectedId">
+            <div class="flex h-full flex-col">
+                <header class="flex shrink-0 items-center gap-3 border-b border-gray-200 px-4 py-3 dark:border-gray-800">
+                    <button type="button" @click="close()" class="flex size-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 focus-ring md:hidden dark:hover:bg-gray-800">
+                        <span class="sr-only">Back to conversations</span><i class="bi bi-arrow-left" aria-hidden="true"></i>
+                    </button>
+                    <span class="flex size-9 items-center justify-center rounded-full bg-brand-50 text-sm font-semibold text-brand-700 dark:bg-brand-500/10 dark:text-brand-300" aria-hidden="true" x-text="selectedName.charAt(0).toUpperCase()"></span>
+                    <p class="truncate font-medium text-gray-900 dark:text-white" x-text="selectedName"></p>
+                </header>
 
-        {{-- Empty State --}}
-        <div x-show="!selectedId" class="h-full flex flex-col items-center justify-center text-center opacity-20 gap-4">
-            <i class="bi bi-chat-square-dots text-8xl text-slate-300"></i>
-            <p class="font-black text-sm uppercase tracking-[0.2em]">Select a conversation</p>
-        </div>
-
-        {{-- Active Chat --}}
-        <div x-show="selectedId" class="flex flex-col h-full" style="display: none;" :style="selectedId ? 'display: flex' : 'display: none'">
-            {{-- Header --}}
-            <div class="px-8 py-5 border-b border-slate-100 flex items-center gap-4 bg-slate-50/60 shrink-0">
-                <div class="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black text-lg">
-                    <i class="bi bi-person"></i>
-                </div>
-                <div>
-                    <p class="font-black text-sm uppercase tracking-widest text-slate-900" x-text="selectedName"></p>
-                    <span class="text-[10px] font-bold text-green-500 uppercase tracking-widest">● Active</span>
-                </div>
-            </div>
-
-            {{-- Messages --}}
-            <div class="flex-1 overflow-y-auto p-8 space-y-4" id="adminChatBox">
-                <div x-show="loading" class="flex justify-center py-10 opacity-40">
-                    <i class="bi bi-arrow-repeat animate-spin text-2xl"></i>
-                </div>
-                
-                <div x-show="!loading" class="space-y-4">
+                <div class="flex-1 space-y-3 overflow-y-auto bg-gray-50 px-4 py-6 sm:px-6 dark:bg-gray-950/40" x-ref="box" aria-live="polite">
+                    <div x-show="loading" class="flex justify-center py-10 text-gray-400">
+                        <i class="bi bi-arrow-repeat animate-spin text-2xl" aria-hidden="true"></i><span class="sr-only">Loading messages</span>
+                    </div>
                     <template x-for="msg in messages" :key="msg.id">
-                        <div :class="msg.is_admin ? 'flex justify-end' : 'flex justify-start'">
-                            <div :class="msg.is_admin
-                                ? 'bg-primary text-white rounded-tl-3xl shadow-md shadow-primary/15'
-                                : 'bg-slate-100 text-slate-800 rounded-tr-3xl'"
-                                class="px-6 py-4 rounded-b-3xl max-w-md">
-                                <p class="text-sm font-medium leading-relaxed" x-text="msg.message"></p>
-                                <span class="text-[9px] font-bold opacity-60 mt-2 block" x-text="formatDate(msg.created_at)"></span>
+                        <div class="flex" :class="msg.is_admin ? 'justify-end' : 'justify-start'">
+                            <div class="max-w-[80%] rounded-2xl px-4 py-2.5 shadow-xs sm:max-w-md"
+                                 :class="msg.is_admin ? 'rounded-br-md bg-brand-600 text-white dark:bg-brand-500 dark:text-gray-950' : 'rounded-bl-md border border-gray-200 bg-white text-gray-800 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200'">
+                                <p class="whitespace-pre-line break-words text-sm" x-text="msg.message"></p>
+                                <p class="mt-1 text-right text-[11px] opacity-70" x-text="formatDate(msg.created_at)"></p>
                             </div>
                         </div>
                     </template>
-                    <div x-show="messages.length === 0" class="flex flex-col items-center justify-center py-16 opacity-30">
-                        <i class="bi bi-chat text-5xl text-slate-300 mb-3"></i>
-                        <p class="text-xs font-bold uppercase tracking-widest text-slate-400">No messages in this conversation</p>
-                    </div>
+                    <p x-show="!loading && !messages.length" class="py-16 text-center text-sm text-gray-500 dark:text-gray-400">No messages in this conversation yet.</p>
                 </div>
-            </div>
 
-            {{-- Input --}}
-            <div class="p-6 border-t border-slate-100 bg-slate-50/60 shrink-0">
-                <form @submit.prevent="sendMessage" class="flex gap-3">
-                    <input type="text" x-model="newMessage"
-                        class="flex-1 px-6 py-4 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold text-sm placeholder:text-slate-300"
-                        placeholder="Type your reply to this customer...">
-                    <button type="submit"
-                        :disabled="!newMessage.trim()"
-                        class="bg-primary hover:bg-primary-dark disabled:opacity-40 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary/20 transition-all active:scale-95">
-                        <i class="bi bi-send-fill mr-2"></i>Send
-                    </button>
-                </form>
+                @can('messages.create')
+                    <form @submit.prevent="sendMessage" class="flex shrink-0 items-end gap-2 border-t border-gray-200 p-3 dark:border-gray-800">
+                        <label for="chat-reply" class="sr-only">Reply</label>
+                        <textarea id="chat-reply" x-model="newMessage" rows="1" maxlength="2000" placeholder="Write a reply…"
+                                  @keydown.enter="if (!$event.shiftKey) { $event.preventDefault(); sendMessage(); }"
+                                  class="block max-h-32 min-h-10 flex-1 resize-none rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-xs placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-gray-700 dark:bg-gray-900"></textarea>
+                        <x-admin.button type="submit" icon="bi-send" :loading="false" ::disabled="!newMessage.trim()">Send</x-admin.button>
+                    </form>
+                    <p class="px-3 pb-2 text-xs text-gray-400 dark:text-gray-500">Enter to send, Shift + Enter for a new line.</p>
+                @endcan
             </div>
-        </div>
-    </div>
+        </template>
+    </section>
 </div>
 
 @push('scripts')
 <script>
     function adminChat() {
+        const urls = {
+            fetch: @js(route('admin.messages.fetch', ['identifier' => '__ID__'])),
+            read: @js(route('admin.messages.markRead', ['identifier' => '__ID__'])),
+            send: @js(route('admin.messages.send', ['identifier' => '__ID__'])),
+        };
+        const url = (key, id) => urls[key].replace('__ID__', encodeURIComponent(id));
+        const csrf = document.querySelector('meta[name="csrf-token"]').content;
+
         return {
             selectedId: null,
             selectedName: '',
+            selectedChannel: null,
             messages: [],
             newMessage: '',
             loading: false,
-            echoChannel: null,
+            filter: '',
+            read: [],
 
-            selectConvo(id, name) {
-                console.log('Selecting conversation:', id, name);
-                
-                // Unsubscribe from previous channel if exists
-                if (window.Echo && this.selectedId) {
-                    try {
-                        window.Echo.leave(`chat.${this.selectedId}`);
-                    } catch(e) { console.error('Echo leave error:', e); }
+            selectConvo(id, name, channel) {
+                if (window.Echo && this.selectedChannel) {
+                    try { window.Echo.leave(this.selectedChannel); } catch (e) { console.error('Echo leave error:', e); }
                 }
 
                 this.selectedId = id;
                 this.selectedName = name;
+                this.selectedChannel = channel;
                 this.loading = true;
                 this.messages = [];
-                
+                if (!this.read.includes(id)) this.read.push(id);
+
                 this.fetchMessages();
                 this.markAsRead(id);
 
-                // Subscribe to Pusher for incoming messages
-                if (window.Echo) {
-                    console.log('Subscribing to channel: chat.' + id);
-                    this.echoChannel = window.Echo.channel(`chat.${id}`)
-                        .listen('.message.sent', (e) => {
-                            console.log('Real-time message received:', e);
-                            if (!e.is_admin) {
-                                this.messages.push(e);
-                                this.scrollToBottom();
-                                this.markAsRead(id);
-                            }
-                        });
+                if (window.Echo && channel) {
+                    window.Echo.private(channel).listen('.message.sent', (e) => {
+                        if (!e.is_admin) {
+                            this.messages.push(e);
+                            this.scrollToBottom();
+                            this.markAsRead(id);
+                        }
+                    });
                 }
             },
 
+            close() {
+                if (window.Echo && this.selectedChannel) {
+                    try { window.Echo.leave(this.selectedChannel); } catch (e) { /* already left */ }
+                }
+                this.selectedId = null;
+                this.selectedChannel = null;
+            },
+
             markAsRead(id) {
-                fetch(`/admin/messages/${id}/mark-read`, {
+                fetch(url('read', id), {
                     method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'
-                    }
+                    headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json', 'Content-Type': 'application/json' },
                 }).catch(err => console.error('Error marking as read:', err));
             },
 
             fetchMessages() {
-                if(!this.selectedId) return;
-                console.log('Fetching messages for:', this.selectedId);
-                
-                fetch(`/admin/messages/${this.selectedId}/fetch`, {
-                    headers: { 'Accept': 'application/json' }
-                })
-                .then(res => {
-                    if(!res.ok) throw new Error('Server error: ' + res.status);
-                    return res.json();
-                })
-                .then(data => {
-                    this.messages = data;
-                    this.loading = false;
-                    this.scrollToBottom();
-                })
-                .catch(err => {
-                    console.error('Fetch error:', err);
-                    this.loading = false;
-                });
+                if (!this.selectedId) return;
+                const id = this.selectedId;
+
+                fetch(url('fetch', id), { headers: { 'Accept': 'application/json' } })
+                    .then(res => { if (!res.ok) throw new Error('Server error: ' + res.status); return res.json(); })
+                    .then(data => {
+                        if (this.selectedId !== id) return;
+                        this.messages = data;
+                        this.loading = false;
+                        this.scrollToBottom();
+                    })
+                    .catch(err => {
+                        console.error('Fetch error:', err);
+                        this.loading = false;
+                        window.toast('Could not load this conversation.', 'error');
+                    });
             },
 
             sendMessage() {
                 if (!this.newMessage.trim() || !this.selectedId) return;
 
-                let msgText = this.newMessage;
+                const msgText = this.newMessage;
+                const tempId = 'temp-' + Date.now();
                 this.newMessage = '';
-
-                let tempId = 'temp-' + Date.now();
-                this.messages.push({
-                    id: tempId,
-                    is_admin: true,
-                    message: msgText,
-                    created_at: new Date().toISOString()
-                });
+                this.messages.push({ id: tempId, is_admin: true, message: msgText, created_at: new Date().toISOString() });
                 this.scrollToBottom();
 
-                fetch(`/admin/messages/${this.selectedId}/send`, {
+                fetch(url('send', this.selectedId), {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({ message: msgText })
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                    body: JSON.stringify({ message: msgText }),
                 })
-                .then(res => {
-                    if(!res.ok) throw new Error('Send error: ' + res.status);
-                    return res.json();
-                })
-                .then(data => {
-                    let index = this.messages.findIndex(m => m.id === tempId);
-                    if (index !== -1 && data.message) {
-                        this.messages[index].id = data.message.id;
-                    }
-                })
-                .catch(err => {
-                    console.error('Send error:', err);
-                    alert('Failed to send message. Please try again.');
-                });
+                    .then(res => { if (!res.ok) throw new Error('Send error: ' + res.status); return res.json(); })
+                    .then(data => {
+                        const index = this.messages.findIndex(m => m.id === tempId);
+                        if (index !== -1 && data.message) this.messages[index].id = data.message.id;
+                    })
+                    .catch(err => {
+                        console.error('Send error:', err);
+                        this.messages = this.messages.filter(m => m.id !== tempId);
+                        this.newMessage = msgText;
+                        window.toast('Message not sent. Please try again.', 'error');
+                    });
             },
 
             formatDate(dateStr) {
                 if (!dateStr) return '';
-                return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                return new Date(dateStr).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
             },
 
             scrollToBottom() {
-                setTimeout(() => {
-                    const box = document.getElementById('adminChatBox');
+                this.$nextTick(() => {
+                    const box = this.$refs.box;
                     if (box) box.scrollTop = box.scrollHeight;
-                }, 120);
-            }
+                });
+            },
         };
     }
 </script>

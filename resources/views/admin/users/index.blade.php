@@ -1,128 +1,65 @@
 @extends('admin.layouts')
-@section('title', 'User Registry')
+@section('title', 'Customers')
+@section('ui-v2', '1')
 
 @section('content')
-<div class="space-y-8">
-    {{-- Header & Search --}}
-    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-        <div>
-            <h1 class="text-3xl font-black tracking-tight text-slate-900 leading-none">User Registry</h1>
-            <p class="text-sm font-bold text-slate-400 uppercase tracking-[0.2em] mt-3">Manage and monitor customer accounts</p>
-        </div>
-        
-        <div class="flex flex-col sm:flex-row gap-4 flex-grow max-w-2xl">
-            <form action="{{ route('users.index') }}" method="GET" class="flex-grow flex relative group">
-                <i class="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors"></i>
-                <input type="text" name="search" value="{{ request('search') }}" 
-                       placeholder="Search by name, email, phone..." 
-                       class="w-full bg-white border border-slate-200 rounded-xl pl-12 pr-4 py-3 text-sm font-semibold focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all shadow-sm">
-                @if(request('search'))
-                    <a href="{{ route('users.index') }}" class="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-red-500">Clear</a>
-                @endif
-            </form>
-        </div>
-    </div>
+<x-admin.page-header title="Customers" description="Customer accounts, contact details and access.">
+    @can('users.create')
+        <x-admin.button :href="route('users.create')" icon="bi-person-plus">Add customer</x-admin.button>
+    @endcan
+</x-admin.page-header>
 
-    {{-- Success Message --}}
-    @if(session('success'))
-        <div class="bg-green-50 border border-green-100 p-4 rounded-2xl flex items-center gap-4 animate-fadeIn">
-            <div class="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center text-white text-xl shadow-lg shadow-green-500/20">
-                <i class="bi bi-check-lg"></i>
-            </div>
-            <div>
-                <p class="text-xs font-black uppercase tracking-widest text-green-700">Account Update</p>
-                <p class="text-sm font-bold text-green-600">{{ session('success') }}</p>
-            </div>
-        </div>
-    @endif
-
-    {{-- Users Table --}}
-    <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-slate-50 border-b border-slate-100">
-                        <th class="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Identity</th>
-                        <th class="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">User Details</th>
-                        <th class="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Location</th>
-                        <th class="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Status</th>
-                        <th class="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                    @forelse($users as $user)
-                        <tr class="hover:bg-slate-50 transition-colors group">
-                            <td class="px-8 py-6">
-                                <span class="text-xs font-black text-slate-400 tracking-tighter italic">#{{ $user->user_id }}</span>
-                            </td>
-                            <td class="px-8 py-6">
-                                <div class="flex items-center gap-4">
-                                    <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-black text-xs uppercase group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
-                                        {{ strtoupper(substr($user->name, 0, 1)) }}
-                                    </div>
-                                    <div class="flex flex-col min-w-0">
-                                        <span class="text-sm font-black text-slate-900 leading-tight group-hover:text-primary transition-colors">{{ $user->name }}</span>
-                                        <span class="text-[10px] text-slate-400 font-bold mt-0.5">{{ $user->email }}</span>
-                                        @if($user->phone)
-                                            <span class="text-[9px] text-slate-300 font-bold mt-0.5"><i class="bi bi-telephone mr-1"></i>{{ $user->phone }}</span>
-                                        @endif
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="px-8 py-6 text-center">
-                                <div class="flex flex-col">
-                                    <span class="text-xs font-black text-slate-700">{{ $user->city ?? 'No City' }}</span>
-                                    <span class="text-[9px] text-slate-400 font-black uppercase tracking-widest">{{ $user->country ?? 'Global' }}</span>
-                                </div>
-                            </td>
-                            <td class="px-8 py-6 text-center">
-                                @php $isActive = $user->status == 'active'; @endphp
-                                <span class="px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest {{ $isActive ? 'bg-green-100 text-green-600 border border-green-200' : 'bg-red-100 text-red-600 border border-red-200' }}">
-                                    {{ $user->status }}
-                                </span>
-                            </td>
-                            <td class="px-8 py-6">
-                                <div class="flex justify-end items-center gap-2">
-                                    <form action="{{ route('users.toggleStatus', $user) }}" method="POST">
-                                        @csrf @method('PATCH')
-                                        <button type="submit" class="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all shadow-sm" title="{{ $isActive ? 'Block Access' : 'Restore Access' }}">
-                                            <i class="bi {{ $isActive ? 'bi-lock-fill' : 'bi-unlock-fill' }}"></i>
-                                        </button>
-                                    </form>
-                                    <a href="{{ route('users.edit', $user) }}" class="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-orange-500 hover:text-white transition-all shadow-sm">
-                                        <i class="bi bi-pencil-square"></i>
-                                    </a>
-                                    <a href="{{ route('users.show', $user) }}" class="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-primary hover:text-white transition-all shadow-sm">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
-                                    <form action="{{ route('users.destroy', $user) }}" method="POST" onsubmit="return confirm('Permanently delete this user?')">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-red-600 hover:text-white transition-all shadow-sm">
-                                            <i class="bi bi-trash-fill"></i>
-                                        </button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="5" class="px-8 py-20 text-center">
-                                <div class="flex flex-col items-center opacity-20">
-                                    <i class="bi bi-people text-6xl"></i>
-                                    <span class="text-xs font-black uppercase tracking-widest mt-4">Zero Users Discovered</span>
-                                </div>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    {{-- Pagination --}}
-    <div class="flex justify-center">
-        {{ $users->links() }}
-    </div>
-</div>
+<x-admin.data-table :paginator="$users" search="search" search-placeholder="Search name, email or phone…"
+    :columns="[
+        ['label' => 'Customer', 'sortable' => true],
+        ['label' => 'ID', 'sortable' => true],
+        ['label' => 'Location', 'sortable' => true],
+        ['label' => 'Status'],
+        ['label' => 'Actions', 'srOnly' => true, 'align' => 'right'],
+    ]"
+    empty-title="No customers yet" empty-description="Customers who register or order appear here." empty-icon="bi-people">
+    @foreach($users as $user)
+        @php($isActive = $user->status === 'active')
+        <tr class="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/40">
+            <td data-primary data-sort="{{ $user->name }}" class="md:w-full md:max-w-0">
+                <div class="flex items-center gap-3">
+                    <span class="flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300" aria-hidden="true">
+                        {{ mb_strtoupper(mb_substr($user->name, 0, 1)) }}
+                    </span>
+                    <div class="min-w-0">
+                        <a href="{{ route('users.show', $user) }}" class="block truncate rounded font-medium text-gray-900 hover:text-brand-600 focus-ring dark:text-white dark:hover:text-brand-400">{{ $user->name }}</a>
+                        <span class="block truncate text-xs font-normal text-gray-500 dark:text-gray-400">{{ $user->email }}@if($user->phone) · {{ $user->phone }}@endif</span>
+                    </div>
+                </div>
+            </td>
+            <td data-label="ID" class="whitespace-nowrap font-mono text-xs text-gray-500 dark:text-gray-400">#{{ $user->user_id }}</td>
+            <td data-label="Location" data-sort="{{ $user->city }}" class="whitespace-nowrap">
+                {{ collect([$user->city, $user->country])->filter()->implode(', ') ?: '—' }}
+            </td>
+            <td data-label="Status"><x-admin.status-badge :status="$isActive ? 'active' : 'blocked'" /></td>
+            <td class="whitespace-nowrap text-right">
+                <div class="inline-flex items-center gap-1">
+                    <x-admin.button variant="ghost" size="sm" :href="route('users.show', $user)" icon="bi-eye" title="View" aria-label="View {{ $user->name }}" />
+                    @can('users.edit')
+                        <x-admin.button variant="ghost" size="sm" :href="route('users.edit', $user)" icon="bi-pencil" title="Edit" aria-label="Edit {{ $user->name }}" />
+                        <form method="POST" action="{{ route('users.toggleStatus', $user) }}"
+                              data-confirm="{{ $isActive ? 'They will be signed out and can no longer log in or place orders.' : 'They will be able to log in and order again.' }}"
+                              data-confirm-title="{{ $isActive ? 'Block' : 'Unblock' }} {{ $user->name }}?" data-confirm-button="{{ $isActive ? 'Block' : 'Unblock' }}">
+                            @csrf @method('PATCH')
+                            <x-admin.button type="submit" variant="ghost" size="sm" :icon="$isActive ? 'bi-lock' : 'bi-unlock'" :loading="false"
+                                            :title="$isActive ? 'Block access' : 'Restore access'" aria-label="{{ $isActive ? 'Block' : 'Unblock' }} {{ $user->name }}" />
+                        </form>
+                    @endcan
+                    @can('users.delete')
+                        <form method="POST" action="{{ route('users.destroy', $user) }}"
+                              data-confirm="Customers with orders cannot be deleted; block them instead." data-confirm-title="Delete {{ $user->name }}?" data-confirm-button="Delete">
+                            @csrf @method('DELETE')
+                            <x-admin.button type="submit" variant="ghost" size="sm" icon="bi-trash" :loading="false" class="text-red-600 dark:text-red-400" title="Delete" aria-label="Delete {{ $user->name }}" />
+                        </form>
+                    @endcan
+                </div>
+            </td>
+        </tr>
+    @endforeach
+</x-admin.data-table>
 @endsection
-

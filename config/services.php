@@ -47,4 +47,35 @@ return [
         'redirect' => env('FACEBOOK_REDIRECT_URI'),
     ],
 
+    'sslcommerz' => [
+        'store_id' => env('SSLC_STORE_ID'),
+        'store_password' => env('SSLC_STORE_PASSWORD'),
+        'sandbox' => env('SSLC_SANDBOX', true),
+        'currency' => env('SSLC_STORE_CURRENCY', 'BDT'),
+    ],
+
+    'steadfast' => [
+        'base_url' => env('STEADFAST_BASE_URL', 'https://portal.packzy.com/api/v1'),
+        'api_key' => env('STEADFAST_API_KEY'),
+        'secret_key' => env('STEADFAST_SECRET_KEY'),
+        'webhook_secret' => env('STEADFAST_WEBHOOK_SECRET'),
+        'webhook_header' => env('STEADFAST_WEBHOOK_HEADER', 'Authorization'),
+        // {code} = tracking code
+        'tracking_url' => env('STEADFAST_TRACKING_URL', 'https://steadfast.com.bd/t/{code}'),
+    ],
+
+    'pathao' => [
+        // Sandbox: https://courier-api-sandbox.pathao.com
+        'base_url' => env('PATHAO_BASE_URL', 'https://api-hermes.pathao.com'),
+        'client_id' => env('PATHAO_CLIENT_ID'),
+        'client_secret' => env('PATHAO_CLIENT_SECRET'),
+        'username' => env('PATHAO_USERNAME'),
+        'password' => env('PATHAO_PASSWORD'),
+        'store_id' => env('PATHAO_STORE_ID'),
+        'webhook_secret' => env('PATHAO_WEBHOOK_SECRET'),
+        'webhook_header' => env('PATHAO_WEBHOOK_HEADER', 'X-PATHAO-Signature'),
+        // {consignment_id}, {phone}
+        'tracking_url' => env('PATHAO_TRACKING_URL', 'https://merchant.pathao.com/tracking?consignment_id={consignment_id}&phone={phone}'),
+    ],
+
 ];

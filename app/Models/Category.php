@@ -38,4 +38,27 @@ class Category extends Model
         return $this->belongsToMany(Attribute::class, 'category_attribute')
                     ->withTimestamps();
     }
+
+    /**
+     * Reason this category cannot be deleted, or null when it is safe to delete.
+     * Archived products count because they still reference the category.
+     */
+    public function deletionBlocker(): ?string
+    {
+        $name = $this->getTranslation('name', 'en');
+
+        if ($count = $this->children()->count()) {
+            return "\"{$name}\" has {$count} subcategor" . ($count === 1 ? 'y' : 'ies') . '. Move or delete them first.';
+        }
+
+        if ($count = $this->products()->withTrashed()->count()) {
+            return "\"{$name}\" still has {$count} product(s), including archived ones. Move them to another category first.";
+        }
+
+        if ($count = $this->articles()->count()) {
+            return "\"{$name}\" still has {$count} article(s). Move them to another category first.";
+        }
+
+        return null;
+    }
 }

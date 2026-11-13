@@ -1,157 +1,132 @@
 @extends('admin.layouts')
-@section('title', 'Banner & Hero Management')
+@section('title', 'Banners')
+@section('ui-v2', '1')
 
 @section('content')
-<div class="space-y-10 pb-20">
-    {{-- Header --}}
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div class="flex items-center gap-5">
-            <div class="w-16 h-16 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-[2rem] flex items-center justify-center text-white shadow-2xl shadow-indigo-600/20">
-                <i class="bi bi-images text-2xl"></i>
+<div x-data="bannerForm()">
+    <x-admin.page-header title="Banners" :description="$banners->count() . ' ' . \Illuminate\Support\Str::plural('banner', $banners->count()) . ' across the hero slider and promotional slots.'">
+        @can('banners.create')
+            <x-admin.button icon="bi-plus-lg" @click="openWith({})">Add banner</x-admin.button>
+        @endcan
+    </x-admin.page-header>
+
+    @if($banners->isEmpty())
+        <x-admin.card>
+            <x-admin.empty-state title="No banners yet" description="Upload a hero slide or promotional banner for the storefront." icon="bi-images">
+                @can('banners.create')
+                    <x-admin.button size="sm" icon="bi-plus-lg" @click="openWith({})">Add banner</x-admin.button>
+                @endcan
+            </x-admin.empty-state>
+        </x-admin.card>
+    @else
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+            @foreach($banners as $banner)
+                <article @class(['flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900', 'opacity-75' => !$banner->status])>
+                    <div class="relative aspect-[16/7] bg-gray-100 dark:bg-gray-800">
+                        <img src="{{ asset('storage/' . $banner->image) }}" alt="{{ $banner->title ?: 'Banner image' }}" class="size-full object-cover" loading="lazy">
+                        <div class="absolute left-3 top-3 flex gap-1.5">
+                            <x-admin.status-badge tone="indigo" :dot="false" :label="$types[$banner->type] ?? ucfirst($banner->type)" class="bg-white/90 backdrop-blur dark:bg-gray-900/80" />
+                            <x-admin.status-badge tone="gray" :dot="false" :label="'#' . $banner->order" class="bg-white/90 backdrop-blur dark:bg-gray-900/80" />
+                        </div>
+                    </div>
+                    <div class="flex flex-1 flex-col gap-1 px-5 py-4">
+                        <p class="truncate font-medium text-gray-900 dark:text-white">{{ $banner->title ?: 'Untitled banner' }}</p>
+                        @if($banner->subtitle)<p class="truncate text-sm text-gray-500 dark:text-gray-400">{{ $banner->subtitle }}</p>@endif
+                        @if($banner->link)
+                            <p class="mt-1 flex items-center gap-1 truncate font-mono text-xs text-brand-600 dark:text-brand-400"><i class="bi bi-link-45deg" aria-hidden="true"></i><span class="truncate">{{ $banner->link }}</span></p>
+                        @endif
+                    </div>
+                    <div class="flex items-center justify-between gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+                        @can('banners.edit')
+                            <form method="POST" action="{{ route('banners.toggle', $banner) }}" class="flex items-center gap-2">
+                                @csrf @method('PATCH')
+                                <button type="submit" role="switch" aria-checked="{{ $banner->status ? 'true' : 'false' }}"
+                                        @class(['relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors focus-ring',
+                                                'bg-brand-600 dark:bg-brand-500' => $banner->status, 'bg-gray-200 dark:bg-gray-700' => !$banner->status])>
+                                    <span class="sr-only">{{ $banner->status ? 'Hide' : 'Show' }} {{ $banner->title ?: 'banner' }}</span>
+                                    <span aria-hidden="true" @class(['pointer-events-none inline-block size-5 rounded-full bg-white shadow-sm transition-transform', 'translate-x-5' => $banner->status])></span>
+                                </button>
+                                <span class="text-sm text-gray-600 dark:text-gray-300">{{ $banner->status ? 'Visible' : 'Hidden' }}</span>
+                            </form>
+                        @else
+                            <x-admin.status-badge :status="$banner->status ? 'active' : 'inactive'" :label="$banner->status ? 'Visible' : 'Hidden'" />
+                        @endcan
+                        <div class="flex items-center gap-1">
+                            @can('banners.edit')
+                                <x-admin.button variant="ghost" size="sm" icon="bi-pencil" title="Edit" aria-label="Edit {{ $banner->title ?: 'banner' }}"
+                                                @click="openWith({{ \Illuminate\Support\Js::from(['id' => $banner->id, 'title' => $banner->title, 'subtitle' => $banner->subtitle, 'link' => $banner->link, 'type' => $banner->type, 'order' => $banner->order, 'image' => asset('storage/' . $banner->image), 'action' => route('banners.update', $banner)]) }})" />
+                            @endcan
+                            @can('banners.delete')
+                                <form method="POST" action="{{ route('banners.destroy', $banner) }}"
+                                      data-confirm="The banner and its image are removed from the storefront." data-confirm-title="Delete this banner?" data-confirm-button="Delete">
+                                    @csrf @method('DELETE')
+                                    <x-admin.button type="submit" variant="ghost" size="sm" icon="bi-trash" :loading="false" class="text-red-600 dark:text-red-400" title="Delete" aria-label="Delete {{ $banner->title ?: 'banner' }}" />
+                                </form>
+                            @endcan
+                        </div>
+                    </div>
+                </article>
+            @endforeach
+        </div>
+    @endif
+
+    <x-admin.modal name="banner" max-width="2xl">
+        <div class="mb-5 flex items-start justify-between gap-4">
+            <div>
+                <h2 class="text-base font-semibold text-gray-900 dark:text-white" x-text="banner.id ? 'Edit banner' : 'Add banner'">Add banner</h2>
+                <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">JPG, PNG or WebP, up to 5 MB.</p>
+            </div>
+            <button type="button" @click="$dispatch('close-modal', 'banner')" class="-m-1 rounded-lg p-1 text-gray-400 hover:text-gray-600 focus-ring dark:hover:text-gray-200">
+                <span class="sr-only">Close</span><i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+        </div>
+        <form id="banner-form" :action="banner.action" method="POST" enctype="multipart/form-data" class="space-y-4">
+            @csrf
+            <template x-if="banner.id"><input type="hidden" name="_method" value="PUT"></template>
+            <x-admin.input name="title" id="banner-title" label="Title" optional maxlength="255" x-model="banner.title" :old="false" />
+            <x-admin.input name="subtitle" id="banner-subtitle" label="Subtitle" optional maxlength="255" x-model="banner.subtitle" :old="false" />
+            <x-admin.input name="link" id="banner-link" label="Link" optional maxlength="255" x-model="banner.link" :old="false" placeholder="https://… or /en/products?category=3" />
+            <div class="grid grid-cols-2 gap-4">
+                <x-admin.field label="Placement" for="banner-type" required>
+                    <select id="banner-type" name="type" x-model="banner.type" required
+                            class="block h-10 w-full rounded-lg border border-gray-300 bg-white pl-3 pr-9 text-sm shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-gray-700 dark:bg-gray-900">
+                        @foreach($types as $value => $label)
+                            <option value="{{ $value }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </x-admin.field>
+                <x-admin.input name="order" id="banner-order" type="number" label="Display order" required min="0" max="1000" x-model="banner.order" :old="false" hint="Lower numbers show first." />
             </div>
             <div>
-                <h1 class="text-3xl font-black tracking-tight text-slate-900 leading-none uppercase">Visual Canvas</h1>
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-2">Manage Hero Sliders & Promotional Banners</p>
+                <template x-if="banner.image">
+                    <img :src="banner.image" alt="Current banner image" class="mb-3 h-32 w-full rounded-lg object-cover">
+                </template>
+                <x-admin.field for="banner-image" error="image">
+                    <label for="banner-image" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300" x-text="banner.id ? 'Replace image (optional)' : 'Image'">Image</label>
+                    <input type="file" id="banner-image" name="image" accept="image/jpeg,image/png,image/webp" :required="!banner.id"
+                           class="block w-full rounded-lg border border-gray-300 bg-white p-1.5 text-sm text-gray-900 shadow-xs file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:file:bg-gray-800 dark:file:text-gray-200">
+                </x-admin.field>
             </div>
-        </div>
-
-        <button @click="$dispatch('open-modal')" class="bg-primary text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-primary/20 hover:bg-black transition-all flex items-center gap-2">
-            <i class="bi bi-plus-lg"></i> Upload New Banner
-        </button>
-    </div>
-
-    @if(session('success'))
-        <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl flex items-center gap-4 animate-fadeIn">
-            <div class="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-white text-xl shadow-lg shadow-emerald-500/20">
-                <i class="bi bi-check-lg"></i>
-            </div>
-            <p class="text-sm font-bold text-emerald-700">{{ session('success') }}</p>
-        </div>
-    @endif
-
-    @if($errors->any())
-        <div class="bg-red-50 border border-red-100 p-4 rounded-2xl animate-fadeIn mb-6">
-            <div class="flex items-center gap-4 mb-2">
-                <div class="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center text-white text-xl shadow-lg shadow-red-500/20">
-                    <i class="bi bi-exclamation-triangle-fill"></i>
-                </div>
-                <h4 class="text-sm font-bold text-red-700">Please correct the following errors:</h4>
-            </div>
-            <ul class="list-disc list-inside text-xs text-red-600 ml-14">
-                @foreach($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-
-    <div class="grid grid-cols-1 gap-10">
-        {{-- Banner Matrix --}}
-        <div class="bg-white rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
-            <div class="px-10 py-8 border-b border-slate-50 bg-slate-50/30 flex items-center justify-between">
-                <h2 class="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Active Banners</h2>
-                <div class="flex gap-4">
-                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest px-3 py-1 bg-white rounded-full border border-slate-100">Total: {{ $banners->count() }}</span>
-                </div>
-            </div>
-            
-            <div class="divide-y divide-slate-50">
-                @forelse($banners as $banner)
-                    <div class="px-10 py-8 flex flex-col lg:flex-row lg:items-center justify-between gap-8 hover:bg-slate-50 transition-colors group">
-                        <div class="flex items-center gap-8 flex-grow">
-                            <div class="relative w-48 h-28 bg-slate-100 rounded-[2rem] overflow-hidden shadow-inner flex-shrink-0">
-                                <img src="{{ asset('storage/' . $banner->image) }}" class="w-full h-full object-cover">
-                                <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                    <span class="text-[8px] font-black text-white uppercase tracking-widest bg-black/50 px-3 py-1 rounded-full">Preview</span>
-                                </div>
-                            </div>
-                            <div class="min-w-0">
-                                <div class="flex items-center gap-3 mb-2">
-                                    <span class="text-[10px] font-black text-slate-500">Order: #{{ $banner->order }}</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="flex items-center gap-4">
-                            <form action="{{ route('banners.toggle', $banner) }}" method="POST">
-                                @csrf @method('PATCH')
-                                <button type="submit" class="flex items-center gap-3 px-5 py-2.5 rounded-2xl border {{ $banner->status ? 'bg-emerald-50 border-emerald-100 text-emerald-600 shadow-emerald-500/5' : 'bg-slate-100 border-slate-200 text-slate-400' }} transition-all">
-                                    <span class="text-[9px] font-black uppercase tracking-widest">{{ $banner->status ? 'Visible' : 'Hidden' }}</span>
-                                    <div class="w-2 h-2 rounded-full {{ $banner->status ? 'bg-emerald-500' : 'bg-slate-400' }}"></div>
-                                </button>
-                            </form>
-                            
-                            <div class="flex items-center gap-2">
-                                <button class="w-11 h-11 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:bg-primary hover:text-white hover:border-primary transition-all shadow-sm">
-                                    <i class="bi bi-pencil-square"></i>
-                                </button>
-                                <form action="{{ route('banners.destroy', $banner) }}" method="POST" onsubmit="return confirm('Erase this visual asset?')">
-                                    @csrf @method('DELETE')
-                                    <button type="submit" class="w-11 h-11 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all shadow-sm">
-                                        <i class="bi bi-trash3"></i>
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                @empty
-                    <div class="py-24 text-center">
-                        <div class="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center text-slate-200 mx-auto mb-6 text-3xl">
-                            <i class="bi bi-images"></i>
-                        </div>
-                        <p class="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">Visual Canvas is empty</p>
-                    </div>
-                @endforelse
-            </div>
-        </div>
-    </div>
+        </form>
+        <x-slot:footer>
+            <x-admin.button variant="secondary" @click="$dispatch('close-modal', 'banner')">Cancel</x-admin.button>
+            <x-admin.button type="submit" form="banner-form"><span x-text="banner.id ? 'Save banner' : 'Upload banner'">Upload banner</span></x-admin.button>
+        </x-slot:footer>
+    </x-admin.modal>
 </div>
 
-{{-- Upload Modal (Alpine.js) --}}
-<div x-data="{ open: false }" @open-modal.window="open = true" x-show="open" class="fixed inset-0 z-50 flex items-center justify-center px-4" x-cloak>
-    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="open = false"></div>
-    <div class="bg-white rounded-[3rem] shadow-2xl w-full max-w-2xl relative overflow-hidden animate-slideUp">
-        <div class="p-10">
-            <div class="flex items-center justify-between mb-10">
-                <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white">
-                        <i class="bi bi-upload"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-xs font-black uppercase tracking-widest text-slate-900">Upload Asset</h3>
-                        <p class="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-widest">Add new visual component</p>
-                    </div>
-                </div>
-                <button @click="open = false" class="text-slate-400 hover:text-slate-900"><i class="bi bi-x-lg"></i></button>
-            </div>
-
-            <form action="{{ route('banners.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
-                @csrf
-                <div class="grid grid-cols-1 gap-6">
-                    <div class="space-y-1.5">
-                        <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Order</label>
-                        <input type="number" name="order" value="1" min="1" required class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-bold focus:ring-2 focus:ring-indigo-600/20 outline-none transition-all">
-                    </div>
-                </div>
-
-                <div class="space-y-1.5">
-                    <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Image Asset</label>
-                    <div class="relative group">
-                        <input type="file" name="image" class="absolute inset-0 opacity-0 cursor-pointer z-10" required>
-                        <div class="w-full h-40 border-4 border-dashed border-slate-50 rounded-[2rem] flex flex-col items-center justify-center group-hover:bg-slate-50 group-hover:border-indigo-100 transition-all">
-                            <i class="bi bi-cloud-arrow-up text-3xl text-slate-200 group-hover:text-indigo-600 transition-colors"></i>
-                            <span class="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mt-2">Drop image here or click</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="pt-4">
-                    <button type="submit" class="w-full bg-slate-900 text-white py-5 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest shadow-2xl shadow-slate-900/20 hover:scale-[1.01] active:scale-[0.99] transition-all">
-                        Sync Asset to Canvas
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+@push('scripts')
+<script>
+    function bannerForm() {
+        const blank = { id: null, title: '', subtitle: '', link: '', type: 'hero', order: 1, image: null, action: @js(route('banners.store')) };
+        return {
+            banner: { ...blank },
+            openWith(data) {
+                this.banner = { ...blank, ...(data || {}) };
+                this.$dispatch('open-modal', 'banner');
+            },
+        };
+    }
+</script>
+@endpush
 @endsection

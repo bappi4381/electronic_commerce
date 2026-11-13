@@ -120,7 +120,7 @@ class ProductSeeder extends Seeder
                 'category_id' => $subcategory->id, // Subcategories are children, we assign product to it
                 'name' => ['en' => $name, 'bn' => $name],
                 'description' => ['en' => "Experience elite performance and premium craftsmanship with the all-new {$name}.", 'bn' => ""],
-                'brand' => $brand,
+                'brand_id' => \App\Models\Brand::resolve($brand)?->id,
                 'model' => $model,
                 'warranty_period' => rand(1, 2) . " Years Brand Warranty",
                 'price' => $price,

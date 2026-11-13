@@ -87,19 +87,25 @@
         </div>
         <div class="content">
             <h2>Hello!</h2>
-            <p>You are receiving this email because we received a password reset request for your account.</p>
+            @if(!empty($newAccount))
+                <p>An account was created for you while placing your order. Use the button below to choose your password.</p>
+            @else
+                <p>You are receiving this email because we received a password reset request for your account.</p>
+            @endif
             
             <div style="text-align: center;">
-                <a href="{{ route('password.reset', ['token' => $token, 'email' => $email]) }}" class="btn">Reset Password</a>
+                <a href="{{ $resetUrl }}" class="btn">{{ !empty($newAccount) ? 'Set Password' : 'Reset Password' }}</a>
             </div>
             
-            <p>This password reset link will expire in 60 minutes.</p>
-            <p>If you did not request a password reset, no further action is required.</p>
+            <p>This link will expire in {{ $expireMinutes }} minutes.</p>
+            @if(empty($newAccount))
+                <p>If you did not request a password reset, no further action is required.</p>
+            @endif
             
             <div class="divider"></div>
             
-            <p style="font-size: 12px; color: #64748b;">If you're having trouble clicking the "Reset Password" button, copy and paste the URL below into your web browser:</p>
-            <p class="raw-link">{{ route('password.reset', ['token' => $token, 'email' => $email]) }}</p>
+            <p style="font-size: 12px; color: #64748b;">If you're having trouble clicking the button, copy and paste the URL below into your web browser:</p>
+            <p class="raw-link">{{ $resetUrl }}</p>
         </div>
         <div class="footer">
             <p>&copy; 2026 ONEMALL. All rights reserved.</p>

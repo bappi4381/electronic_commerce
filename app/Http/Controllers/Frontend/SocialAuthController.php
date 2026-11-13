@@ -31,6 +31,10 @@ class SocialAuthController extends Controller
             // Check if a user with this email already exists
             $user = User::where('email', $socialUser->getEmail())->first();
 
+            if ($user && $user->isBlocked()) {
+                return redirect()->route('user.auth.login', ['locale' => app()->getLocale()])->with('error', User::BLOCKED_MESSAGE);
+            }
+
             if ($user) {
                 // If user exists, update their provider and provider_id if they aren't set
                 if (!$user->provider_id) {
@@ -53,10 +57,10 @@ class SocialAuthController extends Controller
 
             Auth::login($user, true);
 
-            return redirect()->route('user.dashboard')->with('success', 'Successfully logged in with ' . ucfirst($provider));
+            return redirect()->route('user.dashboard', ['locale' => app()->getLocale()])->with('success', 'Successfully logged in with ' . ucfirst($provider));
 
         } catch (Exception $e) {
-            return redirect()->route('user.auth.login')->with('error', 'Authentication failed. Please try again.');
+            return redirect()->route('user.auth.login', ['locale' => app()->getLocale()])->with('error', 'Authentication failed. Please try again.');
         }
     }
 }

@@ -12,6 +12,10 @@ class AdminAuth
         if (!Auth::guard('admin')->check()) {
             return redirect()->route('admin.login');
         }
+
+        // Make @can, Gate and auth()->user() resolve the signed-in admin on admin pages.
+        Auth::shouldUse('admin');
+
         return $next($request);
     }
 }

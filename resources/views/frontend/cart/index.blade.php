@@ -26,6 +26,12 @@
                 <span class="font-black uppercase tracking-widest text-xs">{{ session('success') }}</span>
             </div>
         @endif
+        @if(session('error'))
+            <div class="mb-8 p-5 bg-red-50 border border-red-100 text-red-700 rounded-2xl flex items-center gap-4">
+                <i class="bi bi-exclamation-triangle-fill text-xl"></i>
+                <span class="font-bold text-sm">{{ session('error') }}</span>
+            </div>
+        @endif
 
         @if(count($cart) > 0)
             <div class="flex flex-col lg:flex-row gap-8 lg:gap-12">
@@ -89,10 +95,21 @@
                             <i class="bi bi-arrow-left text-lg"></i>
                             {{ __('Return to Store') }}
                         </a>
-                        <div class="flex items-center gap-3 w-full sm:w-auto">
-                            <input type="text" placeholder="{{ __('Promo Code') }}" disabled class="flex-1 sm:w-48 bg-white border border-slate-200 rounded-2xl px-6 py-4 text-[10px] font-black uppercase tracking-widest outline-none cursor-not-allowed opacity-50">
-                            <button type="button" disabled class="bg-slate-300 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest cursor-not-allowed opacity-50">{{ __('Apply') }}</button>
-                        </div>
+                        @if($coupon)
+                            <form action="{{ route('cart.coupon.remove') }}" method="POST" class="flex items-center gap-3 w-full sm:w-auto">
+                                @csrf
+                                <span class="flex-1 sm:w-auto bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-2xl px-6 py-4 text-[10px] font-black uppercase tracking-widest">
+                                    <i class="bi bi-ticket-perforated-fill"></i> {{ $coupon->code }} · {{ $coupon->summary() }}
+                                </span>
+                                <button type="submit" class="bg-slate-200 text-slate-600 hover:bg-red-500 hover:text-white px-6 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all">{{ __('Remove') }}</button>
+                            </form>
+                        @else
+                            <form action="{{ route('cart.coupon.apply') }}" method="POST" class="flex items-center gap-3 w-full sm:w-auto">
+                                @csrf
+                                <input type="text" name="code" value="{{ old('code') }}" maxlength="50" required placeholder="{{ __('Promo Code') }}" class="flex-1 sm:w-48 bg-white border border-slate-200 rounded-2xl px-6 py-4 text-[10px] font-black uppercase tracking-widest outline-none focus:border-primary">
+                                <button type="submit" class="bg-slate-900 hover:bg-primary text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all">{{ __('Apply') }}</button>
+                            </form>
+                        @endif
                     </div>
                 </div>
 
@@ -109,18 +126,20 @@
                                 <span class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{{ __('Merchandise Total') }}</span>
                                 <span class="font-bold text-lg tracking-tighter">tk. {{ number_format($total, 0) }}</span>
                             </div>
+                            @if($discount > 0)
+                                <div class="flex justify-between items-center text-emerald-400">
+                                    <span class="text-[10px] font-black uppercase tracking-[0.2em]">{{ __('Coupon') }} {{ $coupon->code }}</span>
+                                    <span class="font-bold text-lg tracking-tighter">− tk. {{ number_format($discount, 0) }}</span>
+                                </div>
+                            @endif
                             <div class="flex justify-between items-center">
-                                <span class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{{ __('Shipping Estimate') }}</span>
-                                <span class="font-black text-green-400 tracking-widest text-[10px]">{{ __('FREE OF CHARGE') }}</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{{ __('Tax / VAT') }}</span>
-                                <span class="font-bold text-lg tracking-tighter">tk. 0</span>
+                                <span class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{{ __('Shipping') }}</span>
+                                <span class="font-black text-slate-300 tracking-widest text-[10px]">{{ __('CALCULATED AT CHECKOUT') }}</span>
                             </div>
                             <div class="h-px bg-white/10 my-8"></div>
                             <div class="flex justify-between items-center">
-                                <span class="text-sm font-black uppercase tracking-[0.2em] text-primary">{{ __('Final Payable') }}</span>
-                                <span class="text-3xl font-black tracking-tighter">tk. {{ number_format($total, 0) }}</span>
+                                <span class="text-sm font-black uppercase tracking-[0.2em] text-primary">{{ __('Subtotal') }}</span>
+                                <span class="text-3xl font-black tracking-tighter">tk. {{ number_format(max(0, $total - $discount), 0) }}</span>
                             </div>
                         </div>
 

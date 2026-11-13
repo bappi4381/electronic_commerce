@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use App\Models\Brand;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Category;
@@ -72,7 +73,7 @@ class ProductsImport implements ToCollection, WithHeadingRow
                         'price'       => $price,
                         'discount'    => $discount,
                         'discounted_price' => $price - ($price * $discount / 100),
-                        'brand'       => $firstRow['brand'] ?? null,
+                        'brand_id'    => Brand::resolve($firstRow['brand'] ?? null)?->id,
                         'model'       => $firstRow['model'] ?? null,
                         'warranty_period' => $firstRow['warranty_period'] ?? null,
                         'video_link'  => $firstRow['video_link'] ?? null,

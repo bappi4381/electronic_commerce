@@ -9,26 +9,24 @@ use Illuminate\Support\Facades\Storage;
 
 class BannerController extends Controller
 {
+    public const TYPES = ['hero' => 'Hero slider', 'promo' => 'Promo strip', 'sub_banner' => 'Sub banner'];
+
+    /** Banners are large hero images, so they get a higher limit than other uploads. */
+    private const IMAGE_RULE = 'image|mimes:jpg,jpeg,png,webp|max:5120';
+
     public function index()
     {
-        $banners = Banner::orderBy('order', 'asc')->get();
-        return view('admin.banners.index', compact('banners'));
+        $banners = Banner::orderBy('type')->orderBy('order', 'asc')->get();
+        $types = self::TYPES;
+
+        return view('admin.banners.index', compact('banners', 'types'));
     }
 
     public function store(Request $request)
     {
-        $request->validate([
-            'image' => 'required|image|max:5120',
-            'order' => 'required|integer',
-        ]);
-
-        $data = $request->only(['order']);
-        $data['type'] = 'hero'; // Default type for frontend compatibility
+        $data = $this->validated($request, 'required|' . self::IMAGE_RULE);
         $data['status'] = true;
-
-        if ($request->hasFile('image')) {
-            $data['image'] = $request->file('image')->store('banners', 'public');
-        }
+        $data['image'] = $request->file('image')->store('banners', 'public');
 
         Banner::create($data);
 
@@ -37,12 +35,7 @@ class BannerController extends Controller
 
     public function update(Request $request, Banner $banner)
     {
-        $request->validate([
-            'image' => 'nullable|image|max:2048',
-            'order' => 'required|integer',
-        ]);
-
-        $data = $request->only(['order']);
+        $data = $this->validated($request, 'nullable|' . self::IMAGE_RULE);
 
         if ($request->hasFile('image')) {
             if ($banner->image) {
@@ -69,5 +62,24 @@ class BannerController extends Controller
     {
         $banner->update(['status' => !$banner->status]);
         return back()->with('success', 'Banner status updated.');
+    }
+
+    private function validated(Request $request, string $imageRule): array
+    {
+        $data = $request->validate([
+            'title'    => 'nullable|string|max:255',
+            'subtitle' => 'nullable|string|max:255',
+            'link'     => ['nullable', 'string', 'max:255', 'regex:/^(https?:\/\/|\/)/i'],
+            'type'     => 'required|in:' . implode(',', array_keys(self::TYPES)),
+            'order'    => 'required|integer|min:0|max:1000',
+            'image'    => $imageRule,
+        ], [
+            'link.regex' => 'The link must be a full URL (https://…) or a site path starting with "/".',
+            'image.max'  => 'Banner images may be at most 5 MB.',
+        ]);
+
+        unset($data['image']);
+
+        return $data;
     }
 }

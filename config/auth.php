@@ -44,6 +44,10 @@ return [
             'driver' => 'session',
             'provider' => 'admins',
         ],
+        // Only used to authorize guest support-chat broadcast channels.
+        'chat_guest' => [
+            'driver' => 'chat-guest',
+        ],
     ],
 
     /*
@@ -105,6 +109,29 @@ return [
             'expire' => 60,
             'throttle' => 60,
         ],
+
+        'admins' => [
+            'provider' => 'admins',
+            'table' => env('AUTH_ADMIN_PASSWORD_RESET_TOKEN_TABLE', 'admin_password_reset_tokens'),
+            'expire' => 60,
+            'throttle' => 60,
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Initial Super Admin
+    |--------------------------------------------------------------------------
+    |
+    | Credentials used by AdminSeeder to create the first Super Admin. After
+    | that, Super Admin protection is based on the role, not this email.
+    |
+    */
+
+    'super_admin' => [
+        'name' => env('ADMIN_SEED_NAME', 'Super Admin'),
+        'email' => env('ADMIN_SEED_EMAIL'),
+        'password' => env('ADMIN_SEED_PASSWORD'),
     ],
 
     /*

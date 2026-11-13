@@ -1,282 +1,159 @@
 @extends('admin.layouts')
-@section('title', 'Categories & Subcategories')
+@section('title', 'Categories')
+@section('ui-v2', '1')
 
 @section('content')
-<div class="space-y-10 pb-20" x-data="{ 
-    editCategoryModal: false, 
-    editSubcategoryModal: false,
-    editingCategory: { id: null, name: '', name_bn: '', image: '', icon: '', color: '' },
-    editingSubcategory: { id: null, name: '', category_id: '' },
-    openCategoryEdit(cat) {
-        // name field is a JSON object e.g. {en: '...', bn: '...'} — extract properly
-        let nameEn = '';
-        let nameBn = '';
-        if (cat.name && typeof cat.name === 'object') {
-            nameEn = cat.name.en ?? '';
-            nameBn = cat.name.bn ?? '';
-        } else {
-            nameEn = cat.name ?? '';
-        }
-        this.editingCategory = { ...cat, name: nameEn, name_bn: nameBn };
-        this.editCategoryModal = true;
-    },
-    openSubcategoryEdit(sub) {
-        // sub.name may also be a JSON object
-        let subName = '';
-        if (sub.name && typeof sub.name === 'object') {
-            subName = sub.name.en ?? '';
-        } else {
-            subName = sub.name ?? '';
-        }
-        this.editingSubcategory = { ...sub, name: subName };
-        this.editSubcategoryModal = true;
-    }
-}">
-    {{-- Header --}}
-    <div class="flex items-center gap-4">
-        <div class="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white">
-            <i class="bi bi-diagram-3 text-xl"></i>
-        </div>
-        <div>
-            <h1 class="text-2xl font-black text-slate-900 leading-none uppercase tracking-tighter">Taxonomy Management</h1>
-            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Configure Categories & Sub-Hierarchies</p>
-        </div>
-    </div>
+@php
+    $name = fn ($model, $locale = 'en') => $model->getTranslation('name', $locale, false) ?: $model->getTranslation('name', 'en');
+    $iconOf = fn ($category) => $category->icon ? (str_starts_with($category->icon, 'bi-') ? $category->icon : 'bi-' . $category->icon) : 'bi-tag';
+    $parentOptions = $categories->mapWithKeys(fn ($c) => [$c->id => $name($c)])->all();
+    $subTotal = $categories->sum(fn ($c) => $c->children->count());
+    $admin = auth()->user();
+@endphp
 
-    @if(session('success'))
-        <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl flex items-center gap-4 animate-fadeIn">
-            <div class="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-white text-xl">
-                <i class="bi bi-check-lg"></i>
-            </div>
-            <p class="text-sm font-bold text-emerald-700">{{ session('success') }}</p>
-        </div>
-    @endif
+<div x-data="{
+        category: { id: null, name: '', name_bn: '', icon: '', color: '' },
+        sub: { id: null, name: '', category_id: '' },
+        editCategory(data) { this.category = data; this.$dispatch('open-modal', 'edit-category'); },
+        editSub(data) { this.sub = data; this.$dispatch('open-modal', 'edit-subcategory'); },
+     }">
+    <x-admin.page-header title="Categories" :description="$categories->count() . ' categories and ' . $subTotal . ' subcategories organise your catalog.'" />
 
-    @if($errors->any())
-        <div class="bg-red-50 border border-red-100 p-4 rounded-2xl flex flex-col gap-2 animate-fadeIn">
-            @foreach($errors->all() as $error)
-                <div class="flex items-center gap-4">
-                    <div class="w-6 h-6 bg-red-500 rounded-lg flex items-center justify-center text-white text-xs">
-                        <i class="bi bi-exclamation-triangle"></i>
-                    </div>
-                    <p class="text-xs font-bold text-red-700">{{ $error }}</p>
-                </div>
-            @endforeach
-        </div>
-    @endif
-
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
-        {{-- CATEGORIES SECTION --}}
-        <div class="space-y-6">
-            <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40">
-                <div class="flex items-center gap-3 mb-8">
-                    <div class="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-sm">
-                        <i class="bi bi-tag-fill"></i>
-                    </div>
-                    <h2 class="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Add New Category</h2>
-                </div>
-                
-                <form action="{{ route('categories.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
-                    @csrf
-                    <div class="space-y-1.5">
-                        <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Category Designation</label>
-                        <input type="text" name="name" placeholder="e.g. Smartphones" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-bold focus:ring-2 focus:ring-primary/10 outline-none transition-all" required>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="space-y-1.5">
-                            <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Icon Class (Bootstrap)</label>
-                            <input type="text" name="icon" placeholder="bi-phone" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-bold focus:ring-2 focus:ring-primary/10 outline-none transition-all">
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        @can('products.create')
+            <div class="space-y-6">
+                <x-admin.card title="Add category">
+                    <form method="POST" action="{{ route('categories.store') }}" enctype="multipart/form-data" class="space-y-4">
+                        @csrf
+                        <input type="hidden" name="type" value="product">
+                        <x-admin.input name="name" label="Name" required maxlength="255" placeholder="e.g. Smartphones" :old="false" id="new-category-name" />
+                        <div class="grid grid-cols-2 gap-4">
+                            <x-admin.input name="icon" label="Icon" optional placeholder="bi-phone" :old="false" id="new-category-icon"
+                                           hint="Bootstrap icon class." />
+                            <x-admin.input name="color" label="Colour" optional placeholder="blue-600 or #2563eb" :old="false" id="new-category-color" />
                         </div>
-                        <div class="space-y-1.5">
-                            <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Color Theme (Tailwind)</label>
-                            <input type="text" name="color" placeholder="blue-600" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-bold focus:ring-2 focus:ring-primary/10 outline-none transition-all">
-                        </div>
-                    </div>
-                    <input type="hidden" name="type" value="product">
-                    <button type="submit" class="w-full bg-primary text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
-                        Commit Category
-                    </button>
-                </form>
-            </div>
+                        <x-admin.input name="image" type="file" label="Image" optional accept="image/jpeg,image/png,image/webp" id="new-category-image"
+                                       hint="JPG, PNG or WebP up to 2 MB." />
+                        <x-admin.button type="submit" icon="bi-plus-lg" class="w-full">Add category</x-admin.button>
+                    </form>
+                </x-admin.card>
 
-            <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40">
-                <h2 class="text-xs font-black text-slate-900 uppercase tracking-[0.2em] mb-6">Existing Categories</h2>
-                <div class="space-y-4">
-                    @foreach($categories as $category)
-                        @php
-                            $iconClass = $category->icon ?? 'bi-tag';
-                            if ($category->icon && !str_starts_with($category->icon, 'bi-')) {
-                                $iconClass = 'bi-' . $category->icon;
-                            }
-                        @endphp
-                        <div class="flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border border-slate-100 group">
-                            <div class="flex items-center gap-4">
-                                <div class="w-10 h-10 rounded-lg bg-white border border-slate-100 flex items-center justify-center text-xl shadow-sm" style="color: {{ str_contains($category->color, '#') ? $category->color : '' }}">
-                                     <i class="{{ $iconClass }} {{ !str_contains($category->color, '#') ? 'text-'.$category->color : '' }}"></i>
-                                </div>
-                                <div>
-                                    <span class="text-xs font-black text-slate-800 block leading-none">{{ is_array($category->name) ? ($category->name[app()->getLocale()] ?? $category->name['en'] ?? '') : $category->name }}</span>
-                                    <div class="flex items-center gap-2 mt-1.5">
-                                        <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest">{{ $category->children->count() }} Sub-Items</span>
-                                        <span class="w-1 h-1 rounded-full bg-slate-200"></span>
-                                        <span class="text-[8px] font-black text-primary uppercase tracking-widest">{{ $category->products_count }} Products</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <button @click="openCategoryEdit({{ json_encode($category) }})" class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-100 text-slate-400 hover:text-primary hover:border-primary/20 transition-all opacity-0 group-hover:opacity-100">
-                                    <i class="bi bi-pencil-square"></i>
-                                </button>
-                                <form action="{{ route('categories.destroy', $category->id) }}" method="POST">
+                <x-admin.card title="Add subcategory">
+                    <form method="POST" action="{{ route('subcategories.store') }}" class="space-y-4">
+                        @csrf
+                        <x-admin.select name="category_id" label="Parent category" required placeholder="Select a category" :options="$parentOptions" id="new-sub-parent" />
+                        <x-admin.input name="name" label="Name" required maxlength="255" placeholder="e.g. Flagship phones" :old="false" id="new-sub-name" />
+                        <x-admin.button type="submit" variant="secondary" icon="bi-plus-lg" class="w-full">Add subcategory</x-admin.button>
+                    </form>
+                </x-admin.card>
+            </div>
+        @endcan
+
+        <div @class(['min-w-0 space-y-4', 'lg:col-span-2' => $admin->can('products.create'), 'lg:col-span-3' => !$admin->can('products.create')])>
+            @forelse($categories as $category)
+                @php($isHex = str_contains((string) $category->color, '#'))
+                <x-admin.card :padding="false">
+                    <div class="flex items-center gap-4 px-6 py-4">
+                        <span class="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-gray-50 text-lg dark:border-gray-800 dark:bg-gray-800"
+                              @if($isHex) style="color: {{ $category->color }}" @endif aria-hidden="true">
+                            @if($category->image)
+                                <img src="{{ asset('storage/' . $category->image) }}" alt="" class="size-full object-cover" loading="lazy">
+                            @else
+                                <i class="bi {{ $iconOf($category) }} {{ !$isHex && $category->color ? 'text-' . $category->color : 'text-gray-500 dark:text-gray-400' }}"></i>
+                            @endif
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <p class="truncate font-medium text-gray-900 dark:text-white">{{ $name($category) }}</p>
+                            <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                                {{ $category->products_count }} {{ \Illuminate\Support\Str::plural('product', $category->products_count) }}
+                                · {{ $category->children->count() }} {{ \Illuminate\Support\Str::plural('subcategory', $category->children->count()) }}
+                            </p>
+                        </div>
+                        <div class="flex shrink-0 items-center gap-1">
+                            @can('products.edit')
+                                <x-admin.button variant="ghost" size="sm" icon="bi-pencil" title="Edit" aria-label="Edit {{ $name($category) }}"
+                                                @click="editCategory({{ \Illuminate\Support\Js::from(['id' => $category->id, 'name' => $category->getTranslation('name', 'en'), 'name_bn' => $category->getTranslation('name', 'bn', false), 'icon' => $category->icon, 'color' => $category->color]) }})" />
+                            @endcan
+                            @can('products.delete')
+                                <form method="POST" action="{{ route('categories.destroy', $category->id) }}"
+                                      data-confirm="Categories that still have products or subcategories can't be deleted." data-confirm-title="Delete {{ $name($category) }}?" data-confirm-button="Delete">
                                     @csrf @method('DELETE')
-                                    <button type="submit" onclick="return confirm('Delete category?')" class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-100 text-slate-300 hover:text-red-500 hover:border-red-100 transition-all opacity-0 group-hover:opacity-100">
-                                        <i class="bi bi-trash3 text-xs"></i>
-                                    </button>
+                                    <x-admin.button type="submit" variant="ghost" size="sm" icon="bi-trash" :loading="false" class="text-red-600 dark:text-red-400" title="Delete" aria-label="Delete {{ $name($category) }}" />
                                 </form>
-                            </div>
+                            @endcan
                         </div>
-                    @endforeach
-                </div>
-            </div>
-        </div>
-
-        {{-- SUBCATEGORIES SECTION --}}
-        <div class="space-y-6">
-            <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40">
-                <div class="flex items-center gap-3 mb-8">
-                    <div class="w-8 h-8 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-600 text-sm">
-                        <i class="bi bi-diagram-3-fill"></i>
                     </div>
-                    <h2 class="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Add Sub-Hierarchy</h2>
-                </div>
-                
-                <form action="{{ route('subcategories.store') }}" method="POST" class="space-y-4">
-                    @csrf
-                    <div class="space-y-1.5">
-                        <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Parent Entity</label>
-                        <select name="category_id" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-bold focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all cursor-pointer" required>
-                            <option value="">Select Parent...</option>
-                            @foreach($categories as $category)
-                                <option value="{{ $category->id }}">{{ is_array($category->name) ? ($category->name[app()->getLocale()] ?? $category->name['en'] ?? '') : $category->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="space-y-1.5">
-                        <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Subcategory Name</label>
-                        <input type="text" name="name" placeholder="e.g. Flagship Models" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-bold focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all" required>
-                    </div>
-                    <button type="submit" class="w-full bg-indigo-600 text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
-                        Link Sub-Hierarchy
-                    </button>
-                </form>
-            </div>
-
-            <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40">
-                <h2 class="text-xs font-black text-slate-900 uppercase tracking-[0.2em] mb-6">Subcategory Mapping</h2>
-                <div class="space-y-3">
-                    @foreach($categories as $category)
-                        @foreach($category->children as $sub)
-                            <div class="flex items-center justify-between p-3 bg-indigo-50/30 rounded-xl border border-indigo-100/50 group">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-2 h-2 rounded-full bg-indigo-400"></div>
-                                    <div>
-                                        <span class="text-[10px] font-black text-slate-800 block">{{ is_array($sub->name) ? ($sub->name[app()->getLocale()] ?? $sub->name['en'] ?? '') : $sub->name }}</span>
-                                        <span class="text-[7px] font-black text-indigo-400 uppercase tracking-widest block mt-0.5">Under: {{ is_array($category->name) ? ($category->name[app()->getLocale()] ?? $category->name['en'] ?? '') : $category->name }}</span>
+                    @if($category->children->isNotEmpty())
+                        <ul class="divide-y divide-gray-100 border-t border-gray-200 dark:divide-gray-800 dark:border-gray-800">
+                            @foreach($category->children as $sub)
+                                <li class="flex items-center gap-3 py-2.5 pl-[4.75rem] pr-6">
+                                    <i class="bi bi-arrow-return-right text-xs text-gray-300 dark:text-gray-600" aria-hidden="true"></i>
+                                    <span class="min-w-0 flex-1 truncate text-sm text-gray-700 dark:text-gray-300">{{ $name($sub) }}</span>
+                                    <div class="flex shrink-0 items-center gap-1">
+                                        @can('products.edit')
+                                            <x-admin.button variant="ghost" size="sm" icon="bi-pencil" title="Edit" aria-label="Edit {{ $name($sub) }}"
+                                                            @click="editSub({{ \Illuminate\Support\Js::from(['id' => $sub->id, 'name' => $sub->getTranslation('name', 'en'), 'category_id' => (string) $category->id]) }})" />
+                                        @endcan
+                                        @can('products.delete')
+                                            <form method="POST" action="{{ route('subcategories.destroy', $sub->id) }}"
+                                                  data-confirm="Subcategories that still have products can't be deleted." data-confirm-title="Delete {{ $name($sub) }}?" data-confirm-button="Delete">
+                                                @csrf @method('DELETE')
+                                                <x-admin.button type="submit" variant="ghost" size="sm" icon="bi-trash" :loading="false" class="text-red-600 dark:text-red-400" title="Delete" aria-label="Delete {{ $name($sub) }}" />
+                                            </form>
+                                        @endcan
                                     </div>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <button @click="openSubcategoryEdit({{ json_encode($sub) }})" class="text-slate-300 hover:text-indigo-600 transition-colors opacity-0 group-hover:opacity-100">
-                                        <i class="bi bi-pencil-square text-xs"></i>
-                                    </button>
-                                    <form action="{{ route('subcategories.destroy', $sub->id) }}" method="POST">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" onclick="return confirm('Delete subcategory?')" class="text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
-                                            <i class="bi bi-x-lg text-xs"></i>
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        @endforeach
-                    @endforeach
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {{-- Category Edit Modal --}}
-    <div x-show="editCategoryModal" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center p-4">
-        <div x-show="editCategoryModal" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" @click="editCategoryModal = false" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
-        
-        <div x-show="editCategoryModal" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95" class="relative bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden">
-            <div class="p-8">
-                <div class="flex items-center justify-between mb-8">
-                    <h3 class="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Adjust Category</h3>
-                    <button @click="editCategoryModal = false" class="text-slate-400 hover:text-slate-600"><i class="bi bi-x-lg"></i></button>
-                </div>
-
-                <form :action="'{{ route('categories.update', ['category' => 'PLACEHOLDER']) }}'.replace('PLACEHOLDER', editingCategory.id)" method="POST" enctype="multipart/form-data" class="space-y-6">
-                    @csrf
-                    @method('PUT')
-                    {{-- English Name --}}
-                    <div class="space-y-1.5">
-                        <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">🇬🇧 Category Name (English) <span class="text-red-400">*</span></label>
-                        <input type="text" name="name" x-model="editingCategory.name" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-bold focus:ring-2 focus:ring-primary/10 outline-none transition-all" required>
-                    </div>
-                    {{-- Bangla Name --}}
-                    <div class="space-y-1.5">
-                        <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">🇧🇩 Category Name (বাংলা)</label>
-                        <input type="text" name="name_bn" x-model="editingCategory.name_bn" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-bold focus:ring-2 focus:ring-primary/10 outline-none transition-all" placeholder="বাংলা নাম লিখুন">
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="space-y-1.5">
-                            <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Icon Class</label>
-                            <input type="text" name="icon" x-model="editingCategory.icon" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-bold focus:ring-2 focus:ring-primary/10 outline-none transition-all">
-                        </div>
-                        <div class="space-y-1.5">
-                            <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Color Theme</label>
-                            <input type="text" name="color" x-model="editingCategory.color" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-bold focus:ring-2 focus:ring-primary/10 outline-none transition-all">
-                        </div>
-                    </div>
-                    <button type="submit" class="w-full bg-primary text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
-                        Update Category
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    {{-- Subcategory Edit Modal --}}
-    <div x-show="editSubcategoryModal" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center p-4">
-        <div x-show="editSubcategoryModal" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" @click="editSubcategoryModal = false" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
-        
-        <div x-show="editSubcategoryModal" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95" class="relative bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden">
-            <div class="p-8">
-                <div class="flex items-center justify-between mb-8">
-                    <h3 class="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Adjust Sub-Hierarchy</h3>
-                    <button @click="editSubcategoryModal = false" class="text-slate-400 hover:text-slate-600"><i class="bi bi-x-lg"></i></button>
-                </div>
-
-                <form :action="'{{ route('subcategories.update', ['subcategory' => 'PLACEHOLDER']) }}'.replace('PLACEHOLDER', editingSubcategory.id)" method="POST" class="space-y-6">
-                    @csrf
-                    @method('PUT')
-                    <div class="space-y-1.5">
-                        <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Parent Entity</label>
-                        <select name="category_id" x-model="editingSubcategory.category_id" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-bold focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all cursor-pointer" required>
-                            @foreach($categories as $category)
-                                <option value="{{ $category->id }}">{{ is_array($category->name) ? ($category->name[app()->getLocale()] ?? $category->name['en'] ?? '') : $category->name }}</option>
+                                </li>
                             @endforeach
-                        </select>
-                    </div>
-                    <div class="space-y-1.5">
-                        <label class="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Subcategory Name</label>
-                        <input type="text" name="name" x-model="editingSubcategory.name" class="w-full bg-slate-50 border-none rounded-xl px-4 py-4 text-xs font-bold focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all" required>
-                    </div>
-                    <button type="submit" class="w-full bg-indigo-600 text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
-                        Update Sub-Hierarchy
-                    </button>
-                </form>
-            </div>
+                        </ul>
+                    @endif
+                </x-admin.card>
+            @empty
+                <x-admin.card>
+                    <x-admin.empty-state title="No categories yet" description="Add your first category to start organising products." icon="bi-diagram-3" />
+                </x-admin.card>
+            @endforelse
         </div>
     </div>
+
+    @can('products.edit')
+        <x-admin.modal name="edit-category" title="Edit category">
+            <form id="edit-category-form" method="POST" enctype="multipart/form-data" class="space-y-4"
+                  :action="@js(route('categories.update', ['category' => '__ID__'])).replace('__ID__', category.id)">
+                @csrf @method('PUT')
+                <x-admin.input name="name" id="edit-category-name" label="Name (English)" required maxlength="255" x-model="category.name" :old="false" />
+                <x-admin.input name="name_bn" id="edit-category-name-bn" label="নাম (বাংলা)" optional maxlength="255" x-model="category.name_bn" :old="false" />
+                <div class="grid grid-cols-2 gap-4">
+                    <x-admin.input name="icon" id="edit-category-icon" label="Icon" optional x-model="category.icon" :old="false" />
+                    <x-admin.input name="color" id="edit-category-color" label="Colour" optional x-model="category.color" :old="false" />
+                </div>
+                <x-admin.input name="image" type="file" id="edit-category-image" label="Replace image" optional accept="image/jpeg,image/png,image/webp"
+                               hint="JPG, PNG or WebP up to 2 MB. Leave empty to keep the current image." />
+            </form>
+            <x-slot:footer>
+                <x-admin.button variant="secondary" @click="$dispatch('close-modal', 'edit-category')">Cancel</x-admin.button>
+                <x-admin.button type="submit" form="edit-category-form">Save category</x-admin.button>
+            </x-slot:footer>
+        </x-admin.modal>
+
+        <x-admin.modal name="edit-subcategory" title="Edit subcategory">
+            <form id="edit-subcategory-form" method="POST" class="space-y-4"
+                  :action="@js(route('subcategories.update', ['subcategory' => '__ID__'])).replace('__ID__', sub.id)">
+                @csrf @method('PUT')
+                <x-admin.field label="Parent category" for="edit-sub-parent" required>
+                    <select id="edit-sub-parent" name="category_id" x-model="sub.category_id" required
+                            class="block h-10 w-full rounded-lg border border-gray-300 bg-white pl-3 pr-9 text-sm text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+                        @foreach($parentOptions as $id => $label)
+                            <option value="{{ $id }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </x-admin.field>
+                <x-admin.input name="name" id="edit-sub-name" label="Name" required maxlength="255" x-model="sub.name" :old="false" />
+            </form>
+            <x-slot:footer>
+                <x-admin.button variant="secondary" @click="$dispatch('close-modal', 'edit-subcategory')">Cancel</x-admin.button>
+                <x-admin.button type="submit" form="edit-subcategory-form">Save subcategory</x-admin.button>
+            </x-slot:footer>
+        </x-admin.modal>
+    @endcan
 </div>
 @endsection

@@ -16,23 +16,28 @@ class CouponSeeder extends Seeder
                 'code' => 'EID2026',
                 'type' => 'percent',
                 'value' => 20,
-                'expiry_date' => now()->addMonths(1),
-                'status' => 1
+                'max_discount' => 2000,
+                'min_order_amount' => 1000,
+                'ends_at' => now()->addMonths(1),
+                'status' => 1,
             ],
             [
                 'code' => 'FIRSTORDER',
                 'type' => 'fixed',
                 'value' => 500,
-                'expiry_date' => now()->addMonths(6),
-                'status' => 1
+                'min_order_amount' => 3000,
+                'per_user_limit' => 1,
+                'ends_at' => now()->addMonths(6),
+                'status' => 1,
             ],
             [
                 'code' => 'FLASH10',
                 'type' => 'percent',
                 'value' => 10,
-                'expiry_date' => now()->addDays(2),
-                'status' => 1
-            ]
+                'usage_limit' => 100,
+                'ends_at' => now()->addDays(2),
+                'status' => 1,
+            ],
         ];
 
         foreach ($coupons as $coupon) {

@@ -79,16 +79,10 @@
                                 </td>
                                 <td class="px-8 py-6 text-center">
                                     @php
-                                        $statusStyles = match($order->status) {
-                                            'pending' => 'bg-amber-50 text-amber-600 border-amber-100',
-                                            'processing' => 'bg-blue-50 text-blue-600 border-blue-100',
-                                            'completed' => 'bg-green-50 text-green-600 border-green-100',
-                                            'cancelled' => 'bg-rose-50 text-rose-600 border-rose-100',
-                                            default => 'bg-slate-50 text-slate-600 border-slate-100',
-                                        };
+                                        $statusStyles = \App\Enums\OrderStatus::badge($order->status);
                                     @endphp
                                     <span class="px-4 py-1.5 rounded-full border text-[9px] font-black uppercase tracking-widest {{ $statusStyles }} shadow-sm">
-                                        {{ $order->status }}
+                                        {{ $order->statusEnum()?->label() ?? $order->status }}
                                     </span>
                                 </td>
                                 <td class="px-8 py-6 text-right">
@@ -99,7 +93,7 @@
                                             <span class="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[8px] font-black uppercase py-1 px-2 rounded opacity-0 group-hover/btn:opacity-100 transition-opacity whitespace-nowrap">View Details</span>
                                         </a>
 
-                                        @if($order->status === 'pending')
+                                        @if($order->statusEnum()?->holdsStock() && !$order->paymentStatusEnum()?->isCollected())
                                             <form action="{{ route('user.orders.cancel', $order->id) }}" method="POST" class="inline">
                                                 @csrf
                                                 @method('PATCH')
@@ -124,19 +118,13 @@
         <div class="block md:hidden space-y-6">
             @foreach($orders as $order)
                 @php
-                    $statusStyles = match($order->status) {
-                        'pending' => 'bg-amber-50 text-amber-600 border-amber-100',
-                        'processing' => 'bg-blue-50 text-blue-600 border-blue-100',
-                        'completed' => 'bg-green-50 text-green-600 border-green-100',
-                        'cancelled' => 'bg-rose-50 text-rose-600 border-rose-100',
-                        default => 'bg-slate-50 text-slate-600 border-slate-100',
-                    };
+                    $statusStyles = \App\Enums\OrderStatus::badge($order->status);
                 @endphp
                 <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
                     <div class="flex items-center justify-between">
                         <span class="text-xs font-black text-slate-900 uppercase tracking-tighter">{{ $order->order_id }}</span>
                         <span class="px-3 py-1 rounded-full border text-[8px] font-black uppercase tracking-widest {{ $statusStyles }}">
-                            {{ $order->status }}
+                            {{ $order->statusEnum()?->label() ?? $order->status }}
                         </span>
                     </div>
 
@@ -163,7 +151,7 @@
                                class="px-4 py-2.5 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary transition-all shadow-sm">
                                 Details
                             </a>
-                            @if($order->status === 'pending')
+                            @if($order->statusEnum()?->holdsStock() && !$order->paymentStatusEnum()?->isCollected())
                                 <form action="{{ route('user.orders.cancel', $order->id) }}" method="POST" class="inline">
                                     @csrf
                                     @method('PATCH')

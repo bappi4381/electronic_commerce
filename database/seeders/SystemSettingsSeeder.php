@@ -14,8 +14,6 @@ class SystemSettingsSeeder extends Seeder
             'contact_email' => 'support@onemall.com',
             'flash_deal_title' => 'MEGA MONSOON FLASH SALE 2026',
             'flash_deal_end_time' => now()->addDays(2)->format('Y-m-d H:i:s'),
-            'shipping_fee' => '100',
-            'currency' => 'TK',
         ];
 
         foreach ($settings as $key => $value) {

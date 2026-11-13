@@ -1,6 +1,13 @@
-@extends('frontend.layout')
+@extends(request()->is('admin', 'admin/*') ? 'errors.shell' : 'frontend.layout')
+
+{{-- 404s can happen outside the {locale} route group (e.g. /admin/...), where no locale default is set. --}}
+@php(\Illuminate\Support\Facades\URL::defaults(['locale' => in_array(request()->segment(1), ['en', 'bn'], true) ? request()->segment(1) : config('app.locale', 'en')]))
 
 @section('title', 'Page Not Found')
+@section('code', '404')
+@section('icon', 'bi-signpost-split')
+@section('heading', 'Page not found')
+@section('message', 'This admin page doesn’t exist, or the record it pointed to has been deleted.')
 
 @section('content')
 <div class="min-h-[70vh] flex flex-col items-center justify-center bg-white py-16 px-4 sm:px-6 lg:px-8 relative overflow-hidden">

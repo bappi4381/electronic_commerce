@@ -49,18 +49,15 @@
         Alpine.data('chatComponent', () => ({
             messages: [],
             newMessage: '',
-            userId: {{ auth()->id() ?? 'null' }},
+            channel: @json(auth()->check() ? \App\Support\ChatChannel::forUser(auth()->id()) : null),
             init() {
                 this.fetchMessages();
                 this.markAsRead();
                 
                 // Initialize Echo listener (Requires Echo and Pusher to be compiled and configured)
-                if (window.Echo && this.userId) {
-                    const channelId = String(this.userId);
-                    console.log('📡 Subscribing to: chat.' + channelId);
-                    window.Echo.channel(`chat.${channelId}`)
+                if (window.Echo && this.channel) {
+                    window.Echo.private(this.channel)
                         .listen('.message.sent', (e) => {
-                            console.log('⚡ REAL-TIME MESSAGE RECEIVED:', e);
                             // Only add if it's from admin
                             if(e.is_admin) {
                                 this.messages.push(e);

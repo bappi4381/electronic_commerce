@@ -18,16 +18,10 @@
         
         <div class="flex items-center gap-4">
             @php
-                $statusStyles = match($order->status) {
-                    'pending' => 'bg-amber-50 text-amber-600 border-amber-100',
-                    'processing' => 'bg-blue-50 text-blue-600 border-blue-100',
-                    'completed' => 'bg-green-50 text-green-600 border-green-100',
-                    'cancelled' => 'bg-rose-50 text-rose-600 border-rose-100',
-                    default => 'bg-slate-50 text-slate-600 border-slate-100',
-                };
+                $statusStyles = \App\Enums\OrderStatus::badge($order->status);
             @endphp
             <span class="px-6 py-2.5 rounded-2xl border text-[10px] font-black uppercase tracking-widest {{ $statusStyles }} shadow-sm">
-                {{ $order->status }}
+                {{ $order->statusEnum()?->label() ?? $order->status }}
             </span>
             <a href="{{ route('orders.invoice.download', $order->id) }}" target="_blank" class="w-12 h-12 bg-white border border-slate-100 rounded-2xl flex items-center justify-center text-slate-400 hover:text-primary hover:border-primary/20 transition-all shadow-sm">
                 <i class="bi bi-printer"></i>
@@ -66,8 +60,12 @@
                                     <h4 class="text-sm font-black text-slate-900 tracking-tighter uppercase group-hover:text-primary transition-colors leading-tight">
                                         {{ $item->product->name ?? 'N/A' }}
                                     </h4>
+                                    @if($item->variant && $item->variant->attributeValues->isNotEmpty())
+                                        <p class="text-[10px] font-bold text-slate-500">{{ $item->variant->attributeValues->map(fn ($v) => $v->attribute?->name . ': ' . $v->value)->implode(' · ') }}</p>
+                                    @endif
                                     <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                                         Qty: <span class="text-slate-900">{{ $item->quantity }}</span>
+                                        @if($item->variant?->sku) · SKU <span class="text-slate-600">{{ $item->variant->sku }}</span> @endif
                                     </p>
                                 </div>
                                 
@@ -104,9 +102,12 @@
                     <div class="space-y-4">
                         <p class="text-[9px] font-black uppercase text-slate-400 tracking-widest">Delivery Address</p>
                         <div class="bg-slate-50/50 p-6 rounded-2xl border border-slate-100">
-                            <p class="text-xs font-black text-slate-900 uppercase mb-2">{{ $order->user->name ?? 'Customer' }}</p>
+                            <p class="text-xs font-black text-slate-900 uppercase mb-2">{{ $order->customerDisplayName() }}</p>
+                            @if($order->customerDisplayPhone())
+                                <p class="text-xs font-bold text-slate-600 mb-2"><i class="bi bi-telephone"></i> {{ $order->customerDisplayPhone() }}</p>
+                            @endif
                             <p class="text-xs font-medium text-slate-500 leading-relaxed">{{ $order->shipping_address }}</p>
-                            <p class="text-xs font-black text-slate-900 mt-2">{{ $order->city }}, {{ $order->region }}</p>
+                            <p class="text-xs font-black text-slate-900 mt-2">{{ collect([$order->city, $order->region])->filter()->implode(', ') }}</p>
                         </div>
                     </div>
                     <div class="space-y-4">
@@ -117,13 +118,46 @@
                                     <i class="bi bi-credit-card text-primary"></i>
                                 </div>
                                 <div>
-                                    <p class="text-[10px] font-black text-slate-900 uppercase tracking-tighter">{{ $order->payment_method }}</p>
-                                    <p class="text-[9px] font-bold text-green-500 uppercase tracking-widest">Paid Successfully</p>
+                                    <p class="text-[10px] font-black text-slate-900 uppercase tracking-tighter">{{ $order->payment_method === 'cod' ? 'Cash on delivery' : 'Online payment' }}</p>
+                                    <span class="inline-block mt-1 px-2 py-0.5 rounded-md border text-[9px] font-black uppercase tracking-widest {{ \App\Enums\PaymentStatus::badge($order->payment_status) }}">{{ $order->paymentStatusEnum()?->label() ?? $order->payment_status }}</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Tracking & Timeline -->
+            <div class="card border-0 shadow-sm p-6 sm:p-10 bg-white space-y-8">
+                <h4 class="text-lg font-black text-slate-900 tracking-tighter uppercase flex items-center gap-4">
+                    <span class="w-10 h-10 bg-slate-100 text-primary rounded-xl flex items-center justify-center shadow-inner"><i class="bi bi-clock-history"></i></span>
+                    Order Timeline
+                </h4>
+
+                @if($order->orderCourier)
+                    <div class="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">{{ $order->orderCourier->courierLabel() }} tracking code</p>
+                            <p class="text-sm font-black text-slate-900 font-mono">{{ $order->orderCourier->tracking_code ?: $order->orderCourier->consignment_id }}</p>
+                        </div>
+                        @if($order->orderCourier->trackingUrl())
+                            <a href="{{ $order->orderCourier->trackingUrl() }}" target="_blank" rel="noopener" class="px-4 py-2 rounded-xl bg-primary text-white text-[10px] font-black uppercase tracking-widest">Track parcel <i class="bi bi-box-arrow-up-right"></i></a>
+                        @endif
+                    </div>
+                @endif
+
+                <ol class="relative border-l border-slate-100 ml-4 space-y-6">
+                    @foreach($order->statusHistories->reverse() as $history)
+                        <li class="ml-6">
+                            <span class="absolute -left-3 flex items-center justify-center w-6 h-6 rounded-full border {{ \App\Enums\OrderStatus::badge($history->to_status) }}">
+                                <i class="bi {{ $history->toStatus()?->icon() ?? 'bi-dot' }} text-[10px]"></i>
+                            </span>
+                            <p class="text-xs font-black uppercase tracking-widest text-slate-900">{{ $history->toStatus()?->label() ?? $history->to_status }}</p>
+                            <p class="text-[11px] text-slate-500">{{ $history->note ?: $history->toStatus()?->customerMessage() }}</p>
+                            <p class="text-[10px] font-bold text-slate-400 mt-1">{{ $history->created_at->format('d M Y, h:i A') }}</p>
+                        </li>
+                    @endforeach
+                </ol>
             </div>
         </div>
 
@@ -141,8 +175,14 @@
                     <div class="space-y-5">
                         <div class="flex justify-between items-center">
                             <span class="text-[10px] font-black uppercase text-slate-500 tracking-widest">Subtotal</span>
-                            <span class="text-sm font-bold">tk. {{ number_format($order->total_price - ($order->delivery_charge ?? 0), 2) }}</span>
+                            <span class="text-sm font-bold">tk. {{ number_format($order->itemsSubtotal(), 2) }}</span>
                         </div>
+                        @if((float) $order->discount_amount > 0)
+                            <div class="flex justify-between items-center">
+                                <span class="text-[10px] font-black uppercase text-emerald-400 tracking-widest">Coupon {{ $order->coupon_code }}</span>
+                                <span class="text-sm font-bold text-emerald-400">− tk. {{ number_format($order->discount_amount, 2) }}</span>
+                            </div>
+                        @endif
                         <div class="flex justify-between items-center">
                             <span class="text-[10px] font-black uppercase text-slate-500 tracking-widest">Delivery Fee</span>
                             <span class="text-sm font-bold text-green-400">tk. {{ number_format($order->delivery_charge ?? 0, 2) }}</span>

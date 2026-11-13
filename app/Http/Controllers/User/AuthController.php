@@ -5,14 +5,12 @@ namespace App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Mail\WelcomeMail;
+use App\Services\CustomerPasswordReset;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Str;
-use Carbon\Carbon;
 
 class AuthController extends Controller
 {
@@ -32,6 +30,11 @@ class AuthController extends Controller
         ]);
 
         if (Auth::guard('web')->attempt($request->only('email', 'password'))) {
+            if (Auth::guard('web')->user()->isBlocked()) {
+                Auth::guard('web')->logout();
+                return back()->withErrors(['email' => User::BLOCKED_MESSAGE])->onlyInput('email');
+            }
+
             $request->session()->regenerate();
             return redirect()->intended(route('home'))
                              ->with('success', 'Welcome back!');
@@ -109,29 +112,15 @@ class AuthController extends Controller
     /**
      * Send reset link email
      */
-    public function sendResetLinkEmail(Request $request)
+    public function sendResetLinkEmail(Request $request, CustomerPasswordReset $passwordReset)
     {
         $request->validate(['email' => 'required|email|exists:users,email']);
 
-        $token = Str::random(64);
-
-        DB::table('password_reset_tokens')->updateOrInsert(
-            ['email' => $request->email],
-            [
-                'token' => $token,
-                'created_at' => Carbon::now()
-            ]
-        );
-
-        // In a real app, you would send an email here.
-        // For now, let's assume we'll create the mail class next.
         try {
-            Mail::send('frontend.auth.emails.password-reset', ['token' => $token, 'email' => $request->email], function($message) use($request){
-                $message->to($request->email);
-                $message->subject('Reset Password Notification');
-            });
+            $passwordReset->sendResetLink($request->email);
         } catch (\Exception $e) {
-            return back()->with('error', 'Failed to send reset email. ' . $e->getMessage());
+            report($e);
+            return back()->with('error', 'Failed to send reset email. Please try again later.');
         }
 
         return back()->with('success', 'We have e-mailed your password reset link!');
@@ -148,7 +137,7 @@ class AuthController extends Controller
     /**
      * Handle password reset
      */
-    public function resetPassword(Request $request)
+    public function resetPassword(Request $request, CustomerPasswordReset $passwordReset)
     {
         $request->validate([
             'email' => 'required|email|exists:users,email',
@@ -163,8 +152,8 @@ class AuthController extends Controller
             ])
             ->first();
 
-        if (!$reset) {
-            return back()->withInput()->with('error', 'Invalid token!');
+        if (!$reset || $passwordReset->isExpired($reset->created_at)) {
+            return back()->withInput()->with('error', 'This reset link is invalid or has expired.');
         }
 
         $user = User::where('email', $request->email)->first();

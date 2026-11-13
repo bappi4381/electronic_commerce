@@ -29,7 +29,7 @@
 
         <!-- Content -->
         <div class="prose prose-slate max-w-none prose-lg lg:prose-xl prose-p:text-slate-600 prose-p:leading-relaxed prose-headings:text-slate-900 prose-headings:font-black prose-headings:uppercase prose-headings:italic prose-headings:tracking-tight prose-img:rounded-xl">
-            {!! $article->content !!}
+            {!! clean($article->content) !!}
         </div>
 
         <!-- Interactions (Clean) -->

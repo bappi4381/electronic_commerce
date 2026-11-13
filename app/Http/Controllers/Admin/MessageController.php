@@ -6,47 +6,44 @@ use App\Http\Controllers\Controller;
 use App\Models\Message;
 use App\Models\User;
 use App\Events\MessageSent;
+use App\Support\ChatChannel;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class MessageController extends Controller
 {
     public function index()
     {
-        Log::info('Admin accessed message dashboard.');
-        // Get all users/sessions who have sent messages
-        $conversations = Message::select('user_id', 'session_id', DB::raw('MAX(created_at) as last_message_at'))
+        // One aggregate query per page, then the last messages and users are loaded in two batches.
+        $conversations = Message::query()
+            ->select('user_id', 'session_id')
+            ->selectRaw('MAX(id) as last_id, MAX(created_at) as last_message_at')
+            ->selectRaw('SUM(CASE WHEN is_admin = 0 AND is_read = 0 THEN 1 ELSE 0 END) as unread_count')
             ->groupBy('user_id', 'session_id')
-            ->orderBy('last_message_at', 'desc')
-            ->get()
-            ->map(function($convo) {
-                $convo->last_message_at = \Carbon\Carbon::parse($convo->last_message_at);
-                if ($convo->user_id) {
-                    $user = User::find($convo->user_id);
-                    $convo->name = $user->name ?? 'User #'.$convo->user_id;
-                    $convo->identifier = $convo->user_id;
-                    $convo->type = 'user';
-                } else {
-                    $convo->name = 'Guest #'.substr($convo->session_id, 0, 8);
-                    $convo->identifier = $convo->session_id;
-                    $convo->type = 'guest';
-                }
-                $convo->last_msg = Message::where(function($q) use ($convo) {
-                        if ($convo->user_id) $q->where('user_id', $convo->user_id);
-                        else $q->where('session_id', $convo->session_id);
-                    })->latest()->first();
+            ->orderByDesc('last_message_at')
+            ->paginate(30);
 
-                // Count unread messages from the user
-                $convo->unread_count = Message::where('is_admin', false)
-                    ->where('is_read', false)
-                    ->where(function($q) use ($convo) {
-                        if ($convo->user_id) $q->where('user_id', $convo->user_id);
-                        else $q->where('session_id', $convo->session_id);
-                    })->count();
+        $lastMessages = Message::whereIn('id', $conversations->pluck('last_id'))->get()->keyBy('id');
+        $users = User::whereIn('id', $conversations->pluck('user_id')->filter()->unique())->pluck('name', 'id');
 
-                return $convo;
-            });
+        $conversations->getCollection()->transform(function ($convo) use ($lastMessages, $users) {
+            $convo->last_message_at = \Carbon\Carbon::parse($convo->last_message_at);
+            $convo->last_msg = $lastMessages->get($convo->last_id);
+            $convo->unread_count = (int) $convo->unread_count;
+
+            if ($convo->user_id) {
+                $convo->name = $users[$convo->user_id] ?? 'User #' . $convo->user_id;
+                $convo->identifier = $convo->user_id;
+                $convo->type = 'user';
+                $convo->channel = ChatChannel::forUser($convo->user_id);
+            } else {
+                $convo->name = 'Guest #' . substr($convo->session_id, 0, 8);
+                $convo->identifier = $convo->session_id;
+                $convo->type = 'guest';
+                $convo->channel = ChatChannel::forGuestSession($convo->session_id);
+            }
+
+            return $convo;
+        });
 
         return view('admin.messages.index', compact('conversations'));
     }

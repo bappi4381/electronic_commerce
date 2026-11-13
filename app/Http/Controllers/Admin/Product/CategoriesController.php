@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin\Product;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class CategoriesController extends Controller
 {
@@ -23,7 +24,7 @@ class CategoriesController extends Controller
     {
         $request->validate([
             'name'  => 'required|string|max:255',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'type'  => 'nullable|in:blog,product',
         ]);
 
@@ -49,7 +50,16 @@ class CategoriesController extends Controller
     public function destroy($id)
     {
         $category = Category::findOrFail($id);
+
+        if ($reason = $category->deletionBlocker()) {
+            return back()->with('error', $reason);
+        }
+
         $category->delete();
+
+        if ($category->image) {
+            Storage::disk('public')->delete($category->image);
+        }
 
         return back()->with('success', 'Category deleted successfully.');
     }
@@ -59,21 +69,22 @@ class CategoriesController extends Controller
     {
         $request->validate([
             'name'  => 'required|string|max:255',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
         $category = Category::findOrFail($id);
 
         // Update translatable name, preserving existing BN if not sent
-        $existingName = is_array($category->getTranslations('name')) ? $category->getTranslations('name') : ['en' => $category->name, 'bn' => ''];
         $category->setTranslation('name', 'en', $request->name);
         if ($request->filled('name_bn')) {
             $category->setTranslation('name', 'bn', $request->name_bn);
         }
 
         if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('categories', 'public');
-            $category->image = $imagePath;
+            if ($category->image) {
+                Storage::disk('public')->delete($category->image);
+            }
+            $category->image = $request->file('image')->store('categories', 'public');
         }
 
         $category->icon  = $request->icon  ?? $category->icon;

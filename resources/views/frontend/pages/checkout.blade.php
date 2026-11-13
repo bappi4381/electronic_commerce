@@ -77,8 +77,9 @@
                                 <label for="city" class="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">{{ __('Delivery City') }} <span class="text-red-500">*</span></label>
                                 <select name="city" id="city" 
                                         class="w-full bg-slate-50 border-none rounded-2xl px-6 py-4 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none appearance-none cursor-pointer" required>
-                                    <option value="Dhaka" {{ old('city') == 'Dhaka' ? 'selected' : '' }}>{{ __('Dhaka (Within City)') }}</option>
-                                    <option value="Other" {{ old('city') == 'Other' ? 'selected' : '' }}>{{ __('Outside Dhaka') }}</option>
+                                    @foreach($cityOptions as $city => $charge)
+                                        <option value="{{ $city }}" @selected(old('city') === $city)>{{ $city === \App\Services\CheckoutOptions::OTHER_ZONE ? __('Other areas') : $city }} — tk. {{ number_format($charge, 0) }}</option>
+                                    @endforeach
                                 </select>
                                 @error('city') <p class="text-[10px] text-red-500 font-bold mt-1 ml-1">{{ $message }}</p> @enderror
                             </div>
@@ -108,8 +109,9 @@
                         </h3>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            @if(in_array('cod', $paymentMethods, true))
                             <label class="relative group cursor-pointer">
-                                <input type="radio" name="payment_method" value="cod" class="peer hidden" {{ old('payment_method', 'cod') == 'cod' ? 'checked' : '' }}>
+                                <input type="radio" name="payment_method" value="cod" class="peer hidden" @checked(old('payment_method', $paymentMethods[0]) === 'cod')>
                                 <div class="p-8 bg-slate-50 rounded-3xl border-2 border-transparent peer-checked:border-primary peer-checked:bg-primary/5 group-hover:bg-slate-100 transition-all flex flex-col items-center text-center gap-4">
                                     <div class="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-3xl text-slate-400 peer-checked:text-primary shadow-sm">
                                         <i class="bi bi-wallet2"></i>
@@ -120,9 +122,11 @@
                                     </div>
                                 </div>
                             </label>
+                            @endif
 
+                            @if(in_array('online', $paymentMethods, true))
                             <label class="relative group cursor-pointer">
-                                <input type="radio" name="payment_method" value="online" class="peer hidden" {{ old('payment_method') == 'online' ? 'checked' : '' }}>
+                                <input type="radio" name="payment_method" value="online" class="peer hidden" @checked(old('payment_method', $paymentMethods[0]) === 'online')>
                                 <div class="p-8 bg-slate-50 rounded-3xl border-2 border-transparent peer-checked:border-primary peer-checked:bg-primary/5 group-hover:bg-slate-100 transition-all flex flex-col items-center text-center gap-4">
                                     <div class="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-3xl text-slate-400 peer-checked:text-primary shadow-sm">
                                         <i class="bi bi-shield-check"></i>
@@ -133,6 +137,7 @@
                                     </div>
                                 </div>
                             </label>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -163,13 +168,12 @@
                         @php 
                             $cart = session()->get('cart', []);
                             $subtotal = collect($cart)->sum(fn($item) => $item['price'] * $item['quantity']);
-                            $selectedCity = old('city', 'Dhaka');
-                            
-                            $dhakaCharge = (float) \App\Models\Setting::get('shipping_charge_dhaka', 80);
-                            $outsideCharge = (float) \App\Models\Setting::get('shipping_charge_outside', 110);
-                            
-                            $deliveryCharge = ($selectedCity == 'Dhaka') ? $dhakaCharge : $outsideCharge;
-                            $grandTotal = $subtotal + $deliveryCharge;
+                            $discount = (float) ($discount ?? 0);
+                            $itemsTotal = max(0, $subtotal - $discount);
+                            $freeShipping = $freeShippingThreshold !== null && $itemsTotal >= $freeShippingThreshold;
+                            $selectedCity = old('city', array_key_first($cityOptions));
+                            $deliveryCharge = $freeShipping ? 0 : (float) ($cityOptions[$selectedCity] ?? 0);
+                            $grandTotal = $itemsTotal + $deliveryCharge;
                         @endphp
 
                         <div class="space-y-4 mb-10 pt-10 border-t border-white/10">
@@ -177,10 +181,19 @@
                                 <span class="text-[10px] font-black uppercase tracking-widest">{{ __('Subtotal') }}</span>
                                 <span class="text-sm font-bold text-white">tk. {{ number_format($subtotal, 2) }}</span>
                             </div>
+                            @if($discount > 0)
+                                <div class="flex justify-between items-center text-emerald-400">
+                                    <span class="text-[10px] font-black uppercase tracking-widest">{{ __('Coupon') }} {{ $couponCode }}</span>
+                                    <span class="text-sm font-bold">− tk. {{ number_format($discount, 2) }}</span>
+                                </div>
+                            @endif
                             <div class="flex justify-between items-center text-slate-400">
                                 <span class="text-[10px] font-black uppercase tracking-widest">{{ __('Delivery Charge') }}</span>
-                                <span class="text-sm font-bold text-white" id="deliveryChargeDisplay">tk. {{ number_format($deliveryCharge, 2) }}</span>
+                                <span class="text-sm font-bold text-white" id="deliveryChargeDisplay">{{ $freeShipping ? __('Free') : 'tk. ' . number_format($deliveryCharge, 2) }}</span>
                             </div>
+                            @if($freeShippingThreshold !== null && !$freeShipping)
+                                <p class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">{{ __('Add tk. :amount more for free delivery', ['amount' => number_format($freeShippingThreshold - $itemsTotal, 2)]) }}</p>
+                            @endif
                             <div class="flex justify-between items-center pt-4">
                                 <span class="text-sm font-black uppercase tracking-widest text-primary">{{ __('Final Total') }}</span>
                                 <span class="text-2xl font-black tracking-tighter" id="grandTotalDisplay">tk. {{ number_format($grandTotal, 2) }}</span>
@@ -207,13 +220,13 @@
         const citySelect = document.getElementById('city');
         const deliveryDisplay = document.getElementById('deliveryChargeDisplay');
         const totalDisplay = document.getElementById('grandTotalDisplay');
-        const subtotal = {{ $subtotal }};
-        const dhakaCharge = {{ $dhakaCharge }};
-        const outsideCharge = {{ $outsideCharge }};
+        const subtotal = {{ $itemsTotal }};
+        const charges = @js($cityOptions);
+        const freeShipping = @js($freeShipping);
 
         citySelect.addEventListener('change', function() {
-            let charge = this.value === 'Dhaka' ? dhakaCharge : outsideCharge;
-            deliveryDisplay.textContent = 'tk. ' + charge.toLocaleString(undefined, {minimumFractionDigits: 2});
+            const charge = freeShipping ? 0 : Number(charges[this.value] ?? 0);
+            deliveryDisplay.textContent = freeShipping ? @js(__('Free')) : 'tk. ' + charge.toLocaleString(undefined, {minimumFractionDigits: 2});
             totalDisplay.textContent = 'tk. ' + (subtotal + charge).toLocaleString(undefined, {minimumFractionDigits: 2});
             
             // Add a small animation effect

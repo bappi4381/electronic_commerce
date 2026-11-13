@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin\Users;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class UserController extends Controller
 {
@@ -38,7 +39,7 @@ class UserController extends Controller
         $request->validate([
             'name' => 'required|string|max:100',
             'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6|confirmed',
+            'password' => 'required|string|min:8|confirmed',
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string',
             'city' => 'nullable|string|max:100',
@@ -86,21 +87,40 @@ class UserController extends Controller
             'state' => 'nullable|string|max:100',
             'postal_code' => 'nullable|string|max:20',
             'country' => 'nullable|string|max:100',
+            'password' => 'nullable|string|min:8|confirmed',
         ]);
 
-        $user->update($request->only([
+        $user->fill($request->only([
             'name', 'email', 'phone', 'address', 'city', 'state', 'postal_code', 'country'
         ]));
+
+        if ($request->filled('password')) {
+            $user->password = bcrypt($request->password);
+            $user->remember_token = Str::random(60);
+        }
+
+        $user->save();
 
         return redirect()->route('users.index')->with('success', 'User updated successfully!');
     }
 
-    // Delete user
+    // List a customer's orders
+    public function orders(User $user)
+    {
+        $orders = $user->orders()->withCount('orderItems')->latest()->paginate(15);
+
+        return view('admin.users.orders', compact('user', 'orders'));
+    }
+
+    // Delete user (only customers without order history; block the account otherwise)
     public function destroy(User $user)
     {
-        // Delete related data BEFORE deleting the user
-        $user->orderItems()->delete();
-        $user->orders()->delete();
+        $orderCount = $user->orders()->count();
+
+        if ($orderCount > 0) {
+            return redirect()->back()->with('error', "{$user->name} has {$orderCount} order(s) and cannot be deleted. Block the account instead.");
+        }
+
         $user->delete();
         return redirect()->route('users.index')->with('success', 'User deleted successfully!');
     }

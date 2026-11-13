@@ -22,11 +22,10 @@ class ProfileController extends Controller
     {
         
         $admin = Auth::guard('admin')->user();
-        //dd($request->all());
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:admins,email,' . $admin->id,
-            'avatar' => 'nullable|image|mimes:jpg,jpeg,png|max:2048', // max 2MB
+            'avatar' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'password' => 'nullable|confirmed|min:8',
         ]);
 

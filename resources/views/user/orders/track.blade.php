@@ -81,75 +81,65 @@
                     </div>
 
                     <!-- Visual Progress Bar -->
+                    @php
+                        $statusEnum = $order->statusEnum();
+                        $stepStatuses = \App\Enums\OrderStatus::fulfilmentSteps();
+                        $currentStatusIndex = array_search($statusEnum, $stepStatuses, true);
+                        $isStopped = $currentStatusIndex === false;
+                        $currentStatusIndex = $isStopped ? -1 : $currentStatusIndex;
+                        $progressWidth = $isStopped ? 0 : round($currentStatusIndex / (count($stepStatuses) - 1) * 100);
+                    @endphp
                     <div class="relative pt-4 px-4">
                         <div class="absolute left-4 right-4 top-1/2 -translate-y-1/2 h-1 bg-slate-50 rounded-full overflow-hidden">
-                            @php
-                                $progressWidth = match($order->status) {
-                                    'pending' => '25%',
-                                    'processing' => '50%',
-                                    'shipped' => '75%',
-                                    'delivered' => '100%',
-                                    'cancelled' => '0%',
-                                    default => '0%',
-                                };
-                            @endphp
-                            <div class="h-full bg-primary transition-all duration-1000 shadow-[0_0_15px_rgba(59,130,246,0.5)]" style="width: {{ $progressWidth }}"></div>
+                            <div class="h-full bg-primary transition-all duration-1000 shadow-[0_0_15px_rgba(59,130,246,0.5)]" style="width: {{ $progressWidth }}%"></div>
                         </div>
                         <div class="flex justify-between relative">
-                            @php
-                                $statusList = ['pending', 'processing', 'shipped', 'delivered'];
-                                $currentStatusIndex = array_search($order->status, $statusList);
-                            @endphp
-                            @foreach(['Placed', 'Processing', 'Shipped', 'Delivered'] as $index => $label)
-                                @php
-                                    $isReached = $index <= $currentStatusIndex;
-                                    $isCurrent = $index === $currentStatusIndex;
-                                @endphp
+                            @foreach($stepStatuses as $index => $step)
+                                @php $isReached = $index <= $currentStatusIndex; @endphp
                                 <div class="flex flex-col items-center gap-4">
                                     <div class="w-10 h-10 rounded-2xl flex items-center justify-center text-sm transition-all duration-500 z-10 shadow-lg
                                         {{ $isReached ? 'bg-primary text-white border-4 border-white' : 'bg-white text-slate-300 border-2 border-slate-50' }}">
-                                        <i class="bi {{ match($index) { 0 => 'bi-cart-check', 1 => 'bi-gear', 2 => 'bi-truck', 3 => 'bi-house-check' } }}"></i>
+                                        <i class="bi {{ $step->icon() }}"></i>
                                     </div>
-                                    <span class="text-[9px] font-black uppercase tracking-widest {{ $isReached ? 'text-slate-900' : 'text-slate-300' }}">{{ $label }}</span>
+                                    <span class="text-[9px] font-black uppercase tracking-widest {{ $isReached ? 'text-slate-900' : 'text-slate-300' }}">{{ $step->label() }}</span>
                                 </div>
                             @endforeach
                         </div>
+                        @if($isStopped && $statusEnum)
+                            <p class="mt-6 text-center text-[10px] font-black uppercase tracking-widest text-rose-500"><i class="bi {{ $statusEnum->icon() }}"></i> {{ $statusEnum->label() }}</p>
+                        @endif
                     </div>
+
+                    @if($order->orderCourier)
+                        <div class="mt-8 p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">{{ $order->orderCourier->courierLabel() }} tracking</p>
+                                <p class="text-sm font-black text-slate-900 font-mono">{{ $order->orderCourier->tracking_code ?: $order->orderCourier->consignment_id }}</p>
+                            </div>
+                            @if($order->orderCourier->trackingUrl())
+                                <a href="{{ $order->orderCourier->trackingUrl() }}" target="_blank" rel="noopener" class="px-4 py-2 rounded-xl bg-primary text-white text-[10px] font-black uppercase tracking-widest">Track parcel <i class="bi bi-box-arrow-up-right"></i></a>
+                            @endif
+                        </div>
+                    @endif
 
                     <!-- Timeline Details -->
                     <div class="pt-8 space-y-10 relative before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-[2px] before:bg-slate-50">
-                        @php
-                            $stages = [
-                                ['status' => 'pending', 'label' => 'Order Confirmed', 'desc' => 'We have received your order and payment.', 'time' => $order->created_at->format('h:i A')],
-                                ['status' => 'processing', 'label' => 'Package Preparation', 'desc' => 'Our team is carefully packing your items.', 'time' => $order->created_at->addHours(2)->format('h:i A')],
-                                ['status' => 'shipped', 'label' => 'Out for Delivery', 'desc' => 'Your package is on its way to your destination.', 'time' => 'In Progress'],
-                                ['status' => 'delivered', 'label' => 'Successfully Delivered', 'desc' => 'Package has been received at the address.', 'time' => 'Pending'],
-                            ];
-                        @endphp
-
-                        @foreach($stages as $index => $stage)
-                            @php
-                                $isReached = $index <= $currentStatusIndex;
-                                $isCurrent = $index === $currentStatusIndex;
-                            @endphp
+                        @forelse($order->statusHistories->reverse() as $history)
                             <div class="relative pl-14 flex items-start justify-between gap-2 group">
-                                <div class="absolute left-0 w-10 h-10 rounded-xl flex items-center justify-center z-10 transition-all duration-500
-                                    {{ $isReached ? 'bg-white border-2 border-primary text-primary shadow-sm' : 'bg-white border-2 border-slate-50 text-slate-200' }}">
-                                    @if($isReached && !$isCurrent)
-                                        <i class="bi bi-check-lg"></i>
-                                    @else
-                                        <div class="w-2 h-2 rounded-full {{ $isReached ? 'bg-primary animate-pulse' : 'bg-slate-100' }}"></div>
-                                    @endif
+                                <div class="absolute left-0 w-10 h-10 rounded-xl flex items-center justify-center z-10 bg-white border-2 border-primary text-primary shadow-sm">
+                                    <i class="bi {{ $history->toStatus()?->icon() ?? 'bi-check-lg' }}"></i>
                                 </div>
                                 <div class="space-y-1">
-                                    <h4 class="text-xs font-black uppercase tracking-widest {{ $isReached ? 'text-slate-900' : 'text-slate-300' }}">{{ $stage['label'] }}</h4>
-                                    <p class="text-[10px] font-medium {{ $isReached ? 'text-slate-500' : 'text-slate-300' }}">{{ $stage['desc'] }}</p>
+                                    <h4 class="text-xs font-black uppercase tracking-widest text-slate-900">{{ $history->toStatus()?->label() ?? $history->to_status }}</h4>
+                                    <p class="text-[10px] font-medium text-slate-500">{{ $history->note ?: $history->toStatus()?->customerMessage() }}</p>
                                 </div>
                                 <div class="text-right flex-shrink-0">
-                                    <span class="text-[9px] font-black uppercase tracking-widest {{ $isReached ? 'text-slate-400' : 'text-slate-200' }}">{{ $stage['time'] }}</span>
+                                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-400">{{ $history->created_at->format('d M, h:i A') }}</span>
                                 </div>
                             </div>
-                        @endforeach
+                        @empty
+                            <p class="text-[10px] font-black uppercase tracking-widest text-slate-300 pl-14">No updates yet.</p>
+                        @endforelse
                     </div>
                 </div>
             @else
