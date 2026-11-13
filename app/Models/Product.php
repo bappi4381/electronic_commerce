@@ -5,22 +5,64 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Laravel\Scout\Searchable;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Product extends Model
 {
-    use SoftDeletes, \Spatie\Translatable\HasTranslations;
+    use SoftDeletes, \Spatie\Translatable\HasTranslations, LogsActivity, Searchable;
+
+    // ── Search (Scout / Meilisearch) ────────────────────────
+
+    public function searchableAs(): string
+    {
+        return config('search.meilisearch.index', 'products');
+    }
+
+    public function toSearchableArray(): array
+    {
+        return app(\App\Search\ProductDocument::class)->make($this);
+    }
+
+    public function shouldBeSearchable(): bool
+    {
+        return !$this->trashed();
+    }
+
+    protected function makeAllSearchableUsing($query)
+    {
+        return $query->with(['brand', 'category.parent', 'images', 'allVariants'])->withSum('orderItems', 'quantity');
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('products')
+            ->logOnly([
+                'product_id', 'category_id', 'brand_id', 'name', 'price', 'discount', 'discounted_price',
+                'model', 'warranty_period', 'video_link', 'low_stock_threshold', 'is_flash_deal', 'deleted_at',
+            ])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 
     protected $fillable = [
-        'category_id', 'name', 'description',
-        'price', 'discount', 'discounted_price', 'product_id', 'brand', 'model', 'warranty_period',
+        'category_id', 'brand_id', 'name', 'description',
+        'price', 'discount', 'discounted_price', 'product_id', 'model', 'warranty_period',
         'specifications', 'video_link', 'low_stock_threshold', 'is_flash_deal'
     ];
 
     public $translatable = ['name', 'description'];
 
+    /** Storefront lists print the brand on every card. */
+    protected $with = ['brand'];
+
     protected $casts = [
         'specifications'  => 'array',
         'is_flash_deal'   => 'boolean',
+        'rating_avg'      => 'decimal:2',
+        'rating_count'    => 'integer',
     ];
 
     protected static function boot()
@@ -28,10 +70,19 @@ class Product extends Model
         parent::boot();
 
         static::creating(function ($product) {
-            $latest = Product::latest('id')->first();
-            $number = $latest ? intval(substr($latest->product_id ?? 'PROD-0000', 5)) + 1 : 1;
-            $product->product_id = 'PROD-' . str_pad($number, 4, '0', STR_PAD_LEFT);
+            $product->product_id = static::nextProductId();
         });
+    }
+
+    /**
+     * Archived (soft-deleted) products keep their unique product_id, so they must be counted.
+     */
+    public static function nextProductId(): string
+    {
+        $latest = static::withTrashed()->latest('id')->value('product_id');
+        $number = $latest ? intval(substr($latest, 5)) + 1 : 1;
+
+        return 'PROD-' . str_pad($number, 4, '0', STR_PAD_LEFT);
     }
 
     // ── Relationships ───────────────────────────────────────
@@ -46,9 +97,35 @@ class Product extends Model
         return $this->hasMany(ProductImage::class);
     }
 
+    public function brand()
+    {
+        return $this->belongsTo(Brand::class);
+    }
+
+    /**
+     * All reviews regardless of moderation status (admin use).
+     */
     public function comments()
     {
         return $this->hasMany(ProductComment::class);
+    }
+
+    public function approvedReviews()
+    {
+        return $this->hasMany(ProductComment::class)->where('status', ProductComment::STATUS_APPROVED);
+    }
+
+    /**
+     * Cache the average of approved, rated reviews on the product for listings.
+     */
+    public function recalculateRating(): void
+    {
+        $stats = $this->approvedReviews()->whereNotNull('rating')->selectRaw('AVG(rating) as avg_rating, COUNT(*) as total')->first();
+
+        $this->forceFill([
+            'rating_avg'   => $stats?->total ? round((float) $stats->avg_rating, 2) : null,
+            'rating_count' => (int) ($stats?->total ?? 0),
+        ])->saveQuietly();
     }
 
     public function reactions()
@@ -56,7 +133,20 @@ class Product extends Model
         return $this->hasMany(ProductReaction::class);
     }
 
+    public function orderItems()
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
+    /**
+     * Sellable variants. Deactivated variants are kept only for order and stock history.
+     */
     public function variants()
+    {
+        return $this->hasMany(ProductVariant::class)->where('is_active', true);
+    }
+
+    public function allVariants()
     {
         return $this->hasMany(ProductVariant::class);
     }

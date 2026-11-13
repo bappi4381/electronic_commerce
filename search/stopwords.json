@@ -1,0 +1,7 @@
+{
+    "_comment": "Filler words ignored in queries. Never add brand or product terms here. Run `php artisan search:settings` after editing.",
+    "words": [
+        "the", "a", "an", "for", "of", "and", "with", "in", "on", "to", "best", "price", "buy", "online", "bd", "bangladesh", "cheap", "new",
+        "এর", "এবং", "ও", "দাম", "কিনুন", "সেরা", "জন্য", "নতুন", "মূল্য", "বাংলাদেশ"
+    ]
+}
