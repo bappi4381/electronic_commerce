@@ -5,22 +5,297 @@
 @source '../**/*.blade.php';
 @source '../**/*.js';
 
+/* Admin dark mode is class-based (html.dark); the storefront never sets the class. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Set on <html> before first paint so the collapsed admin sidebar never flashes open. */
+@custom-variant sidebar-collapsed (&:where(.sidebar-collapsed, .sidebar-collapsed *));
+
 @theme {
-    --font-sans: 'Outfit', 'Inter', ui-sans-serif, system-ui, sans-serif;
-    
-    /* Custom Color Palette */
+    --font-sans: 'Outfit', 'Inter', 'Hind Siliguri', 'Noto Sans Bengali', ui-sans-serif, system-ui, sans-serif;
+    --font-inter: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Outfit', 'Hind Siliguri', 'Noto Sans Bengali', ui-sans-serif, system-ui, sans-serif;
+    --font-body: 'Inter', 'Hind Siliguri', 'Noto Sans Bengali', ui-sans-serif, system-ui, sans-serif;
+    --font-bangla: 'Hind Siliguri', 'Noto Sans Bengali', ui-sans-serif, system-ui, sans-serif;
+
+    /* Storefront surfaces: dark navy chrome around light content */
+    --color-navy-950: #070c16;
+    --color-navy-900: #0b1220;
+    --color-navy-800: #121b2e;
+    --color-navy-700: #1c2842;
+    --color-navy-600: #2a3a5c;
+    --color-sale: #e11d48;
+    --color-sale-soft: #fff1f3;
+
+    /* Storefront palette */
     --color-primary: #20a7db;
     --color-primary-light: #62c1e5;
     --color-primary-lighter: #a0d9ef;
     --color-primary-lightest: #cfecf7;
     --color-primary-dark: #1c96c5;
-    
+
     --color-accent: var(--color-primary);
     --color-accent-hover: var(--color-primary-dark);
+
+    /* Admin brand scale, built around the storefront blue. 600+ meets WCAG AA on white. */
+    --color-brand-50: #eef9fd;
+    --color-brand-100: #d6f0fa;
+    --color-brand-200: #afe1f4;
+    --color-brand-300: #76cbec;
+    --color-brand-400: #3db3e1;
+    --color-brand-500: #20a7db;
+    --color-brand-600: #0f7aab;
+    --color-brand-700: #0d6590;
+    --color-brand-800: #105676;
+    --color-brand-900: #134862;
+    --color-brand-950: #0c2e41;
+}
+
+/*
+ * Storefront design tokens. Components read these through Tailwind arbitrary values
+ * (e.g. rounded-[var(--sf-radius)]) or the .sf-* classes below.
+ */
+:root {
+    --sf-navy: var(--color-navy-900);
+    --sf-navy-deep: var(--color-navy-950);
+    --sf-accent: var(--color-primary);          /* #20a7db brand cyan: fills, icons, borders */
+    --sf-accent-strong: var(--color-brand-600); /* AA-contrast text/links on white */
+    --sf-accent-soft: var(--color-brand-50);
+    --sf-bg: #f4f6fa;
+    --sf-surface: #ffffff;
+    --sf-border: #e4e8ef;
+    --sf-text: #0f172a;
+    --sf-muted: #5b6577;
+    --sf-sale: var(--color-sale);
+    --sf-success: #15803d;
+    --sf-warning: #b45309;
+
+    --sf-radius-sm: 8px;
+    --sf-radius: 12px;
+    --sf-radius-lg: 16px;
+
+    --sf-space-1: 4px;
+    --sf-space-2: 8px;
+    --sf-space-3: 12px;
+    --sf-space-4: 16px;
+    --sf-space-6: 24px;
+    --sf-space-8: 32px;
+
+    --sf-shadow-sm: 0 1px 2px rgb(15 23 42 / 0.06);
+    --sf-shadow: 0 4px 14px -4px rgb(15 23 42 / 0.12);
+    --sf-shadow-lg: 0 18px 40px -12px rgb(15 23 42 / 0.25);
+
+    --sf-z-header: 40;
+    --sf-z-fab: 45;
+    --sf-z-bottom-nav: 50;
+    --sf-z-dropdown: 60;
+    --sf-z-drawer: 70;
+    --sf-z-overlay: 80;
+    --sf-z-toast: 90;
+
+    --sf-bottom-nav-h: 64px;
+    --sf-safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 @layer base {
     body {
         @apply font-sans;
+    }
+
+    html[lang='bn'] body.storefront {
+        font-family: var(--font-bangla);
+    }
+
+    mark {
+        background: #fff1b8;
+        color: inherit;
+        border-radius: 2px;
+        padding: 0 1px;
+    }
+
+    [x-cloak] {
+        display: none !important;
+    }
+
+    .dark {
+        color-scheme: dark;
+    }
+}
+
+/* Consistent keyboard focus for admin controls. */
+@utility focus-ring {
+    &:focus-visible {
+        outline: 2px solid var(--color-brand-500);
+        outline-offset: 2px;
+    }
+}
+
+@utility scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-gray-300) transparent;
+
+    .dark & {
+        scrollbar-color: var(--color-gray-700) transparent;
+    }
+}
+
+@utility no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+/* Storefront focus ring: visible on navy and white. */
+@utility sf-focus {
+    &:focus-visible {
+        outline: 2px solid var(--sf-accent);
+        outline-offset: 2px;
+    }
+}
+
+@utility pb-safe {
+    padding-bottom: var(--sf-safe-bottom);
+}
+
+@layer components {
+    /* Room for the fixed mobile bottom navigation so it never covers content. */
+    @media (max-width: 767px) {
+        body.has-bottom-nav {
+            padding-bottom: calc(var(--sf-bottom-nav-h) + var(--sf-safe-bottom));
+        }
+    }
+
+    body.sf-locked {
+        overflow: hidden;
+    }
+
+    .sf-skeleton {
+        background: linear-gradient(90deg, #eef1f6 25%, #f7f9fc 37%, #eef1f6 63%);
+        background-size: 400% 100%;
+        animation: sf-shimmer 1.4s ease infinite;
+    }
+
+    /* Image with fallback: shimmer while loading, category icon if the image is missing or broken. */
+    .sf-img[data-state='loading'] {
+        background: linear-gradient(90deg, #eef1f6 25%, #f7f9fc 37%, #eef1f6 63%);
+        background-size: 400% 100%;
+        animation: sf-shimmer 1.4s ease infinite;
+    }
+
+    .sf-img[data-state='loading'] .sf-img-fallback,
+    .sf-img[data-state='loaded'] .sf-img-fallback {
+        opacity: 0;
+    }
+
+    .sf-snap-row {
+        scroll-snap-type: x mandatory;
+        scroll-padding-inline: var(--sf-space-4);
+        overscroll-behavior-x: contain;
+    }
+
+    .sf-snap-row > * {
+        scroll-snap-align: start;
+    }
+
+    @keyframes sf-shimmer {
+        0% { background-position: 100% 50%; }
+        100% { background-position: 0 50%; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .storefront *,
+        .storefront *::before,
+        .storefront *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+        }
+    }
+
+    /* Admin data tables collapse into stacked cards below the md breakpoint. */
+    @media (max-width: 767px) {
+        .admin-table thead {
+            display: none;
+        }
+
+        .admin-table,
+        .admin-table tbody,
+        .admin-table tr,
+        .admin-table td {
+            display: block;
+            width: 100%;
+        }
+
+        .admin-table tbody {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 0.75rem;
+            padding: 0.75rem;
+        }
+
+        .admin-table tr {
+            min-width: 0;
+            overflow: hidden;
+            border: 1px solid var(--color-gray-200);
+            border-radius: 0.75rem;
+            padding: 0.5rem 0;
+            background: var(--color-white);
+        }
+
+        /* Let long, truncated cell content shrink instead of widening the card. */
+        .admin-table td > * {
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        .admin-table td:not([data-label]):not([data-primary]) {
+            justify-content: flex-end;
+        }
+
+        .dark .admin-table tr {
+            border-color: var(--color-gray-800);
+            background: var(--color-gray-900);
+        }
+
+        .admin-table td {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.5rem 1rem !important;
+            border: 0 !important;
+            text-align: right;
+        }
+
+        .admin-table td[data-label]::before {
+            content: attr(data-label);
+            flex-shrink: 0;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--color-gray-500);
+            text-align: left;
+        }
+
+        .admin-table td[data-primary] {
+            justify-content: flex-start;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .admin-table td[data-primary] > * {
+            flex: 1 1 auto;
+        }
+
+        .admin-table td[data-primary]::before {
+            display: none;
+        }
+
+        .admin-table td.admin-table-empty {
+            justify-content: center;
+        }
     }
 }
