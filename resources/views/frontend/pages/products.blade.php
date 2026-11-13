@@ -35,6 +35,9 @@
                                 @if(request('category'))
                                     <input type="hidden" name="category" value="{{ request('category') }}">
                                 @endif
+                                @if(request('brand'))
+                                    <input type="hidden" name="brand" value="{{ request('brand') }}">
+                                @endif
                                 <input type="text" name="search" 
                                        class="w-full bg-slate-50 border-none rounded-2xl pl-12 pr-4 py-4 text-sm font-bold focus:ring-2 focus:ring-primary transition-all outline-none" 
                                        placeholder="{{ __('Search products...') }}" value="{{ request('search') }}">
@@ -66,6 +69,25 @@
                             </ul>
                         </div>
 
+                        <!-- Brand Widget -->
+                        @if($brands->isNotEmpty())
+                        <div class="bg-white p-8 rounded-[32px] shadow-xl shadow-slate-200/50 border border-slate-100">
+                            <h5 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 flex items-center gap-2">
+                                <span class="w-2 h-2 bg-primary rounded-full"></span>
+                                {{ __('Brands') }}
+                            </h5>
+                            <div class="flex flex-wrap gap-2">
+                                <a href="{{ route('products.index', request()->except('brand', 'page')) }}"
+                                   class="px-4 py-2 rounded-xl text-xs font-bold no-underline transition-all {{ !request('brand') ? 'bg-primary text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100' }}">{{ __('All') }}</a>
+                                @foreach($brands as $brand)
+                                    <a href="{{ route('products.index', array_merge(request()->except('page'), ['brand' => $brand->slug])) }}"
+                                       class="px-4 py-2 rounded-xl text-xs font-bold no-underline transition-all {{ request('brand') === $brand->slug ? 'bg-primary text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100' }}">
+                                        {{ $brand->name }} <span class="opacity-60">{{ $brand->products_count }}</span>
+                                    </a>
+                                @endforeach
+                            </div>
+                        </div>
+                        @endif
                         <!-- Price Filter -->
                         <div class="bg-white p-8 rounded-[32px] shadow-xl shadow-slate-200/50 border border-slate-100">
                             <h5 class="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 flex items-center gap-2">
@@ -107,7 +129,7 @@
                             <div class="flex items-center gap-2 sm:gap-4 ml-auto sm:ml-0">
                                 <span class="text-[10px] sm:text-xs font-black uppercase text-slate-400 tracking-widest hidden xs:inline">{{ __('Sort By') }}:</span>
                                 <form action="{{ route('products.index') }}" method="GET">
-                                     @if(request('category')) <input type="hidden" name="category" value="{{ request('category') }}"> @endif
+                                     @if(request('category')) <input type="hidden" name="category" value="{{ request('category') }}"> @endif @if(request('brand')) <input type="hidden" name="brand" value="{{ request('brand') }}"> @endif
                                      @if(request('search')) <input type="hidden" name="search" value="{{ request('search') }}"> @endif
                                     <select name="sort" class="bg-slate-50 border-none rounded-xl sm:rounded-2xl px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-bold focus:ring-2 focus:ring-primary transition-all outline-none appearance-none cursor-pointer pr-10 relative" onchange="this.form.submit()">
                                         <option value="newest" {{ request('sort') == 'newest' ? 'selected' : '' }}>{{ __('Newest Arrivals') }}</option>
@@ -120,61 +142,9 @@
                     </div>
                 
                     <!-- Product Grid (Optimized for 2 Columns on Mobile, 4 on Desktop) -->
-                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-6 lg:gap-8">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
                         @forelse($products as $product)
-                            <div class="group bg-white rounded-[20px] sm:rounded-[32px] border border-slate-100 p-3 sm:p-4 hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.1)] transition-all lg:hover:-translate-y-2 relative overflow-hidden flex flex-col justify-between">
-                                <div class="relative">
-                                    @if($product->discount)
-                                        <div class="absolute top-2 left-2 sm:top-4 sm:left-4 bg-red-500 text-white text-[8px] sm:text-[10px] font-black px-2 py-0.5 sm:px-3 sm:py-1 rounded-full z-20 shadow-lg shadow-red-500/20">
-                                            -{{ intval($product->discount) }}%
-                                        </div>
-                                    @endif
-                                    
-                                    <div class="aspect-square bg-slate-50 rounded-[14px] sm:rounded-[24px] mb-3 sm:mb-6 overflow-hidden relative flex items-center justify-center p-4 sm:p-8">
-                                        <img src="{{ $product->images->first() ? asset('storage/' . $product->images->first()->image) : 'https://images.unsplash.com/photo-1526733169359-81173747976e?q=80&w=1470&auto=format&fit=crop' }}" 
-                                             class="max-w-full max-h-full object-contain lg:group-hover:scale-110 transition-transform duration-700" alt="{{ $product->name }}">
-                                        
-                                        <!-- Desktop Slide-up Add to Cart -->
-                                        <form action="{{ route('cart.add') }}" method="POST" class="absolute bottom-0 left-0 w-full translate-y-full lg:group-hover:translate-y-0 transition-transform duration-300 z-10 p-4 hidden lg:block">
-                                            @csrf
-                                            <input type="hidden" name="product_id" value="{{ $product->id }}">
-                                            <button type="submit" class="w-full py-4 bg-primary hover:bg-primary-dark text-white font-black uppercase text-[10px] tracking-widest rounded-xl transition-all shadow-xl shadow-primary/30 active:scale-95">
-                                                {{ __('Add to Cart') }}
-                                            </button>
-                                        </form>
-                                    </div>
-                                    
-                                    <div class="text-center px-1">
-                                        <span class="text-[8px] sm:text-[10px] font-black uppercase text-slate-400 tracking-widest mb-0.5 sm:mb-1 block">{{ $product->brand ?? __('Premium Brand') }}</span>
-                                        <h3 class="text-xs sm:text-sm font-bold text-slate-900 mb-1.5 sm:mb-2 lg:group-hover:text-primary transition-colors line-clamp-2">
-                                            <a href="{{ route('products.show', $product->id) }}" class="no-underline text-inherit leading-tight block">{{ $product->name }}</a>
-                                        </h3>
-                                        <div class="flex justify-center items-center gap-0.5 text-yellow-400 text-[8px] sm:text-[10px] mb-2">
-                                            <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="text-center mt-auto">
-                                    @if ($product->discount)
-                                        <div class="flex flex-col items-center gap-0.5 mb-2">
-                                            <span class="text-[9px] sm:text-[11px] text-slate-400 line-through font-bold">tk. {{ number_format($product->price, 0) }}</span>
-                                            <span class="text-sm sm:text-lg font-black text-red-500 tracking-tighter">tk. {{ number_format($product->discounted_price, 0) }}</span>
-                                        </div>
-                                    @else
-                                        <div class="text-sm sm:text-lg font-black text-primary tracking-tighter mb-2">tk. {{ number_format($product->price, 0) }}</div>
-                                    @endif
-
-                                    <!-- Touch-Friendly Add to Cart Button (Mobile Only) -->
-                                    <form action="{{ route('cart.add') }}" method="POST" class="lg:hidden w-full">
-                                        @csrf
-                                        <input type="hidden" name="product_id" value="{{ $product->id }}">
-                                        <button type="submit" class="w-full py-2 bg-slate-900 hover:bg-primary text-white font-black uppercase text-[8px] tracking-widest rounded-lg transition-all active:scale-95 flex items-center justify-center gap-1.5">
-                                            <i class="bi bi-cart-plus text-xs"></i> {{ __('Add to Cart') }}
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
+                            <x-store.product-card :product="$product" :wishlist-ids="$wishlistIds ?? []" :eager="$loop->index < 2" />
                         @empty
                             <div class="col-span-full py-20 sm:py-32 text-center bg-white rounded-[24px] sm:rounded-[40px] shadow-xl shadow-slate-200/50 border border-slate-100 p-6">
                                 <div class="w-16 h-16 sm:w-24 sm:h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 sm:mb-8">

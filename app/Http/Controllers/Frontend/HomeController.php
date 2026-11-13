@@ -11,66 +11,71 @@ use Illuminate\Support\Facades\Auth;
 
 class HomeController extends Controller
 {
+    /** Relations every product card needs (avoids N+1 queries). */
+    private const CARD_RELATIONS = ['images', 'brand', 'category.parent', 'variants'];
+
+    /** Initial size of the "Just For You" grid. */
+    private const FEED_SIZE = 15;
+
     public function index()
     {
-        // Get initial 12 products for Just For You section
-        $latestProducts = Product::with('images')->latest()->take(15)->get();
-
-        // Get top 4 categories with their latest 4 products for "New Arrivals" section
-        $arrivalCategories = Category::where('type', 'product')
-            ->whereHas('products')
-            ->with(['products' => function($q) {
-                $q->with('images')->latest()->take(4);
-            }])
-            ->take(4)
-            ->get();
-
-        // Get latest 3 articles
-        $articles = \App\Models\Article::where('status', 'published')->latest()->take(3)->get();
-
-        // Get user wishlist IDs if logged in
         $wishlistIds = Auth::check() ? Wishlist::where('user_id', Auth::id())->pluck('product_id')->toArray() : [];
 
-        // Get Flash Deal products (Must have discount and at least one variant in stock)
+        $latestProducts = Product::with(self::CARD_RELATIONS)->latest()->take(self::FEED_SIZE)->get();
+        $feedHasMore = Product::count() > self::FEED_SIZE;
+
+        // Flash deals: discounted, flagged and in stock; units sold drive the progress bar.
         $flashDealProducts = Product::where('is_flash_deal', true)
             ->where('discount', '>', 0)
-            ->whereHas('variants', fn($q) => $q->where('stock', '>', 0))
-            ->with('images')
+            ->whereHas('variants', fn ($q) => $q->where('stock', '>', 0))
+            ->with(self::CARD_RELATIONS)
+            ->withSum('orderItems', 'quantity')
             ->latest()
-            ->take(10)
+            ->take(12)
             ->get();
 
-        // Get Campaign Settings (Dynamic)
-        $flashDealTitle = \App\Models\Setting::where('key', 'flash_deal_title')->first()?->value ?? "Cyber Monday Extreme Deals";
-        $flashDealEndTime = \App\Models\Setting::where('key', 'flash_deal_end_time')->first()?->value ?? "2026-06-30 23:59:59";
+        $flashDealTitle = \App\Models\Setting::get('flash_deal_title', __('Flash Sale'));
+        $flashDealEndTime = \App\Models\Setting::get('flash_deal_end_time');
 
-        // Get banners
-        $heroBanners = \App\Models\Banner::where('type', 'hero')->where('status', true)->orderBy('order', 'asc')->get();
-        $subBanners = \App\Models\Banner::where('type', 'sub_banner')->where('status', true)->orderBy('order', 'asc')->take(2)->get();
-        $promoBanners = \App\Models\Banner::where('type', 'promo')->where('status', true)->orderBy('order', 'asc')->get();
+        $heroBanners = \App\Models\Banner::where('type', 'hero')->where('status', true)->orderBy('order')->get();
+        $subBanners = \App\Models\Banner::where('type', 'sub_banner')->where('status', true)->orderBy('order')->take(2)->get();
 
-        // Get all categories for the horizontal scroll section (Latest First)
-        $allCategories = Category::where('type', 'product')->latest()->get();
+        $departments = collect(\App\View\Composers\StorefrontComposer::localizedDepartments())->filter(fn ($d) => $d['count'] > 0)->values();
+        $feedTabs = $departments->sortByDesc('count')->take(5)->values();
+        $brands = $this->featuredBrands();
 
         return view('frontend.pages.home', compact(
-            'latestProducts', 
-            'arrivalCategories', 
-            'articles', 
-            'wishlistIds', 
-            'heroBanners', 
-            'subBanners', 
-            'promoBanners', 
+            'latestProducts',
+            'feedHasMore',
+            'wishlistIds',
+            'heroBanners',
+            'subBanners',
             'flashDealProducts',
             'flashDealTitle',
             'flashDealEndTime',
-            'allCategories'
+            'departments',
+            'feedTabs',
+            'brands',
         ));
+    }
+
+    /** Brands from config('store.featured_brands') that have products, topped up with the largest brands. */
+    private function featuredBrands()
+    {
+        $featured = array_map('mb_strtolower', config('store.featured_brands', []));
+
+        $brands = \App\Models\Brand::where('status', true)->whereHas('products')->withCount('products')->get();
+        $picked = $brands->filter(fn ($b) => in_array(mb_strtolower($b->name), $featured, true))
+            ->sortBy(fn ($b) => array_search(mb_strtolower($b->name), $featured, true));
+
+        return $picked->concat($brands->whereNotIn('id', $picked->pluck('id'))->sortByDesc('products_count'))->take(12)->values();
     }
     public function products(Request $request)
     {
         $categories = Category::where('type', 'product')->withCount('products')->get();
+        $brands = \App\Models\Brand::where('status', true)->whereHas('products')->withCount('products')->orderBy('name')->get();
 
-        $products = Product::query();
+        $products = Product::query()->with(self::CARD_RELATIONS);
 
         // Search (name is now JSON, use JSON_EXTRACT or LIKE on raw value)
         if ($request->search) {
@@ -78,13 +83,17 @@ class HomeController extends Controller
             $products->where(function($query) use ($s) {
                 $query->whereRaw('JSON_EXTRACT(name, "$.en") LIKE ?', ["%{$s}%"])
                       ->orWhereRaw('JSON_EXTRACT(name, "$.bn") LIKE ?', ["%{$s}%"])
-                      ->orWhere('brand', 'like', "%{$s}%")
+                      ->orWhereHas('brand', fn ($brand) => $brand->where('name', 'like', "%{$s}%"))
                       ->orWhere('model', 'like', "%{$s}%");
             });
         }
 
         if ($request->category) {
             $products->where('category_id', $request->category);
+        }
+
+        if ($request->brand) {
+            $products->whereHas('brand', fn ($brand) => $brand->where('slug', $request->brand));
         }
 
         if ($request->min_price) {
@@ -110,22 +119,34 @@ class HomeController extends Controller
                 break;
         }
 
-        $products = $products->paginate(12);
+        $products = $products->paginate(12)->withQueryString();
+        $wishlistIds = Auth::check() ? Wishlist::where('user_id', Auth::id())->pluck('product_id')->toArray() : [];
 
-        return view('frontend.pages.products', compact('categories', 'products'));
+        return view('frontend.pages.products', compact('categories', 'brands', 'products', 'wishlistIds'));
     }
     public function show($id)
     {
-        $product = Product::with(['images', 'category', 'comments.user', 'reactions', 'variants.attributeValues.attribute'])->findOrFail($id);
+        $product = Product::with(['images', 'category', 'brand', 'reactions', 'variants.attributeValues.attribute'])->findOrFail($id);
+
+        // Public reviews are approved ones; authors also see their own pending/rejected reviews.
+        $reviews = $product->comments()
+            ->with('user')
+            ->where(fn ($q) => $q->where('status', \App\Models\ProductComment::STATUS_APPROVED)
+                ->when(Auth::id(), fn ($q, $userId) => $q->orWhere('user_id', $userId)))
+            ->latest()
+            ->get();
+        $product->setRelation('comments', $reviews);
         
         // Related products from the same category
         $relatedProducts = Product::where('category_id', $product->category_id)
             ->where('id', '!=', $id)
-            ->with('images')
+            ->with(self::CARD_RELATIONS)
             ->take(4)
             ->get();
 
-        return view('frontend.pages.singleProduct', compact('product', 'relatedProducts'));
+        $wishlistIds = Auth::check() ? Wishlist::where('user_id', Auth::id())->pluck('product_id')->toArray() : [];
+
+        return view('frontend.pages.singleProduct', compact('product', 'relatedProducts', 'wishlistIds'));
     }
 
     /**
@@ -138,16 +159,27 @@ class HomeController extends Controller
         }
 
         $request->validate([
+            'rating' => 'required|integer|min:1|max:5',
             'comment' => 'required|string|max:1000',
         ]);
 
-        \App\Models\ProductComment::create([
+        Product::findOrFail($id);
+
+        if (\App\Models\ProductComment::where('product_id', $id)->where('user_id', Auth::id())->exists()) {
+            return back()->with('error', 'You have already reviewed this product. You can edit your existing review instead.');
+        }
+
+        $review = \App\Models\ProductComment::create([
             'product_id' => $id,
             'user_id' => Auth::id(),
+            'rating' => $request->rating,
             'comment' => $request->comment,
+            'status' => \App\Models\ProductComment::STATUS_PENDING,
         ]);
 
-        return back()->with('success', 'Your comment has been posted!');
+        app(\App\Services\AdminNotifier::class)->newReview($review);
+
+        return back()->with('success', 'Thanks! Your review will appear once it has been approved.');
     }
 
     public function toggleProductReaction(Request $request, $id)
@@ -188,14 +220,20 @@ class HomeController extends Controller
             ->firstOrFail();
 
         $request->validate([
+            'rating' => 'required|integer|min:1|max:5',
             'comment' => 'required|string|max:1000',
         ]);
 
+        // Edited reviews go back through moderation.
         $comment->update([
-            'comment' => $request->comment
+            'rating' => $request->rating,
+            'comment' => $request->comment,
+            'status' => \App\Models\ProductComment::STATUS_PENDING,
+            'moderated_by' => null,
+            'moderated_at' => null,
         ]);
 
-        return back()->with('success', 'Comment updated successfully!');
+        return back()->with('success', 'Review updated. It will reappear once approved.');
     }
 
     public function deleteProductComment($id)
@@ -213,24 +251,30 @@ class HomeController extends Controller
     public function flashDeals()
     {
         // Fetch all products with actual discounts (discount > 0)
-        $products = Product::where('discount', '>', 0)->with('images')->latest()->paginate(12);
+        $products = Product::where('discount', '>', 0)->with(self::CARD_RELATIONS)->latest()->paginate(12);
         return view('frontend.pages.flash-deals', compact('products'));
     }
 
+    /** "Just For You" pages as card HTML: ?skip=&take=&category= (category includes its subcategories). */
     public function loadMoreProducts(Request $request)
     {
-        $skip = $request->get('skip', 15);
-        
-        $products = Product::with('images')->latest()->skip($skip)->take(5)->get();
-        
-        $html = '';
-        foreach($products as $product) {
-            $html .= view('frontend.partials.product-card', compact('product'))->render();
+        $skip = max(0, (int) $request->get('skip', self::FEED_SIZE));
+        $take = min(20, max(1, (int) $request->get('take', 5)));
+
+        $query = Product::query();
+        if ($category = (int) $request->get('category')) {
+            $query->whereIn('category_id', Category::where('id', $category)->orWhere('parent_id', $category)->pluck('id'));
         }
-        
+
+        $total = (clone $query)->count();
+        $products = $query->with(self::CARD_RELATIONS)->latest()->skip($skip)->take($take)->get();
+        $wishlistIds = Auth::check() ? Wishlist::where('user_id', Auth::id())->pluck('product_id')->toArray() : [];
+
+        $html = $products->map(fn ($product) => view('frontend.partials.product-card', ['product' => $product, 'wishlistIds' => $wishlistIds])->render())->implode('');
+
         return response()->json([
             'html' => $html,
-            'has_more' => Product::count() > ($skip + 5)
+            'has_more' => $total > $skip + $take,
         ]);
     }
 
@@ -258,6 +302,10 @@ class HomeController extends Controller
         $sessionId = session()->getId();
         $userId = auth()->check() ? auth()->id() : null;
 
+        $hadUnread = \App\Models\Message::where('is_admin', false)->where('is_read', false)
+            ->when($userId, fn ($q) => $q->where('user_id', $userId), fn ($q) => $q->where('session_id', $sessionId))
+            ->exists();
+
         $message = \App\Models\Message::create([
             'user_id' => $userId,
             'session_id' => $userId ? null : $sessionId,
@@ -270,6 +318,11 @@ class HomeController extends Controller
             broadcast(new \App\Events\MessageSent($message));
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Pusher Broadcast Failed: ' . $e->getMessage());
+        }
+
+        // One bell notification per conversation until an admin reads it.
+        if (!$hadUnread) {
+            app(\App\Services\AdminNotifier::class)->newChatMessage($message);
         }
 
         return response()->json(['status' => 'Message Sent!', 'message' => $message]);

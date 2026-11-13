@@ -206,12 +206,10 @@
                     <h1 class="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-[1.1] mb-3">{{ $product->name }}</h1>
                     <div class="flex items-center gap-4 text-sm font-semibold text-slate-500">
                         <div class="flex items-center gap-1 text-amber-400">
-                            <i class="bi bi-star-fill"></i>
-                            <i class="bi bi-star-fill"></i>
-                            <i class="bi bi-star-fill"></i>
-                            <i class="bi bi-star-fill"></i>
-                            <i class="bi bi-star-half"></i>
-                            <span class="text-slate-600 ml-1 underline decoration-slate-300 underline-offset-4 cursor-pointer hover:text-primary">({{ $product->comments->count() }} Reviews)</span>
+                            @include('frontend.partials.rating-stars', ['rating' => (float) $product->rating_avg])
+                            <span class="text-slate-600 ml-1 underline decoration-slate-300 underline-offset-4 cursor-pointer hover:text-primary">
+                                {{ $product->rating_count ? number_format((float) $product->rating_avg, 1) . ' · ' : '' }}({{ $product->rating_count }} {{ __('Reviews') }})
+                            </span>
                         </div>
                         <span class="w-1 h-1 rounded-full bg-slate-300"></span>
                         <div class="flex items-center gap-1.5 text-slate-500">
@@ -356,7 +354,7 @@
             {{-- Overview Tab --}}
             <div x-show="currentTab === 'overview'" x-transition:enter="transition ease-out duration-300 opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" x-cloak>
                 <div class="prose prose-lg prose-slate max-w-none text-slate-600 leading-relaxed font-medium">
-                    {!! $product->description !!}
+                    {!! clean((string) $product->description) !!}
                 </div>
             </div>
 
@@ -415,10 +413,13 @@
                     <div class="lg:col-span-2 space-y-6">
                         <h4 class="text-2xl font-black text-slate-900 mb-8 flex items-center gap-3">
                             {{ __('Customer Reviews') }} 
-                            <span class="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-sm">{{ $product->comments->count() }}</span>
+                            <span class="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-sm">{{ $product->rating_count }}</span>
+                            @if($product->rating_count)
+                                <span class="flex items-center gap-1 text-amber-400 text-base">@include('frontend.partials.rating-stars', ['rating' => (float) $product->rating_avg]) <span class="text-slate-500 text-sm font-bold">{{ number_format((float) $product->rating_avg, 1) }} / 5</span></span>
+                            @endif
                         </h4>
                         
-                        @forelse($product->comments->sortByDesc('created_at') as $comment)
+                        @forelse($product->comments as $comment)
                             <div class="p-6 bg-white border border-slate-100 rounded-3xl shadow-sm hover:shadow-md transition-shadow" x-data="{ editing: false }">
                                 <div class="flex gap-5">
                                     <div class="w-14 h-14 bg-gradient-to-br from-primary to-blue-600 text-white rounded-full flex items-center justify-center text-xl font-black shrink-0 shadow-inner">
@@ -429,9 +430,14 @@
                                             <div>
                                                 <span class="text-base font-black text-slate-900">{{ $comment->user->name }}</span>
                                                 <div class="flex items-center gap-2 mt-0.5">
-                                                    <div class="flex text-amber-400 text-xs">
-                                                        <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
-                                                    </div>
+                                                    @if($comment->rating)
+                                                        <div class="flex text-amber-400 text-xs">@include('frontend.partials.rating-stars', ['rating' => $comment->rating])</div>
+                                                    @endif
+                                                    @unless($comment->isApproved())
+                                                        <span class="text-[10px] font-black uppercase tracking-widest {{ $comment->status === 'rejected' ? 'text-rose-500' : 'text-amber-500' }}">
+                                                            {{ $comment->status === 'rejected' ? __('Not published') : __('Awaiting approval') }}
+                                                        </span>
+                                                    @endunless
                                                     <span class="text-xs font-semibold text-slate-400">{{ $comment->created_at->diffForHumans() }}</span>
                                                 </div>
                                             </div>
@@ -459,6 +465,7 @@
                                         <div x-show="editing" x-cloak class="mt-4">
                                             <form action="{{ route('product.comment.update', $comment->id) }}" method="POST" class="space-y-3">
                                                 @csrf @method('PUT')
+                                                @include('frontend.partials.rating-input', ['current' => $comment->rating])
                                                 <textarea name="comment" class="w-full bg-white border-2 border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-primary outline-none transition-colors" rows="3">{{ $comment->comment }}</textarea>
                                                 <div class="flex justify-end">
                                                     <button type="submit" class="px-5 py-2.5 bg-slate-900 text-white text-xs font-black rounded-lg hover:bg-primary transition-colors shadow-md">{{ __('Save Update') }}</button>
@@ -487,6 +494,11 @@
                                     <i class="bi bi-check-circle-fill text-lg"></i> {{ session('success') }}
                                 </div>
                             @endif
+                            @if(session('error'))
+                                <div class="mb-6 p-4 bg-red-50 text-red-700 text-sm font-bold rounded-2xl border border-red-200 flex items-center gap-3 shadow-sm">
+                                    <i class="bi bi-exclamation-circle-fill text-lg"></i> {{ session('error') }}
+                                </div>
+                            @endif
 
                             @auth
                                 <div class="bg-white border border-slate-200 rounded-3xl p-8 shadow-xl shadow-slate-200/40 relative overflow-hidden">
@@ -498,6 +510,8 @@
                                     
                                     <form action="{{ route('product.comment', $product->id) }}" method="POST" class="space-y-4">
                                         @csrf
+                                        @include('frontend.partials.rating-input', ['current' => old('rating')])
+                                        @error('rating') <p class="text-[10px] text-red-500 font-bold">{{ $message }}</p> @enderror
                                         <textarea name="comment" rows="4" required
                                                   class="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl px-5 py-4 text-sm font-medium focus:bg-white focus:border-primary transition-colors outline-none resize-y"
                                                   placeholder="{{ __('What did you like or dislike?') }}"></textarea>
@@ -548,28 +562,7 @@
         
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
             @foreach($relatedProducts as $related)
-                <a href="{{ route('products.show', $related->id) }}" class="group bg-white rounded-3xl p-4 sm:p-5 border border-slate-100 hover:border-primary/20 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-300 flex flex-col h-full hover:-translate-y-1">
-                    <div class="relative w-full aspect-square bg-slate-50 rounded-2xl overflow-hidden mb-5 flex items-center justify-center p-6 group-hover:bg-primary/5 transition-colors">
-                        @if($related->images->count())
-                            <img src="{{ asset('storage/' . $related->images->first()->image) }}" class="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110 drop-shadow-md" alt="{{ $related->name }}">
-                        @endif
-                        @if($related->discount)
-                            <div class="absolute top-3 left-3 bg-[#FF3366] text-white text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider shadow-sm">
-                                -{{ $related->discount }}%
-                            </div>
-                        @endif
-                    </div>
-                    <div class="mt-auto">
-                        <span class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">{{ $related->category->getTranslation('name','en') ?? 'Product' }}</span>
-                        <h4 class="text-sm font-bold text-slate-800 mb-3 line-clamp-2 leading-snug group-hover:text-primary transition-colors">{{ $related->name }}</h4>
-                        <div class="flex items-baseline gap-2 mt-auto">
-                            <p class="text-lg font-black text-slate-900">৳{{ number_format($related->discounted_price ?? $related->price, 0) }}</p>
-                            @if($related->discount)
-                                <p class="text-xs font-bold text-slate-400 line-through">৳{{ number_format($related->price, 0) }}</p>
-                            @endif
-                        </div>
-                    </div>
-                </a>
+                <x-store.product-card :product="$related" :wishlist-ids="$wishlistIds ?? []" />
             @endforeach
         </div>
     </div>
