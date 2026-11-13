@@ -1,6 +1,10 @@
 {
+  "_module.esm-BQJCyKKY.js": {
+    "file": "assets/module.esm-BQJCyKKY.js",
+    "name": "module.esm"
+  },
   "resources/css/app.css": {
-    "file": "assets/app-BC32d5pW.css",
+    "file": "assets/app-DHsxBR_W.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -8,16 +12,22 @@
       "app.css"
     ]
   },
-  "resources/js/admin/product.js": {
-    "file": "assets/product-B59RaGrc.js",
-    "name": "product",
-    "src": "resources/js/admin/product.js",
-    "isEntry": true
+  "resources/js/admin/app.js": {
+    "file": "assets/app-Dojr8j4D.js",
+    "name": "app",
+    "src": "resources/js/admin/app.js",
+    "isEntry": true,
+    "imports": [
+      "_module.esm-BQJCyKKY.js"
+    ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-CnHFWTTV.js",
+    "file": "assets/app-C-WpQ-Fj.js",
     "name": "app",
     "src": "resources/js/app.js",
-    "isEntry": true
+    "isEntry": true,
+    "imports": [
+      "_module.esm-BQJCyKKY.js"
+    ]
   }
 }
