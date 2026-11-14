@@ -8,27 +8,37 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('product_variants', function (Blueprint $table) {
-            $table->boolean('is_active')->default(true)->after('stock')->index();
-        });
+        if (! Schema::hasColumn('product_variants', 'is_active')) {
+            Schema::table('product_variants', function (Blueprint $table) {
+                $table->boolean('is_active')->default(true)->after('stock')->index();
+            });
+        }
 
         // Stock history must never disappear with a variant.
-        Schema::table('stock_movements', function (Blueprint $table) {
-            $table->dropForeign(['variant_id']);
-            $table->foreign('variant_id')->references('id')->on('product_variants')->restrictOnDelete();
-        });
+        $this->replaceVariantForeignKey('restrict');
     }
 
     public function down(): void
     {
-        Schema::table('stock_movements', function (Blueprint $table) {
-            $table->dropForeign(['variant_id']);
-            $table->foreign('variant_id')->references('id')->on('product_variants')->cascadeOnDelete();
-        });
+        $this->replaceVariantForeignKey('cascade');
 
         Schema::table('product_variants', function (Blueprint $table) {
             $table->dropIndex(['is_active']);
             $table->dropColumn('is_active');
+        });
+    }
+
+    // MyISAM tables keep no foreign keys, so there may be nothing to drop.
+    private function replaceVariantForeignKey(string $onDelete): void
+    {
+        $exists = collect(Schema::getForeignKeys('stock_movements'))
+            ->contains(fn (array $foreignKey) => $foreignKey['columns'] === ['variant_id']);
+
+        Schema::table('stock_movements', function (Blueprint $table) use ($exists, $onDelete) {
+            if ($exists) {
+                $table->dropForeign(['variant_id']);
+            }
+            $table->foreign('variant_id')->references('id')->on('product_variants')->onDelete($onDelete);
         });
     }
 };

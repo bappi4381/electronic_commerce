@@ -8,17 +8,25 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('products', function (Blueprint $table) {
-            $table->dropForeign(['category_id']);
-            $table->foreign('category_id')->references('id')->on('categories')->restrictOnDelete();
-        });
+        $this->replaceCategoryForeignKey('restrict');
     }
 
     public function down(): void
     {
-        Schema::table('products', function (Blueprint $table) {
-            $table->dropForeign(['category_id']);
-            $table->foreign('category_id')->references('id')->on('categories')->cascadeOnDelete();
+        $this->replaceCategoryForeignKey('cascade');
+    }
+
+    // MyISAM tables keep no foreign keys, so there may be nothing to drop.
+    private function replaceCategoryForeignKey(string $onDelete): void
+    {
+        $exists = collect(Schema::getForeignKeys('products'))
+            ->contains(fn (array $foreignKey) => $foreignKey['columns'] === ['category_id']);
+
+        Schema::table('products', function (Blueprint $table) use ($exists, $onDelete) {
+            if ($exists) {
+                $table->dropForeign(['category_id']);
+            }
+            $table->foreign('category_id')->references('id')->on('categories')->onDelete($onDelete);
         });
     }
 };

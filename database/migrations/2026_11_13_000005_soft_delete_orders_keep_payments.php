@@ -8,26 +8,36 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
-            $table->softDeletes();
-        });
+        if (! Schema::hasColumn('orders', 'deleted_at')) {
+            Schema::table('orders', function (Blueprint $table) {
+                $table->softDeletes();
+            });
+        }
 
         // Payment records are financial history and must survive their order.
-        Schema::table('payments', function (Blueprint $table) {
-            $table->dropForeign(['order_id']);
-            $table->foreign('order_id')->references('id')->on('orders')->restrictOnDelete();
-        });
+        $this->replaceOrderForeignKey('restrict');
     }
 
     public function down(): void
     {
-        Schema::table('payments', function (Blueprint $table) {
-            $table->dropForeign(['order_id']);
-            $table->foreign('order_id')->references('id')->on('orders')->cascadeOnDelete();
-        });
+        $this->replaceOrderForeignKey('cascade');
 
         Schema::table('orders', function (Blueprint $table) {
             $table->dropSoftDeletes();
+        });
+    }
+
+    // MyISAM tables keep no foreign keys, so there may be nothing to drop.
+    private function replaceOrderForeignKey(string $onDelete): void
+    {
+        $exists = collect(Schema::getForeignKeys('payments'))
+            ->contains(fn (array $foreignKey) => $foreignKey['columns'] === ['order_id']);
+
+        Schema::table('payments', function (Blueprint $table) use ($exists, $onDelete) {
+            if ($exists) {
+                $table->dropForeign(['order_id']);
+            }
+            $table->foreign('order_id')->references('id')->on('orders')->onDelete($onDelete);
         });
     }
 };
