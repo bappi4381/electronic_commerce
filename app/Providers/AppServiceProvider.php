@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 use App\Models\Admin;
 
 class AppServiceProvider extends ServiceProvider
@@ -25,6 +26,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // The live MySQL defaults to MyISAM, whose 1000-byte index limit rejects utf8mb4 varchar(255) keys.
+        Schema::defaultStringLength(191);
+
         \App\Services\Courier\CourierSettings::apply();
 
         Gate::before(function ($user, $ability) {
