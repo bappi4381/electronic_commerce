@@ -14,7 +14,7 @@
     <input type="hidden" name="email" value="{{ $email ?? old('email') }}">
     @error('email')<p class="text-xs font-medium text-rose-600">{{ $message }}</p>@enderror
 
-    <x-auth.password name="password" :label="__('New password')" required autocomplete="new-password" autofocus :hint="__('At least 6 characters.')" />
+    <x-auth.password name="password" :label="__('New password')" required autocomplete="new-password" autofocus :hint="__('At least 8 characters, with letters and numbers.')" />
     <x-auth.password name="password_confirmation" :label="__('Confirm new password')" required autocomplete="new-password" />
 
     <button type="submit" :disabled="busy"

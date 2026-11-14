@@ -4,19 +4,23 @@ namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Laravel\Socialite\Facades\Socialite;
 use Exception;
-use Illuminate\Support\Str;
 
 class SocialAuthController extends Controller
 {
+    /** Only providers that are configured in config/services.php. */
+    public const PROVIDERS = ['google', 'facebook'];
+
     /**
      * Redirect the user to the Provider authentication page.
      */
     public function redirect($provider)
     {
+        abort_unless($this->enabled($provider), 404);
+
         return Socialite::driver($provider)->redirect();
     }
 
@@ -25,42 +29,55 @@ class SocialAuthController extends Controller
      */
     public function callback($provider)
     {
+        abort_unless($this->enabled($provider), 404);
+        $login = fn () => redirect()->route('user.auth.login', ['locale' => app()->getLocale()]);
+
         try {
             $socialUser = Socialite::driver($provider)->user();
-            
-            // Check if a user with this email already exists
-            $user = User::where('email', $socialUser->getEmail())->first();
+        } catch (Exception $e) {
+            Log::notice('Social login failed', ['provider' => $provider, 'error' => $e->getMessage()]);
 
-            if ($user && $user->isBlocked()) {
-                return redirect()->route('user.auth.login', ['locale' => app()->getLocale()])->with('error', User::BLOCKED_MESSAGE);
-            }
+            return $login()->with('error', __('Authentication failed. Please try again.'));
+        }
 
-            if ($user) {
-                // If user exists, update their provider and provider_id if they aren't set
-                if (!$user->provider_id) {
-                    $user->update([
-                        'provider' => $provider,
-                        'provider_id' => $socialUser->getId(),
-                    ]);
-                }
-            } else {
-                // Create a new user
-                $user = User::create([
-                    'name' => $socialUser->getName() ?? $socialUser->getNickname() ?? 'User',
-                    'email' => $socialUser->getEmail(),
+        // Facebook accounts registered with a phone number have no email.
+        if (!$socialUser->getEmail()) {
+            return $login()->with('error', __('Your email address does not come with this login method. Please register with your email instead.'));
+        }
+
+        $user = User::where('email', $socialUser->getEmail())->first();
+
+        if ($user && $user->isBlocked()) {
+            return $login()->with('error', User::BLOCKED_MESSAGE);
+        }
+
+        if ($user) {
+            if (!$user->provider_id) {
+                $user->update([
                     'provider' => $provider,
                     'provider_id' => $socialUser->getId(),
-                    'password' => null, // No password for social login users initially
-                    'is_email_verified' => true, // We trust social providers to have verified emails
                 ]);
             }
-
-            Auth::login($user, true);
-
-            return redirect()->route('user.dashboard', ['locale' => app()->getLocale()])->with('success', 'Successfully logged in with ' . ucfirst($provider));
-
-        } catch (Exception $e) {
-            return redirect()->route('user.auth.login', ['locale' => app()->getLocale()])->with('error', 'Authentication failed. Please try again.');
+        } else {
+            $user = User::create([
+                'name' => $socialUser->getName() ?? $socialUser->getNickname() ?? 'User',
+                'email' => $socialUser->getEmail(),
+                'provider' => $provider,
+                'provider_id' => $socialUser->getId(),
+                'password' => null,
+                // The provider has confirmed the address.
+                'is_email_verified' => true,
+            ]);
         }
+
+        Auth::login($user, true);
+        request()->session()->regenerate();
+
+        return redirect()->route('user.dashboard', ['locale' => app()->getLocale()])->with('success', 'Successfully logged in with ' . ucfirst($provider));
+    }
+
+    private function enabled(string $provider): bool
+    {
+        return in_array($provider, self::PROVIDERS, true) && filled(config("services.{$provider}.client_id"));
     }
 }

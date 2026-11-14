@@ -12,7 +12,7 @@
 @endphp
 
 <form action="{{ route('profile.update') }}" method="POST" enctype="multipart/form-data" class="space-y-5"
-      x-data="{ preview: null, saving: false }" @submit="saving = true">
+      x-data="{ preview: null, saving: false, pwOpen: @js($errors->hasAny(['password', 'current_password'])), emailChanged: @js(old('email', $user->email) !== $user->email) }" @submit="saving = true">
     @csrf
     @method('PUT')
 
@@ -58,7 +58,7 @@
         <div class="mt-4 grid gap-3 md:grid-cols-2">
             <x-checkout.field name="name" :label="__('Full name')" :value="$user->name" required autocomplete="name" maxlength="255" class="md:col-span-2" />
             <div>
-                <x-checkout.field name="email" type="email" :label="__('Email')" :value="$user->email" required autocomplete="email" maxlength="255" />
+                <x-checkout.field name="email" type="email" :label="__('Email')" :value="$user->email" required autocomplete="email" maxlength="255" x-on:input="emailChanged = $event.target.value.trim().toLowerCase() !== @js(strtolower($user->email))" />
                 @if($user->is_email_verified)
                     <p class="mt-1.5 flex items-center gap-1 text-xs font-medium text-emerald-700"><i class="bi bi-patch-check-fill" aria-hidden="true"></i> {{ __('Verified email') }}</p>
                 @endif
@@ -102,22 +102,33 @@
     </section>
 
     {{-- Password --}}
-    <section class="{{ $card }}" aria-labelledby="password-title" x-data="{ open: @js($errors->has('password')) }">
+    <section class="{{ $card }}" aria-labelledby="password-title">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
                 <h2 id="password-title" class="text-lg font-semibold text-slate-900">{{ __('Password') }}</h2>
                 <p class="mt-1 text-sm text-slate-500">{{ $user->password ? __('Change the password you use to log in.') : __('You signed up with :provider. Set a password to also log in with your email.', ['provider' => ucfirst((string) $user->provider)]) }}</p>
             </div>
-            <button type="button" x-show="!open" @click="open = true; $nextTick(() => $refs.pw.querySelector('input').focus())"
+            <button type="button" x-show="!pwOpen" @click="pwOpen = true; $nextTick(() => $refs.pw.querySelector('input').focus())"
                     class="flex h-10 items-center gap-2 rounded-[var(--sf-radius-sm)] border border-slate-300 px-4 text-sm font-semibold text-slate-800 hover:border-brand-600 hover:text-brand-700 sf-focus">
                 <i class="bi bi-key" aria-hidden="true"></i> {{ $user->password ? __('Change password') : __('Set password') }}
             </button>
         </div>
-        <div x-show="open" x-ref="pw" @if(!$errors->has('password')) style="display: none" @endif class="mt-4 grid gap-3 md:grid-cols-2">
-            <x-auth.password name="password" :label="__('New password')" autocomplete="new-password" :hint="__('At least 6 characters.')" />
+        <div x-show="pwOpen" x-ref="pw" @if(!$errors->hasAny(['password', 'current_password'])) style="display: none" @endif class="mt-4 grid gap-3 md:grid-cols-2">
+            <x-auth.password name="password" :label="__('New password')" autocomplete="new-password" :hint="__('At least 8 characters, with letters and numbers.')" />
             <x-auth.password name="password_confirmation" :label="__('Confirm new password')" autocomplete="new-password" />
         </div>
     </section>
+
+    @if($user->hasPassword())
+        <section class="{{ $card }} border-amber-200 bg-amber-50/40" aria-labelledby="confirm-title" x-show="pwOpen || emailChanged"
+                 @if(!$errors->has('current_password') && old('email', $user->email) === $user->email) style="display: none" @endif>
+            <h2 id="confirm-title" class="flex items-center gap-2 text-base font-semibold text-slate-900"><i class="bi bi-shield-lock text-amber-600" aria-hidden="true"></i> {{ __('Confirm it’s you') }}</h2>
+            <p class="mt-1 text-sm text-slate-600">{{ __('Enter your current password to change your email or password.') }}</p>
+            <div class="mt-3 md:max-w-sm">
+                <x-auth.password name="current_password" :label="__('Current password')" autocomplete="current-password" />
+            </div>
+        </section>
+    @endif
 
     <div class="flex flex-col-reverse items-center gap-3 sm:flex-row sm:justify-between">
         <p class="text-xs text-slate-500">{{ __('Last updated :time', ['time' => $user->updated_at->diffForHumans()]) }}</p>

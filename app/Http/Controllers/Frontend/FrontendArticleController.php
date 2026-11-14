@@ -15,44 +15,63 @@ class FrontendArticleController extends Controller
 {
     public function index(Request $request)
     {
-        // Get only blog categories
-        $categories = Category::where('type', 'blog')->get();
+        $filters = $request->validate([
+            'category' => 'nullable|integer',
+            'search' => 'nullable|string|max:100',
+        ]);
+        $search = trim((string) ($filters['search'] ?? ''));
 
-        // Article query
-        $articles = Article::where('status', 'published')
-            ->whereHas('category', function ($q) {
-                $q->where('type', 'blog');
-            });
+        $published = fn () => Article::where('status', 'published')
+            ->whereHas('category', fn ($q) => $q->where('type', 'blog'));
 
-        //Filter by category if selected
-        if ($request->category) {
-            $articles->where('category_id', $request->category);
-        }
+        // Topics that have at least one published story, with counts for the chips.
+        $categories = Category::where('type', 'blog')
+            ->withCount(['articles' => fn ($q) => $q->where('status', 'published')])
+            ->get()
+            ->filter(fn ($category) => $category->articles_count > 0)
+            ->values();
 
-        // Filter by search title if requested
-        if ($request->search) {
-            $articles->where('title', 'like', '%'.$request->search.'%');
-        }
+        $articles = $published()
+            ->with('category')
+            ->withCount(['comments', 'reactions'])
+            ->when($filters['category'] ?? null, fn ($q, $id) => $q->where('category_id', $id))
+            ->when($search !== '', function ($q) use ($search) {
+                $like = '%' . str_replace(['%', '_'], ['\%', '\_'], $search) . '%';
+                // Titles and bodies are stored as JSON per language; match either language.
+                $q->where(fn ($q) => $q->where('title->en', 'like', $like)->orWhere('title->bn', 'like', $like)->orWhere('content->en', 'like', $like));
+            })
+            ->latest()
+            ->paginate(9)
+            ->withQueryString();
 
-        //Pagination
-        $articles = $articles->latest()->paginate(9)->withQueryString();
+        // Big story on top of the unfiltered first page.
+        $featured = !$request->hasAny(['category', 'search', 'page']) ? $articles->getCollection()->shift() : null;
 
-        return view('frontend.pages.articles', compact('articles', 'categories'));
+        return view('frontend.pages.articles', [
+            'articles' => $articles,
+            'featured' => $featured,
+            'categories' => $categories,
+            'activeCategory' => $categories->firstWhere('id', (int) ($filters['category'] ?? 0)),
+            'search' => $search,
+            'totalPublished' => $published()->count(),
+        ]);
     }
+
     public function show($slug)
     {
-        // Find the article by slug and ensure it's published
         $article = Article::where('slug', $slug)
-                        ->where('status', 'published')
-                        ->with(['category', 'comments.user', 'reactions'])
-                        ->firstOrFail();
+            ->where('status', 'published')
+            ->with(['category', 'comments.user', 'reactions'])
+            ->firstOrFail();
 
-        // Optional: get other articles for sidebar (exclude current article)
+        // Same topic first, then the newest stories.
         $otherArticles = Article::where('status', 'published')
-                                ->where('id', '!=', $article->id)
-                                ->latest()
-                                ->take(5)
-                                ->get();
+            ->whereKeyNot($article->id)
+            ->with('category')
+            ->orderByRaw('category_id = ? desc', [$article->category_id])
+            ->latest()
+            ->take(3)
+            ->get();
 
         return view('frontend.pages.singleArticle', compact('article', 'otherArticles'));
     }

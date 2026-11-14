@@ -8,12 +8,21 @@ use App\Mail\WelcomeMail;
 use App\Services\CustomerPasswordReset;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    /** Failed logins allowed per email + IP before a lockout. */
+    private const MAX_LOGIN_ATTEMPTS = 5;
+
+    private const LOCKOUT_SECONDS = 300;
+
     public function showAccountPage()
     {
         return view('frontend.auth.login');
@@ -29,7 +38,20 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        if (Auth::guard('web')->attempt($request->only('email', 'password'))) {
+        $key = 'login:' . Str::lower($request->input('email')) . '|' . $request->ip();
+
+        if (RateLimiter::tooManyAttempts($key, self::MAX_LOGIN_ATTEMPTS)) {
+            $minutes = (int) ceil(RateLimiter::availableIn($key) / 60);
+            Log::notice('Customer login locked out', ['ip' => $request->ip()]);
+
+            throw ValidationException::withMessages([
+                'email' => __('Too many login attempts. Please try again in :minutes minute(s) or reset your password.', ['minutes' => $minutes]),
+            ]);
+        }
+
+        if (Auth::guard('web')->attempt($request->only('email', 'password'), $request->boolean('remember'))) {
+            RateLimiter::clear($key);
+
             if (Auth::guard('web')->user()->isBlocked()) {
                 Auth::guard('web')->logout();
                 return back()->withErrors(['email' => User::BLOCKED_MESSAGE])->onlyInput('email');
@@ -40,7 +62,9 @@ class AuthController extends Controller
                              ->with('success', 'Welcome back!');
         }
 
-        return back()->withErrors(['email' => 'Invalid credentials. Please try again.']);
+        RateLimiter::hit($key, self::LOCKOUT_SECONDS);
+
+        return back()->withErrors(['email' => __('Invalid credentials. Please try again.')])->onlyInput('email', 'remember');
     }
 
     /**
@@ -58,17 +82,13 @@ class AuthController extends Controller
     {
         $request->validate([
             'name'     => 'required|string|max:100',
-            'email'    => 'required|email|unique:users,email',
-            'password' => 'required|min:6|confirmed',
+            'email'    => 'required|email|max:150|unique:users,email',
+            'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
             'phone'    => 'nullable|string|max:20',
             'address'  => 'nullable|string|max:255',
         ]);
 
-        // Generate a custom user_id like U-XXXX
-        $userId = 'U-' . str_pad(User::count() + 1, 4, '0', STR_PAD_LEFT);
-
         $user = User::create([
-            'user_id'  => $userId,
             'name'     => $request->name,
             'email'    => $request->email,
             'password' => Hash::make($request->password),
@@ -76,14 +96,13 @@ class AuthController extends Controller
             'address'  => $request->address,
         ]);
 
-        // Auto login
         Auth::guard('web')->login($user);
+        $request->session()->regenerate();
 
-        // Optional: Send welcome email
         try {
             Mail::to($user->email)->send(new WelcomeMail($user));
         } catch (\Exception $e) {
-            \Log::error("Welcome mail failed: ".$e->getMessage());
+            Log::error("Welcome mail failed: ".$e->getMessage());
         }
 
         return redirect()->intended(route('home'))->with('success', 'Registration successful!');
@@ -110,20 +129,25 @@ class AuthController extends Controller
     }
 
     /**
-     * Send reset link email
+     * Send reset link email. The answer is the same whether or not the email has an account,
+     * so the form cannot be used to find out who shops here.
      */
     public function sendResetLinkEmail(Request $request, CustomerPasswordReset $passwordReset)
     {
-        $request->validate(['email' => 'required|email|exists:users,email']);
+        $request->validate(['email' => 'required|email|max:150']);
 
-        try {
-            $passwordReset->sendResetLink($request->email);
-        } catch (\Exception $e) {
-            report($e);
-            return back()->with('error', 'Failed to send reset email. Please try again later.');
+        $user = User::where('email', $request->email)->first();
+
+        if ($user && !$user->isBlocked()) {
+            try {
+                $passwordReset->sendResetLink($user->email);
+            } catch (\Exception $e) {
+                report($e);
+                return back()->with('error', __('Failed to send reset email. Please try again later.'));
+            }
         }
 
-        return back()->with('success', 'We have e-mailed your password reset link!');
+        return back()->with('success', __('If an account exists for that email, we have sent a password reset link. Check your inbox and spam folder.'));
     }
 
     /**
@@ -140,27 +164,26 @@ class AuthController extends Controller
     public function resetPassword(Request $request, CustomerPasswordReset $passwordReset)
     {
         $request->validate([
-            'email' => 'required|email|exists:users,email',
-            'password' => 'required|min:6|confirmed',
-            'token' => 'required'
+            'email' => 'required|email',
+            'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
+            'token' => 'required|string',
         ]);
 
-        $reset = DB::table('password_reset_tokens')
-            ->where([
-                'email' => $request->email,
-                'token' => $request->token
-            ])
-            ->first();
+        $user = User::where('email', $request->email)->first();
 
-        if (!$reset || $passwordReset->isExpired($reset->created_at)) {
-            return back()->withInput()->with('error', 'This reset link is invalid or has expired.');
+        if (!$user || !$passwordReset->tokenIsValid($request->email, $request->token)) {
+            return back()->withInput($request->only('email'))->with('error', __('This reset link is invalid or has expired.'));
         }
 
-        $user = User::where('email', $request->email)->first();
-        $user->update(['password' => Hash::make($request->password)]);
+        $user->forceFill([
+            'password' => Hash::make($request->password),
+            'remember_token' => Str::random(60),
+        ])->save();
 
-        DB::table('password_reset_tokens')->where(['email' => $request->email])->delete();
+        $passwordReset->forget($request->email);
+        // Whoever had the old password is signed out everywhere.
+        $user->endAllSessions();
 
-        return redirect()->route('user.auth.login')->with('success', 'Your password has been changed!');
+        return redirect()->route('user.auth.login')->with('success', __('Your password has been changed. Please log in.'));
     }
 }

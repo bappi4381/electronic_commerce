@@ -169,6 +169,43 @@
                                 </p>
                             </template>
 
+                            <p x-show="!applicableAttributes.length" class="text-xs text-gray-500 dark:text-gray-400">
+                                No attributes yet. <a href="{{ route('admin.attributes.index') }}" target="_blank" class="font-medium text-brand-600 hover:underline focus-ring dark:text-brand-400">Create attributes</a>
+                                such as Color and Size to generate variants automatically.
+                            </p>
+
+                            <div x-show="applicableAttributes.length" class="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-800/40">
+                                <h4 class="text-sm font-semibold text-gray-900 dark:text-white">Quick generate</h4>
+                                <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">Pick the options you sell, e.g. Black, Red, Blue and 40, 41, 42. One variant is created for every combination; existing combinations are skipped.</p>
+                                <div class="space-y-3">
+                                    <template x-for="attribute in applicableAttributes" :key="attribute.id">
+                                        <div>
+                                            <p class="mb-1.5 text-xs font-medium text-gray-700 dark:text-gray-300" x-text="attribute.name"></p>
+                                            <div class="flex flex-wrap gap-2">
+                                                <template x-for="value in attribute.values" :key="value.id">
+                                                    <button type="button" @click="toggleGeneratorValue(attribute.id, value.id)"
+                                                            :aria-pressed="isGeneratorValue(attribute.id, value.id).toString()"
+                                                            class="inline-flex select-none items-center rounded-md border px-2.5 py-1 text-xs font-medium transition-colors focus-ring"
+                                                            :class="isGeneratorValue(attribute.id, value.id) ? 'border-brand-600 bg-brand-600 text-white dark:border-brand-500 dark:bg-brand-500 dark:text-gray-950' : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300'"
+                                                            x-text="value.value"></button>
+                                                </template>
+                                                <span x-show="!attribute.values.length" class="text-xs text-gray-500 dark:text-gray-400">No values yet.</span>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                                <div class="mt-4 flex flex-wrap items-end gap-3">
+                                    <div class="space-y-1.5">
+                                        <label for="generator-stock" class="text-xs font-medium text-gray-700 dark:text-gray-300">Stock for each</label>
+                                        <input id="generator-stock" type="number" min="0" step="1" placeholder="0" x-model="generator.stock" @keydown.enter.prevent="generateVariants()"
+                                               class="block h-8 w-24 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+                                    </div>
+                                    <x-admin.button size="sm" icon="bi-magic" x-bind:disabled="!generatorCount" @click="generateVariants()">
+                                        <span x-text="generatorCount ? `Generate ${generatorCount} ${generatorCount === 1 ? 'variant' : 'variants'}` : 'Generate variants'"></span>
+                                    </x-admin.button>
+                                </div>
+                            </div>
+
                             <template x-for="(variant, index) in variants" :key="variant.key">
                                 <fieldset class="rounded-lg border border-gray-200 dark:border-gray-800">
                                     <legend class="sr-only" x-text="'Variant ' + (index + 1)"></legend>
@@ -383,10 +420,20 @@
             variants: config.variants.map(withKey),
             files: [],
             dragging: false,
+            generator: { selected: {}, stock: '' },
 
             get applicableAttributes() {
                 const mapping = config.mappings.find((m) => m.id === Number(this.categoryId));
-                return mapping ? config.attributes.filter((a) => mapping.attribute_ids.includes(a.id)) : config.attributes;
+                return mapping?.attribute_ids.length ? config.attributes.filter((a) => mapping.attribute_ids.includes(a.id)) : config.attributes;
+            },
+            get generatorGroups() {
+                return this.applicableAttributes
+                    .map((a) => a.values.map((v) => v.id).filter((id) => (this.generator.selected[a.id] || []).includes(id)))
+                    .filter((ids) => ids.length);
+            },
+            get generatorCount() {
+                const groups = this.generatorGroups;
+                return groups.length ? groups.reduce((count, ids) => count * ids.length, 1) : 0;
             },
             get salePrice() {
                 const price = Number(this.price) || 0;
@@ -439,6 +486,40 @@
                 variant.attribute_value_ids = variant.attribute_value_ids.includes(id)
                     ? variant.attribute_value_ids.filter((v) => v !== id)
                     : [...variant.attribute_value_ids, id];
+            },
+            isGeneratorValue(attributeId, id) {
+                return (this.generator.selected[attributeId] || []).includes(id);
+            },
+            toggleGeneratorValue(attributeId, id) {
+                const current = this.generator.selected[attributeId] || [];
+                this.generator.selected = {
+                    ...this.generator.selected,
+                    [attributeId]: current.includes(id) ? current.filter((v) => v !== id) : [...current, id],
+                };
+            },
+            generateVariants() {
+                if (!this.generatorCount) return;
+
+                const combos = this.generatorGroups.reduce((acc, ids) => acc.flatMap((combo) => ids.map((id) => [...combo, id])), [[]]);
+                const keyOf = (ids) => [...ids].sort((a, b) => a - b).join(',');
+                const isBlank = (v) => !v.id && !v.attribute_value_ids.length && !v.sku && v.price === '' && !Number(v.stock);
+                this.variants = this.variants.filter((v) => !isBlank(v));
+
+                const taken = new Set(this.variants.map((v) => keyOf(v.attribute_value_ids)));
+                const stock = Math.max(0, parseInt(this.generator.stock, 10) || 0);
+                let added = 0;
+
+                for (const ids of combos) {
+                    if (taken.has(keyOf(ids))) continue;
+                    taken.add(keyOf(ids));
+                    this.variants.push(withKey({ id: null, sku: '', price: '', stock, original_stock: null, attribute_value_ids: ids }));
+                    added++;
+                }
+
+                const skipped = combos.length - added;
+                toast(added
+                    ? `${added} ${added === 1 ? 'variant' : 'variants'} added${skipped ? `, ${skipped} already existed` : ''}. Set each one's stock below.`
+                    : 'All of these combinations already exist.', added ? 'success' : 'error');
             },
             addFiles(list) {
                 for (const file of list) {

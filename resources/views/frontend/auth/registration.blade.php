@@ -15,7 +15,7 @@
     <x-checkout.field name="email" type="email" :label="__('Email')" required autocomplete="email" maxlength="255" />
     <x-checkout.field name="phone" type="tel" :label="__('Mobile number')" optional autocomplete="tel" inputmode="tel" maxlength="20" :hint="__('Used for delivery updates.')" />
     <div class="grid gap-4 sm:grid-cols-2">
-        <x-auth.password name="password" :label="__('Password')" required autocomplete="new-password" :hint="__('At least 6 characters.')" />
+        <x-auth.password name="password" :label="__('Password')" required autocomplete="new-password" :hint="__('At least 8 characters, with letters and numbers.')" />
         <x-auth.password name="password_confirmation" :label="__('Confirm password')" required autocomplete="new-password" />
     </div>
 

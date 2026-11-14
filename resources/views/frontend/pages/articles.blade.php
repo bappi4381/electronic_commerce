@@ -1,142 +1,148 @@
 @extends('frontend.layout')
 
-@section('title', __('Tech Blog') . ' | ' . __('Digital Insights'))
+@php
+    $storeName = \App\Models\Setting::get('site_name', 'ONEMALL');
+    $imageOf = fn ($article) => $article->image ? asset('storage/' . $article->image) : null;
+    $chip = 'inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-medium transition-colors sf-focus';
+    $filtered = $activeCategory || $search !== '';
+@endphp
+
+@section('title', $activeCategory ? $activeCategory->name . ' – ' . __('Tech blog') : __('Tech blog'))
+@section('meta_description', __('Buying guides, product comparisons and tips for phones, laptops and home appliances from the :store team.', ['store' => $storeName]))
 
 @section('content')
-<section class="pt-16 pb-36 lg:py-24 bg-white min-h-screen">
-    <div class="max-w-6xl mx-auto px-4">
-        
-        <!-- Minimal Header -->
-        <div class="mb-20 text-center">
-            <h1 class="text-4xl lg:text-6xl font-black text-slate-900 tracking-tighter uppercase italic mb-4">{{ __('Tech Insights') }}</h1>
-            <div class="w-20 h-1.5 bg-primary mx-auto rounded-full"></div>
+<div class="mx-auto max-w-7xl px-4 pb-12 pt-4 md:pb-16 md:pt-6">
+    <nav aria-label="{{ __('Breadcrumb') }}" class="text-xs text-slate-500">
+        <ol class="flex items-center gap-1.5">
+            <li><a href="{{ route('home') }}" class="rounded hover:text-brand-700 sf-focus">{{ __('Home') }}</a></li>
+            <li aria-hidden="true"><i class="bi bi-chevron-right text-[10px]"></i></li>
+            @if($activeCategory)
+                <li><a href="{{ route('frontend.articles') }}" class="rounded hover:text-brand-700 sf-focus">{{ __('Tech blog') }}</a></li>
+                <li aria-hidden="true"><i class="bi bi-chevron-right text-[10px]"></i></li>
+                <li aria-current="page" class="font-medium text-slate-700">{{ $activeCategory->name }}</li>
+            @else
+                <li aria-current="page" class="font-medium text-slate-700">{{ __('Tech blog') }}</li>
+            @endif
+        </ol>
+    </nav>
+
+    <header class="mt-3 flex flex-col gap-4 md:mt-4 md:flex-row md:items-end md:justify-between">
+        <div class="max-w-2xl">
+            <h1 class="font-display text-2xl font-bold tracking-tight text-slate-900 md:text-4xl">{{ $activeCategory?->name ?? __('Tech blog') }}</h1>
+            <p class="mt-2 text-sm text-slate-600 md:text-base">{{ __('Buying guides, comparisons and tips to help you choose the right gadget.') }}</p>
         </div>
+        <form action="{{ route('frontend.articles') }}" method="GET" role="search" class="w-full md:w-80">
+            @if($activeCategory)<input type="hidden" name="category" value="{{ $activeCategory->id }}">@endif
+            <label for="blog-search" class="sr-only">{{ __('Search articles') }}</label>
+            <div class="relative">
+                <i class="bi bi-search pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true"></i>
+                <input id="blog-search" type="search" name="search" value="{{ $search }}" maxlength="100" placeholder="{{ __('Search articles') }}"
+                       class="block h-11 w-full rounded-full border border-slate-300 bg-white pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-primary/25">
+            </div>
+        </form>
+    </header>
 
-        <div class="flex flex-col lg:flex-row gap-16">
-            <!-- Sidebar -->
-            <aside class="w-full lg:w-1/4 space-y-12">
-                <!-- Search -->
-                <div class="space-y-4">
-                    <h5 class="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em]">{{ __('Search') }}</h5>
-                    <form action="{{ route('frontend.articles') }}" method="GET" class="relative">
-                        <input type="text" name="search" value="{{ request('search') }}" 
-                               class="w-full border-b-2 border-slate-100 py-3 text-sm font-bold focus:border-primary transition-all placeholder:text-slate-300 outline-none bg-transparent"
-                               placeholder="{{ __('Type keywords...') }}">
-                        <button type="submit" class="absolute right-0 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary">
-                            <i class="bi bi-search"></i>
-                        </button>
-                    </form>
-                </div>
-
-                <!-- Categories -->
-                <div class="space-y-6">
-                    <h5 class="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em]">{{ __('Topics') }}</h5>
-                    <div class="flex flex-col gap-4">
-                        <a href="{{ route('frontend.articles') }}" 
-                           class="text-xs font-bold uppercase tracking-widest no-underline transition-colors {{ !request('category') ? 'text-primary' : 'text-slate-400 hover:text-slate-900' }}">
-                            {{ __('All Tech Stories') }}
+    @if($categories->isNotEmpty())
+        <nav aria-label="{{ __('Topics') }}" class="-mx-4 mt-5 sm:mx-0">
+            <ul class="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-1 sm:flex-wrap sm:px-0">
+                <li>
+                    <a href="{{ route('frontend.articles', array_filter(['search' => $search ?: null])) }}" @if(!$activeCategory) aria-current="page" @endif
+                       @class([$chip, 'border-slate-900 bg-slate-900 text-white' => !$activeCategory, 'border-slate-300 bg-white text-slate-700 hover:border-slate-400' => $activeCategory])>
+                        {{ __('All') }} <span class="tabular-nums opacity-70">{{ localized_number($totalPublished) }}</span>
+                    </a>
+                </li>
+                @foreach($categories as $category)
+                    @php($current = $activeCategory?->id === $category->id)
+                    <li>
+                        <a href="{{ route('frontend.articles', array_filter(['category' => $category->id, 'search' => $search ?: null])) }}" @if($current) aria-current="page" @endif
+                           @class([$chip, 'border-slate-900 bg-slate-900 text-white' => $current, 'border-slate-300 bg-white text-slate-700 hover:border-slate-400' => !$current])>
+                            {{ $category->name }} <span class="tabular-nums opacity-70">{{ localized_number($category->articles_count) }}</span>
                         </a>
-                        @foreach($categories as $category)
-                            <a href="{{ route('frontend.articles', ['category' => $category->id]) }}" 
-                               class="text-xs font-bold uppercase tracking-widest no-underline transition-colors {{ request('category') == $category->id ? 'text-primary' : 'text-slate-400 hover:text-slate-900' }}">
-                                {{ $category->name }}
-                            </a>
-                        @endforeach
-                    </div>
-                </div>
-            </aside>
+                    </li>
+                @endforeach
+            </ul>
+        </nav>
+    @endif
 
-            <!-- Articles Grid -->
-            <div class="w-full lg:w-3/4">
-                <div class="space-y-24">
-                    @forelse($articles as $article)
-                        <article class="group">
-                            <div class="flex flex-col md:flex-row gap-8 lg:gap-12 items-center">
-                                <div class="w-full md:w-2/5 overflow-hidden rounded-2xl">
-                                    <a href="{{ route('frontend.articles.show', $article->slug) }}">
-                                        <img src="{{ asset('storage/' . $article->image) }}" alt="{{ $article->title }}" 
-                                             class="w-full aspect-[4/3] object-cover transition-transform duration-700 group-hover:scale-110">
-                                    </a>
-                                </div>
-                                <div class="flex-1 space-y-4">
-                                    <span class="text-[10px] font-black text-primary uppercase tracking-[0.2em]">{{ $article->category->name }}</span>
-                                    <h3 class="text-2xl lg:text-3xl font-black text-slate-900 tracking-tighter uppercase italic leading-tight group-hover:text-primary transition-colors">
-                                        <a href="{{ route('frontend.articles.show', $article->slug) }}" class="no-underline text-inherit">
-                                            {{ $article->title }}
-                                        </a>
-                                    </h3>
-                                    <p class="text-slate-500 text-sm leading-relaxed line-clamp-2 font-medium">
-                                        {{ Str::limit(strip_tags($article->content), 150) }}
-                                    </p>
-                                    <div class="flex items-center gap-6 text-[10px] font-black text-slate-300 uppercase tracking-widest pt-2">
-                                        <span>{{ $article->created_at->format('M d, Y') }}</span>
-                                        <span>/</span>
-                                        <span>{{ $article->comments_count ?? $article->comments()->count() }} {{ __('Comments') }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </article>
-                    @empty
-                        <div class="py-20 text-center border-2 border-dashed border-slate-100 rounded-3xl">
-                            <p class="text-xs font-black text-slate-400 uppercase tracking-widest">{{ __('No stories found in this section.') }}</p>
-                        </div>
-                    @endforelse
-                </div>
+    @if($search !== '')
+        <p class="mt-5 text-sm text-slate-600" role="status">
+            {{ trans_choice(':count result for “:term”|:count results for “:term”', $articles->total(), ['count' => localized_number($articles->total()), 'term' => $search]) }}
+            <a href="{{ route('frontend.articles', array_filter(['category' => $activeCategory?->id])) }}" class="ml-2 rounded font-semibold text-[var(--sf-accent-strong)] hover:underline sf-focus">{{ __('Clear search') }}</a>
+        </p>
+    @endif
 
-                <!-- Pagination -->
-                @if($articles->hasPages())
-                <div class="mt-24 pt-12 border-t border-slate-100 flex justify-center pb-20 lg:pb-0">
-                    <nav class="flex items-center gap-1.5 bg-white p-2.5 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100/60" role="navigation" aria-label="Pagination Navigation">
-                        {{-- Previous Page Link --}}
-                        @if ($articles->onFirstPage())
-                            <span class="w-10 h-10 rounded-xl flex items-center justify-center text-slate-300 bg-slate-50 cursor-not-allowed">
-                                <i class="bi bi-chevron-left text-sm"></i>
-                            </span>
-                        @else
-                            <a href="{{ $articles->previousPageUrl() }}" class="w-10 h-10 rounded-xl flex items-center justify-center text-slate-600 hover:text-white hover:bg-primary transition-all active:scale-95 no-underline">
-                                <i class="bi bi-chevron-left text-sm"></i>
-                            </a>
-                        @endif
-
-                        {{-- Pagination Elements --}}
-                        @foreach ($articles->getUrlRange(max(1, $articles->currentPage() - 2), min($articles->lastPage(), $articles->currentPage() + 2)) as $page => $url)
-                            @if ($page == $articles->currentPage())
-                                <span class="w-10 h-10 rounded-xl flex items-center justify-center text-white bg-primary font-black text-xs shadow-lg shadow-primary/30">{{ $page }}</span>
-                            @else
-                                <a href="{{ $url }}" class="w-10 h-10 rounded-xl flex items-center justify-center text-slate-700 hover:text-white hover:bg-primary font-bold text-xs transition-all active:scale-95 no-underline">{{ $page }}</a>
-                            @endif
-                        @endforeach
-
-                        {{-- Next Page Link --}}
-                        @if ($articles->hasMorePages())
-                            <a href="{{ $articles->nextPageUrl() }}" class="w-10 h-10 rounded-xl flex items-center justify-center text-slate-600 hover:text-white hover:bg-primary transition-all active:scale-95 no-underline">
-                                <i class="bi bi-chevron-right text-sm"></i>
-                            </a>
-                        @else
-                            <span class="w-10 h-10 rounded-xl flex items-center justify-center text-slate-300 bg-slate-50 cursor-not-allowed">
-                                <i class="bi bi-chevron-right text-sm"></i>
-                            </span>
-                        @endif
-                    </nav>
-                </div>
+    {{-- Featured story --}}
+    @if($featured)
+        <article class="group relative mt-6 grid overflow-hidden rounded-[var(--sf-radius-lg)] border border-[var(--sf-border)] bg-white md:grid-cols-2">
+            <div class="aspect-[16/9] overflow-hidden bg-slate-100 md:aspect-auto md:min-h-80">
+                @if($imageOf($featured))
+                    <img src="{{ $imageOf($featured) }}" alt="" class="size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]">
+                @else
+                    <div class="flex size-full items-center justify-center bg-gradient-to-br from-brand-50 to-slate-100 text-5xl text-brand-300" aria-hidden="true"><i class="bi bi-journal-richtext"></i></div>
                 @endif
             </div>
-        </div>
-    </div>
-</section>
+            <div class="flex flex-col justify-center p-5 md:p-8 lg:p-10">
+                <p class="flex flex-wrap items-center gap-2 text-xs font-semibold">
+                    <span class="rounded-full bg-brand-50 px-2.5 py-1 text-brand-700">{{ __('Featured') }}</span>
+                    <span class="text-[var(--sf-accent-strong)]">{{ $featured->category?->name }}</span>
+                </p>
+                <h2 class="mt-3 font-display text-xl font-bold leading-snug tracking-tight text-slate-900 md:text-3xl">
+                    <a href="{{ route('frontend.articles.show', $featured->slug) }}" class="rounded after:absolute after:inset-0 group-hover:text-brand-700 sf-focus">{{ $featured->title }}</a>
+                </h2>
+                <p class="mt-3 line-clamp-3 text-sm text-slate-600 md:text-base">{{ $featured->excerpt(220) }}</p>
+                <p class="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                    <span>{{ ($featured->published_at ?? $featured->created_at)->format('d M Y') }}</span>
+                    <span aria-hidden="true">·</span>
+                    <span>{{ __(':count min read', ['count' => localized_number($featured->readingMinutes())]) }}</span>
+                    @if($featured->comments_count)
+                        <span aria-hidden="true">·</span>
+                        <span><i class="bi bi-chat" aria-hidden="true"></i> {{ localized_number($featured->comments_count) }}</span>
+                    @endif
+                </p>
+            </div>
+        </article>
+    @endif
 
-<style>
-    .pagination { display: flex; gap: 0.5rem; }
-    .page-item .page-link {
-        border: none !important;
-        background: transparent !important;
-        color: #94a3b8 !important;
-        font-weight: 900 !important;
-        font-size: 11px !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.1em !important;
-        padding: 0.5rem 1rem !important;
-    }
-    .page-item.active .page-link { color: #20a7db !important; }
-</style>
+    {{-- Grid --}}
+    @if($articles->isNotEmpty())
+        <div class="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            @foreach($articles as $article)
+                <article class="group relative flex flex-col overflow-hidden rounded-[var(--sf-radius-lg)] border border-[var(--sf-border)] bg-white transition-shadow hover:shadow-[var(--sf-shadow)]">
+                    <div class="aspect-[16/10] overflow-hidden bg-slate-100">
+                        @if($imageOf($article))
+                            <img src="{{ $imageOf($article) }}" alt="" loading="lazy" class="size-full object-cover transition-transform duration-500 group-hover:scale-[1.04]">
+                        @else
+                            <div class="flex size-full items-center justify-center bg-gradient-to-br from-brand-50 to-slate-100 text-4xl text-brand-300" aria-hidden="true"><i class="bi bi-journal-richtext"></i></div>
+                        @endif
+                    </div>
+                    <div class="flex flex-1 flex-col p-4 md:p-5">
+                        <p class="text-xs font-semibold text-[var(--sf-accent-strong)]">{{ $article->category?->name }}</p>
+                        <h2 class="mt-1.5 line-clamp-2 font-display text-base font-bold leading-snug text-slate-900 md:text-lg">
+                            <a href="{{ route('frontend.articles.show', $article->slug) }}" class="rounded after:absolute after:inset-0 group-hover:text-brand-700 sf-focus">{{ $article->title }}</a>
+                        </h2>
+                        <p class="mt-2 line-clamp-2 text-sm text-slate-600">{{ $article->excerpt(140) }}</p>
+                        <p class="mt-auto flex items-center gap-2 pt-4 text-xs text-slate-500">
+                            <span>{{ ($article->published_at ?? $article->created_at)->format('d M Y') }}</span>
+                            <span aria-hidden="true">·</span>
+                            <span>{{ __(':count min read', ['count' => localized_number($article->readingMinutes())]) }}</span>
+                            @if($article->comments_count)
+                                <span class="ml-auto"><i class="bi bi-chat" aria-hidden="true"></i> {{ localized_number($article->comments_count) }}</span>
+                            @endif
+                        </p>
+                    </div>
+                </article>
+            @endforeach
+        </div>
+        <x-store.pagination :paginator="$articles" class="mt-8 md:mt-10" />
+    @elseif(!$featured)
+        <div class="mt-8 flex flex-col items-center rounded-[var(--sf-radius-lg)] border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
+            <span class="flex size-14 items-center justify-center rounded-full bg-slate-100 text-2xl text-slate-400" aria-hidden="true"><i class="bi bi-journal-x"></i></span>
+            <h2 class="mt-4 font-display text-lg font-bold text-slate-900">{{ $filtered ? __('No articles match') : __('No articles yet') }}</h2>
+            <p class="mt-1 max-w-sm text-sm text-slate-500">{{ $filtered ? __('Try another topic or a shorter search.') : __('Our first buying guides are on the way. Meanwhile, browse the latest products.') }}</p>
+            <a href="{{ $filtered ? route('frontend.articles') : route('products.index') }}" class="mt-5 flex h-11 items-center rounded-[var(--sf-radius-sm)] bg-brand-600 px-5 text-sm font-semibold text-white hover:bg-brand-700 sf-focus">
+                {{ $filtered ? __('See all articles') : __('Browse products') }}
+            </a>
+        </div>
+    @endif
+</div>
 @endsection

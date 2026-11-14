@@ -75,6 +75,27 @@ class User extends Authenticatable
         return $this->status === 'blocked';
     }
 
+    /**
+     * Sign the customer out on every device (database sessions), optionally keeping the current one.
+     */
+    public function endAllSessions(?string $exceptSessionId = null): void
+    {
+        if (config('session.driver') !== 'database') {
+            return;
+        }
+
+        \Illuminate\Support\Facades\DB::table(config('session.table', 'sessions'))
+            ->where('user_id', $this->id)
+            ->when($exceptSessionId, fn ($q) => $q->where('id', '!=', $exceptSessionId))
+            ->delete();
+    }
+
+    /** Social-login accounts may not have a password yet; they can set one without a current password. */
+    public function hasPassword(): bool
+    {
+        return filled($this->getAuthPassword());
+    }
+
     public function orders()
     {
         return $this->hasMany(Order::class);

@@ -62,11 +62,21 @@ class UserDashboardController extends Controller
             'state' => 'nullable|string|max:100',
             'postal_code' => 'nullable|string|max:20',
             'country' => 'nullable|string|max:100',
-            'is_email_verified' => 'sometimes|boolean',
             'avatar' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
-            'password' => 'nullable|string|min:6|confirmed',
-            
+            'password' => ['nullable', 'confirmed', \Illuminate\Validation\Rules\Password::min(8)->letters()->numbers()],
+            'current_password' => 'nullable|string',
         ]);
+
+        $emailChanged = strcasecmp($validated['email'], (string) $user->email) !== 0;
+        $passwordChanged = filled($validated['password'] ?? null);
+
+        // A borrowed or stolen session must not be enough to take the account over.
+        if (($emailChanged || $passwordChanged) && $user->hasPassword()
+            && !Hash::check((string) $request->input('current_password'), $user->password)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'current_password' => __('Enter your current password to change your email or password.'),
+            ]);
+        }
 
         // Update user fields
         $user->name = $validated['name'];
@@ -77,7 +87,10 @@ class UserDashboardController extends Controller
         $user->state = $validated['state'] ?? $user->state;
         $user->postal_code = $validated['postal_code'] ?? $user->postal_code;
         $user->country = $validated['country'] ?? $user->country;
-        $user->is_email_verified = $request->has('is_email_verified');
+        // Verification is never taken from the form; a new address has to be verified again.
+        if ($emailChanged) {
+            $user->is_email_verified = false;
+        }
 
         // Update avatar if uploaded
         if ($request->hasFile('avatar')) {
@@ -89,14 +102,21 @@ class UserDashboardController extends Controller
             $user->avatar = $avatarPath;
         }
 
-        // Update password if provided
-        if (!empty($validated['password'])) {
+        if ($passwordChanged) {
             $user->password = Hash::make($validated['password']);
+            $user->setRememberToken(\Illuminate\Support\Str::random(60));
         }
 
         $user->save();
 
-        return redirect()->route('user.profile')->with('success', 'Profile updated successfully.');
+        if ($passwordChanged) {
+            // Other devices signed in with the old password are signed out; this one stays.
+            $user->endAllSessions($request->session()->getId());
+            Auth::guard('web')->login($user);
+            $request->session()->regenerate();
+        }
+
+        return redirect()->route('user.profile')->with('success', $passwordChanged ? __('Profile and password updated. Other devices have been signed out.') : __('Profile updated successfully.'));
     }
 
     public function userOrders(Request $request) {

@@ -272,7 +272,8 @@ Route::group(['prefix' => '{locale}', 'middleware' => 'set_locale'], function ()
     Route::post('/product/{id}/react', [HomeController::class, 'toggleProductReaction'])->name('product.react')->middleware('auth');
     Route::get('/flash-deals', [HomeController::class, 'flashDeals'])->name('flash-deals');
     Route::get('/load-more-products', [HomeController::class, 'loadMoreProducts'])->name('load.more.products');
-    Route::get('/contact', [HomeController::class, 'contact'])->name('contact');
+    Route::get('/contact', [\App\Http\Controllers\Frontend\ContactController::class, 'show'])->name('contact');
+    Route::post('/contact', [\App\Http\Controllers\Frontend\ContactController::class, 'send'])->middleware('throttle:5,1')->name('contact.send');
     Route::get('/page/{slug}', [FrontendPageController::class, 'show'])->where('slug', '[a-z0-9-]+')->name('pages.show');
 
     // Public Order Tracking
@@ -334,15 +335,15 @@ Route::group(['prefix' => '{locale}', 'middleware' => 'set_locale'], function ()
     Route::get('/ssl-pay/{orderId}', [SslcommerzController::class, 'pay'])->name('sslc.pay');
 
     Route::get('/login', [AuthController::class, 'showAccountPage'])->name('user.auth.login');
-    Route::post('/login', [AuthController::class, 'login'])->name('auth.login');
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:20,1')->name('auth.login');
     Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('user.auth.register');
-    Route::post('/register', [AuthController::class, 'register'])->name('auth.register');
+    Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,1')->name('auth.register');
 
     // Password Recovery
     Route::get('/forgot-password', [AuthController::class, 'showForgotPasswordForm'])->name('password.request');
-    Route::post('/forgot-password', [AuthController::class, 'sendResetLinkEmail'])->name('password.email');
+    Route::post('/forgot-password', [AuthController::class, 'sendResetLinkEmail'])->middleware('throttle:5,1')->name('password.email');
     Route::get('/reset-password/{token}', [AuthController::class, 'showResetPasswordForm'])->name('password.reset');
-    Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:10,1')->name('password.update');
     Route::prefix('user')->middleware('user')->group(function () {
         Route::get('/dashboard', [UserDashboardController::class, 'userDashboard'])->name('user.dashboard');
         Route::get('/profile', [UserDashboardController::class, 'profileIndex'])->name('user.profile');

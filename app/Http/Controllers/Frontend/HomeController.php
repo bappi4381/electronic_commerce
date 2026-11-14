@@ -371,11 +371,6 @@ class HomeController extends Controller
         ]);
     }
 
-    public function contact()
-    {
-        return view('frontend.pages.contact');
-    }
-
     public function fetchChat() {
         $sessionId = session()->getId();
         $userId = auth()->check() ? auth()->id() : null;
