@@ -58,19 +58,21 @@ class ProductVariant extends Model
     }
 
     /**
-     * Selling price: the variant's own price, else the product's discounted price when it is a real discount.
+     * Selling price: the variant's own price less the product's discount %, else the product's sale price.
      */
     public function unitPrice(): float
     {
+        $product = $this->product;
+
         if ((float) $this->price > 0) {
-            return (float) $this->price;
+            $discount = (float) ($product?->discount ?? 0);
+
+            return $discount > 0 && $discount < 100
+                ? round((float) $this->price * (1 - $discount / 100), 2)
+                : (float) $this->price;
         }
 
-        $product = $this->product;
-        $price = (float) ($product?->price ?? 0);
-        $discounted = (float) ($product?->discounted_price ?? 0);
-
-        return $discounted > 0 && $discounted < $price ? $discounted : $price;
+        return $product ? $product->unitPrice() : 0.0;
     }
 
     /**

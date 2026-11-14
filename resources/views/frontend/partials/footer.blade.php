@@ -9,7 +9,7 @@
         'explore' => [__('Explore Store'), [
             [route('home'), __('Home')],
             [route('products.index'), __('All Products')],
-            [route('flash-deals'), __('Discount Products')],
+            [route('flash-deals'), __('Deals')],
             [route('frontend.articles'), __('Tech Blog')],
         ]],
         'support' => [__('Customer Support'), array_merge(

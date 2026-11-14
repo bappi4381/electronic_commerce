@@ -39,6 +39,7 @@ class OrderController extends Controller
             'q'              => 'nullable|string|max:100',
             'status'         => ['nullable', Rule::enum(OrderStatus::class)],
             'payment_status' => ['nullable', Rule::enum(PaymentStatus::class)],
+            'risk'           => 'nullable|in:high,unknown,flagged',
             'date_from'      => 'nullable|date',
             'date_to'        => 'nullable|date|after_or_equal:date_from',
             'per_page'       => 'nullable|integer|in:10,25,50,100',
@@ -173,10 +174,15 @@ class OrderController extends Controller
         $order->load([
             'orderItems.product', 'orderItems.variant.attributeValues.attribute',
             'user', 'statusHistories.admin', 'payments', 'refunds.admin', 'orderCourier.admin', 'courierLogs',
+            'riskLogs.admin', 'riskReviewer',
         ]);
+
+        $phone = $order->phone_normalized ?: \App\Support\BdPhone::normalize($order->customerDisplayPhone());
 
         return view('admin.orders.show', [
             'order' => $order,
+            'blacklisted' => $phone ? \App\Models\PhoneBlacklist::with('admin:id,name')->where('phone', $phone)->first() : null,
+            'otherOrdersByPhone' => $phone ? Order::where('phone_normalized', $phone)->whereKeyNot($order->id)->count() : 0,
             'refundable' => $refunds->refundableAmount($order),
             'refundMethods' => Refund::METHODS,
         ]);
@@ -198,6 +204,7 @@ class OrderController extends Controller
             'shipping_address'       => 'nullable|string|max:255',
             'city'                   => 'nullable|string|max:100',
             'region'                 => 'nullable|string|max:100',
+            'postal_code'            => 'nullable|string|max:20',
             'alt_phone'              => 'nullable|string|max:20',
             'order_notes'            => 'nullable|string|max:1000',
             'delivery_charge'        => 'nullable|numeric|min:0|max:99999',
@@ -210,7 +217,7 @@ class OrderController extends Controller
 
         DB::transaction(function () use ($order, $data) {
             $order = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
-            $order->fill(Arr::only($data, ['customer_name', 'phone', 'shipping_address', 'city', 'region', 'alt_phone', 'order_notes']));
+            $order->fill(Arr::only($data, ['customer_name', 'phone', 'shipping_address', 'city', 'region', 'postal_code', 'alt_phone', 'order_notes']));
 
             // Items and charges are frozen once the order is paid or has left the warehouse.
             if ($order->itemsEditable()) {
@@ -393,6 +400,10 @@ class OrderController extends Controller
             })
             ->when($filters['status'] ?? null, fn (Builder $query, string $status) => $query->where('status', $status))
             ->when($filters['payment_status'] ?? null, fn (Builder $query, string $status) => $query->where('payment_status', $status))
+            ->when($filters['risk'] ?? null, fn (Builder $query, string $risk) => match ($risk) {
+                'flagged' => $query->whereNotNull('risk_flags'),
+                default => $query->where('risk_level', $risk),
+            })
             ->when($filters['date_from'] ?? null, fn (Builder $query, string $date) => $query->whereDate('created_at', '>=', $date))
             ->when($filters['date_to'] ?? null, fn (Builder $query, string $date) => $query->whereDate('created_at', '<=', $date));
     }

@@ -40,7 +40,7 @@ class Product extends Model
         return LogOptions::defaults()
             ->useLogName('products')
             ->logOnly([
-                'product_id', 'category_id', 'brand_id', 'name', 'price', 'discount', 'discounted_price',
+                'product_id', 'category_id', 'brand_id', 'name', 'price', 'discount', 'flash_discount', 'discounted_price',
                 'model', 'warranty_period', 'video_link', 'low_stock_threshold', 'is_flash_deal', 'deleted_at',
             ])
             ->logOnlyDirty()
@@ -49,7 +49,7 @@ class Product extends Model
 
     protected $fillable = [
         'category_id', 'brand_id', 'name', 'description',
-        'price', 'discount', 'discounted_price', 'product_id', 'model', 'warranty_period',
+        'price', 'discount', 'flash_discount', 'pre_flash_discount', 'discounted_price', 'product_id', 'model', 'warranty_period',
         'specifications', 'video_link', 'low_stock_threshold', 'is_flash_deal'
     ];
 
@@ -72,6 +72,9 @@ class Product extends Model
         static::creating(function ($product) {
             $product->product_id = static::nextProductId();
         });
+
+        static::saved(fn () => \App\Services\FlashSale::flush());
+        static::deleted(fn () => \App\Services\FlashSale::flush());
     }
 
     /**
@@ -167,6 +170,31 @@ class Product extends Model
     /**
      * Total stock across all variants.
      */
+    /** Set the live discount % and the stored sale price together. */
+    public function applyDiscount(float $discount): static
+    {
+        $discount = max(0, min(100, $discount));
+        $this->discount = $discount;
+        $this->discounted_price = round((float) $this->price - (float) $this->price * $discount / 100, 2);
+
+        return $this;
+    }
+
+    /** The product's own discount, even while a flash discount is temporarily applied. */
+    public function regularDiscount(): float
+    {
+        return (float) ($this->pre_flash_discount ?? $this->discount);
+    }
+
+    /** Sale price when the discount is real, else the base price. */
+    public function unitPrice(): float
+    {
+        $price = (float) $this->price;
+        $discounted = (float) $this->discounted_price;
+
+        return $discounted > 0 && $discounted < $price ? round($discounted, 2) : $price;
+    }
+
     public function getTotalStockAttribute(): int
     {
         return $this->variants->sum('stock');

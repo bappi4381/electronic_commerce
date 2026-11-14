@@ -63,8 +63,14 @@
             <label for="bulk-note" class="sr-only">Note</label>
             <input id="bulk-note" type="text" name="note" maxlength="255" placeholder="Note for the status history (optional)"
                    class="h-9 flex-1 rounded-lg border border-white/20 bg-white/10 px-3 text-sm text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/40">
-            <div class="flex gap-2">
+            <div class="flex flex-wrap gap-2">
                 <x-admin.button type="submit" size="sm">Update</x-admin.button>
+                <input type="hidden" name="courier" value="steadfast">
+                <x-admin.button type="submit" size="sm" variant="secondary" icon="bi-truck" formaction="{{ route('orders.courier.bulk') }}" formnovalidate
+                                x-bind:disabled="selected.length > {{ \App\Services\Courier\CourierBookingService::BULK_LIMIT }}"
+                                title="Books every selected order that is in Processing and not sent yet (max {{ \App\Services\Courier\CourierBookingService::BULK_LIMIT }})">
+                    Send to Steadfast
+                </x-admin.button>
                 <button type="button" @click="selected = []; all = false" class="h-8 rounded-lg px-3 text-xs font-medium text-white/80 hover:bg-white/10 focus-ring">Clear</button>
             </div>
         </form>
@@ -78,6 +84,7 @@
             ['label' => 'Total', 'sortable' => true, 'align' => 'right'],
             ['label' => 'Status'],
             ['label' => 'Payment'],
+            ['label' => 'Courier'],
             ['label' => 'Placed', 'sortable' => true],
             ['label' => 'Actions', 'srOnly' => true, 'align' => 'right'],
         ]))"
@@ -89,6 +96,13 @@
                 @foreach(PaymentStatus::options() as $value => $label)
                     <option value="{{ $value }}" @selected(($filters['payment_status'] ?? null) === $value)>{{ $label }}</option>
                 @endforeach
+            </select>
+            <label for="filter-risk" class="sr-only">Delivery risk</label>
+            <select id="filter-risk" name="risk" class="{{ $filterControl }} pr-9">
+                <option value="">Any risk</option>
+                <option value="high" @selected(($filters['risk'] ?? null) === 'high')>High risk only</option>
+                <option value="unknown" @selected(($filters['risk'] ?? null) === 'unknown')>Risk check failed</option>
+                <option value="flagged" @selected(($filters['risk'] ?? null) === 'flagged')>Flagged (many orders from IP)</option>
             </select>
             <label for="filter-from" class="sr-only">From date</label>
             <input id="filter-from" type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}" class="{{ $filterControl }}" title="From">
@@ -123,17 +137,13 @@
                 <td data-primary data-sort="{{ $order->order_id }}">
                     <div class="min-w-0">
                         <a href="{{ route('orders.show', $order) }}" class="rounded font-medium text-gray-900 hover:text-brand-600 focus-ring dark:text-white dark:hover:text-brand-400">#{{ $order->order_id }}</a>
-                        @if($order->orderCourier)
-                            <span class="mt-0.5 flex items-center gap-1 truncate text-xs font-normal text-gray-500 dark:text-gray-400">
-                                <i class="bi bi-truck" aria-hidden="true"></i> {{ $order->orderCourier->courierLabel() }} · {{ $order->orderCourier->tracking_code ?: $order->orderCourier->consignment_id }}
-                            </span>
-                        @endif
                     </div>
                 </td>
                 <td data-label="Customer" data-sort="{{ $order->customerDisplayName() }}">
                     <div class="min-w-0 text-right md:text-left">
                         <span class="block truncate font-medium text-gray-900 dark:text-white">{{ $order->customerDisplayName() }}</span>
                         <span class="block truncate text-xs text-gray-500 dark:text-gray-400">{{ $order->customerDisplayPhone() ?? $order->customerDisplayEmail() ?? '—' }}</span>
+                        <span class="mt-1 flex flex-wrap justify-end gap-1 empty:hidden md:justify-start"><x-admin.risk-badge :order="$order" compact /></span>
                     </div>
                 </td>
                 <td data-label="Total" data-sort="{{ $order->total_price }}" class="whitespace-nowrap text-right">
@@ -151,6 +161,22 @@
                         @if($order->payment_method)<span class="text-xs uppercase text-gray-500 dark:text-gray-400">{{ $order->payment_method }}</span>@endif
                     </div>
                 </td>
+                @php($parcel = $order->orderCourier)
+                <td data-label="Courier">
+                    <div class="flex flex-col items-end gap-1 md:items-start">
+                        @if($parcel?->isBooked())
+                            <x-admin.status-badge type="courier" :status="$parcel->status" />
+                            <span class="max-w-32 truncate text-xs text-gray-500 dark:text-gray-400" title="Consignment {{ $parcel->consignment_id }}">
+                                {{ $parcel->courierLabel() }} · <span class="font-mono">{{ $parcel->tracking_code ?: $parcel->consignment_id }}</span>
+                            </span>
+                        @elseif($parcel?->hasFailed())
+                            <x-admin.status-badge type="courier" :status="$parcel->status" title="{{ $parcel->last_error }}" />
+                            <span class="max-w-32 truncate text-xs text-red-600 dark:text-red-400" title="{{ $parcel->last_error }}">{{ $parcel->last_error }}</span>
+                        @else
+                            <span class="text-xs text-gray-400 dark:text-gray-500">Not sent</span>
+                        @endif
+                    </div>
+                </td>
                 <td data-label="Placed" data-sort="{{ $order->created_at->timestamp }}" class="whitespace-nowrap">
                     <div class="text-right md:text-left">
                         <span class="block text-gray-700 dark:text-gray-300">{{ $order->created_at->format('d M Y') }}</span>
@@ -159,6 +185,19 @@
                 </td>
                 <td class="whitespace-nowrap text-right">
                     <div class="inline-flex items-center gap-1">
+                        @if($canEdit)
+                            @if($parcel?->isBooked())
+                                <x-admin.button variant="secondary" size="sm" icon="bi-check2" disabled
+                                                title="Sent to {{ $parcel->courierLabel() }} · tracking {{ $parcel->tracking_code ?: $parcel->consignment_id }}">Sent</x-admin.button>
+                            @elseif($order->status === OrderStatus::Processing->value)
+                                <form method="POST" action="{{ route('orders.courier.store', $order) }}">
+                                    @csrf
+                                    <input type="hidden" name="courier" value="steadfast">
+                                    <x-admin.button type="submit" variant="secondary" size="sm" :icon="$parcel?->hasFailed() ? 'bi-arrow-repeat' : 'bi-truck'"
+                                                    title="Send order #{{ $order->order_id }} to Steadfast">{{ $parcel?->hasFailed() ? 'Retry' : 'Send' }}</x-admin.button>
+                                </form>
+                            @endif
+                        @endif
                         <x-admin.button variant="ghost" size="sm" :href="route('orders.show', $order)" icon="bi-eye" title="View" aria-label="View order #{{ $order->order_id }}" />
                         @can('orders.delete')
                             <form method="POST" action="{{ route('orders.destroy', $order) }}"

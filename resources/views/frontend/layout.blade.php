@@ -48,11 +48,15 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
 
     <script>window.StoreConfig = @json($storeConfig);</script>
+    @include('frontend.partials.facebook-pixel')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('head')
 </head>
 
 <body x-data class="storefront has-bottom-nav flex min-h-screen flex-col bg-[var(--sf-bg)] font-body text-[var(--sf-text)] antialiased">
+    @if(($fbCapi = app(\App\Services\FacebookCapiService::class))->pixelEnabled())
+        <noscript><img height="1" width="1" style="display:none" alt="" src="https://www.facebook.com/tr?id={{ urlencode($fbCapi->pixelId()) }}&ev=PageView&noscript=1"></noscript>
+    @endif
     <a href="#main" class="sr-only z-[100] rounded-lg bg-white px-4 py-2 text-sm font-semibold text-navy-900 shadow focus:not-sr-only focus:fixed focus:left-4 focus:top-4">{{ __('Skip to content') }}</a>
 
     @include('frontend.partials.header')

@@ -13,6 +13,12 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         channels: __DIR__.'/../routes/channels.php',
         health: '/up',
+        then: function () {
+            // Courier callbacks without the /api prefix; the api group is stateless, so no session or CSRF.
+            \Illuminate\Support\Facades\Route::middleware(['api', 'throttle:120,1', 'courier.webhook:steadfast'])
+                ->post('/webhooks/steadfast', [\App\Http\Controllers\Api\CourierWebhookController::class, 'steadfastWebhook'])
+                ->name('webhooks.steadfast');
+        },
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
@@ -26,7 +32,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->web(append: [
             \App\Http\Middleware\EnsureUserIsNotBlocked::class,
+            \App\Http\Middleware\CaptureFacebookClickId::class,
         ]);
+        // Meta's first-party cookies are written by fbevents.js (and CaptureFacebookClickId) in plain text.
+        $middleware->encryptCookies(except: ['_fbp', '_fbc']);
         // Gateway callbacks are posted cross-site to /{locale}/ssl-*
         $middleware->validateCsrfTokens(except: [
             '*/ssl-success',

@@ -42,7 +42,7 @@
         'nameEn' => (string) old('name_en', $editing ? $product->getTranslation('name', 'en') : ''),
         'descriptionEn' => (string) old('description_en', $editing ? $product->getTranslation('description', 'en') : ''),
         'price' => old('price', $product->price ?? ''),
-        'discount' => old('discount', $product->discount ?? 0),
+        'discount' => old('discount', isset($product) ? $product->regularDiscount() : 0),
         'variants' => $variantRows->values(),
         'variantErrors' => $variantErrors,
         'image' => $editing && $product->images->count() ? Storage::url($product->images->first()->image) : null,
@@ -139,7 +139,7 @@
                                 <x-admin.input name="price" type="number" label="Base price" required min="0" step="0.01" prefix="Tk"
                                                x-model="price" :value="$config['price']" placeholder="0.00" />
                                 <x-admin.input name="discount" type="number" label="Discount" min="0" max="100" step="0.01" suffix="%"
-                                               x-model="discount" :value="$config['discount']" />
+                                               x-model="discount" :value="$config['discount']" hint="Also applies to variants with their own price." />
                                 <x-admin.field label="Sale price" hint="Calculated from price and discount.">
                                     <div class="flex h-10 items-center rounded-lg bg-gray-50 px-3 text-sm font-semibold text-gray-900 tabular-nums dark:bg-gray-800 dark:text-white" x-text="money(salePrice)" aria-live="polite"></div>
                                 </x-admin.field>
@@ -224,6 +224,7 @@
                                                 </div>
                                             </div>
                                         </template>
+                                        <p x-show="variantError(index, 'attribute_value_ids')" class="text-xs font-medium text-red-600 dark:text-red-400" x-text="variantError(index, 'attribute_value_ids')"></p>
                                     </div>
                                 </fieldset>
                             </template>

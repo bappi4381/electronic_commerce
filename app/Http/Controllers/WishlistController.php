@@ -12,11 +12,7 @@ class WishlistController extends Controller
     public function index()
     {
         $wishlistItems = Wishlist::where('user_id', Auth::id())
-            ->with([
-                'product' => function ($q) {
-                    $q->with('images');
-                }
-            ])
+            ->with(['product' => fn ($q) => $q->with(['images', 'variants', 'category.parent'])])
             ->whereHas('product')
             ->latest()
             ->get();

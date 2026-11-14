@@ -80,64 +80,8 @@
         </ul>
     </section>
 
-    {{-- Shop by category (desktop) --}}
-    @if($departments->isNotEmpty())
-        <section class="mt-12 hidden md:block" aria-labelledby="categories-title">
-            <x-store.section-header :title="__('Shop by category')" id="categories-title" :href="route('products.index')" :link-label="__('All products')" />
-            <ul class="grid grid-cols-5 gap-4">
-                @foreach($departments->take(16) as $department)
-                    <li>
-                        <a href="{{ route('products.index', ['category' => $department['id']]) }}"
-                           class="group flex h-full flex-col items-center gap-2 rounded-[var(--sf-radius)] border border-[var(--sf-border)] bg-white p-4 text-center transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-[var(--sf-shadow)] sf-focus">
-                            @if($department['image'])
-                                <x-store.image :src="$department['image']" alt="" fit="cover" :icon="$department['icon']" :width="64" :height="64" class="size-16 rounded-full bg-brand-50" />
-                            @else
-                                <span class="flex size-16 items-center justify-center rounded-full bg-brand-50 text-2xl text-brand-600 transition-colors group-hover:bg-primary group-hover:text-white" aria-hidden="true"><i class="bi {{ $department['icon'] }}"></i></span>
-                            @endif
-                            <span class="line-clamp-2 text-sm font-semibold leading-tight text-slate-800">{{ $department['name'] }}</span>
-                            <span class="text-xs text-slate-500">{{ trans_choice(':count item|:count items', $department['count'], ['count' => localized_number($department['count'])]) }}</span>
-                        </a>
-                    </li>
-                @endforeach
-            </ul>
-        </section>
-    @endif
-
     {{-- Flash sale --}}
-    @if($flashDealProducts->isNotEmpty())
-        <section class="mt-8 md:mt-12" aria-labelledby="flash-title">
-            <div class="overflow-hidden rounded-[var(--sf-radius-lg)] border border-[var(--sf-border)] bg-white shadow-[var(--sf-shadow-sm)]">
-                <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 bg-gradient-to-r from-sale to-[#f97316] px-4 py-3 text-white sm:px-6">
-                    <div class="flex items-center gap-2">
-                        <i class="bi bi-lightning-charge-fill text-xl text-yellow-300" aria-hidden="true"></i>
-                        <h2 id="flash-title" class="font-display text-lg font-bold sm:text-2xl">{{ $flashDealTitle }}</h2>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <span class="hidden text-sm text-white/85 sm:inline">{{ __('Ends in') }}</span>
-                        <x-store.countdown :end="$flashDealEndTime" tone="dark" />
-                        <a href="{{ route('flash-deals') }}" class="hidden min-h-11 items-center gap-1 rounded text-sm font-semibold text-white hover:underline sm:flex sf-focus">{{ __('View all flash deals') }} <i class="bi bi-chevron-right text-xs" aria-hidden="true"></i></a>
-                    </div>
-                </div>
-
-                <div x-data="scrollRow" class="relative p-3 sm:p-4">
-                    <ul x-ref="track" @scroll.debounce.60ms="update()" class="no-scrollbar sf-snap-row flex gap-3 overflow-x-auto pb-1">
-                        @foreach($flashDealProducts as $product)
-                            <li class="w-[150px] shrink-0 sm:w-[190px] lg:w-[calc((100%-3rem)/5)]">
-                                <x-store.product-card :product="$product" :wishlist-ids="$wishlistIds" variant="rail" :sold="(int) $product->order_items_sum_quantity" />
-                            </li>
-                        @endforeach
-                    </ul>
-                    <button type="button" @click="scroll(-1)" x-show="!atStart" x-cloak class="absolute left-1 top-1/2 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-white text-slate-700 shadow-[var(--sf-shadow)] ring-1 ring-black/5 hover:text-brand-700 lg:flex sf-focus">
-                        <span class="sr-only">{{ __('Previous') }}</span><i class="bi bi-chevron-left" aria-hidden="true"></i>
-                    </button>
-                    <button type="button" @click="scroll(1)" x-show="!atEnd" class="absolute right-1 top-1/2 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-white text-slate-700 shadow-[var(--sf-shadow)] ring-1 ring-black/5 hover:text-brand-700 lg:flex sf-focus">
-                        <span class="sr-only">{{ __('Next') }}</span><i class="bi bi-chevron-right" aria-hidden="true"></i>
-                    </button>
-                    <a href="{{ route('flash-deals') }}" class="mt-2 flex min-h-11 items-center justify-center gap-1 rounded-[var(--sf-radius-sm)] bg-sale-soft text-sm font-semibold text-sale sm:hidden sf-focus">{{ __('View all flash deals') }} <i class="bi bi-chevron-right text-xs" aria-hidden="true"></i></a>
-                </div>
-            </div>
-        </section>
-    @endif
+    <x-store.flash-sale :campaign="$flashCampaign" :products="$flashDealProducts" :wishlist-ids="$wishlistIds" view-all class="mt-8 block md:mt-12" />
 
     {{-- Just for you --}}
     <section class="mt-8 md:mt-12" aria-labelledby="feed-title"
@@ -174,27 +118,6 @@
             </button>
         </div>
     </section>
-
-    {{-- Brand strip (desktop) --}}
-    @if($brands->isNotEmpty())
-        <section class="mt-14 hidden md:block" aria-labelledby="brands-title">
-            <x-store.section-header :title="__('Top brands')" id="brands-title" />
-            <ul class="grid grid-cols-6 gap-3">
-                @foreach($brands as $brand)
-                    <li>
-                        <a href="{{ route('products.index', ['brand' => $brand->slug]) }}"
-                           class="flex h-16 items-center justify-center rounded-[var(--sf-radius)] border border-[var(--sf-border)] bg-white px-4 text-sm font-bold uppercase tracking-wide text-slate-700 transition hover:border-brand-200 hover:text-brand-700 hover:shadow-[var(--sf-shadow-sm)] sf-focus">
-                            @if($brand->logo)
-                                <img src="{{ Storefront::imageUrl($brand->logo) }}" alt="{{ $brand->name }}" class="max-h-9 max-w-full object-contain" loading="lazy" width="120" height="36">
-                            @else
-                                {{ $brand->name }}
-                            @endif
-                        </a>
-                    </li>
-                @endforeach
-            </ul>
-        </section>
-    @endif
 </div>
 
 {{-- Newsletter --}}

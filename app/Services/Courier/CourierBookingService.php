@@ -10,16 +10,22 @@ use App\Models\CourierLog;
 use App\Models\Order;
 use App\Models\OrderCourier;
 use App\Services\OrderStatusService;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class CourierBookingService
 {
+    /** Orders sent per bulk action; each call can take up to the 15 s API timeout. */
+    public const BULK_LIMIT = 30;
+
     public function __construct(private OrderStatusService $orderStatus)
     {
     }
 
-    public function provider(string $courier): CourierProvider
+    public function provider(string $courier): CourierInterface
     {
         return match ($courier) {
             'steadfast' => app(SteadfastService::class),
@@ -28,54 +34,123 @@ class CourierBookingService
         };
     }
 
+    /** Amount the rider should collect: nothing when the order is already paid, the order total otherwise. */
+    public function defaultCodAmount(Order $order): float
+    {
+        return $order->paymentStatusEnum()?->isCollected() ? 0.0 : round((float) $order->total_price, 2);
+    }
+
+    /** Why the order cannot be sent right now, or null when it can. */
+    public function blockReason(Order $order): ?string
+    {
+        if ($order->orderCourier?->isBooked()) {
+            return "Already sent to {$order->orderCourier->courierLabel()} (tracking " . ($order->orderCourier->tracking_code ?: $order->orderCourier->consignment_id) . ').';
+        }
+
+        if ($order->statusEnum() !== OrderStatus::Processing) {
+            return 'Only orders in "Processing" can be sent to a courier.';
+        }
+
+        return null;
+    }
+
     /**
      * Book the parcel with the courier, store the consignment and mark the order shipped.
+     * Safe against double clicks and parallel requests: one lock per order, a re-check inside it,
+     * and a unique order_id on order_couriers. A rejected request marks the booking "failed".
      *
      * @throws CourierException
      */
     public function book(Order $order, string $courier, array $options, ?int $adminId): OrderCourier
     {
-        $order->loadMissing('orderItems.product', 'user', 'orderCourier');
-
-        if ($order->orderCourier) {
-            throw new CourierException("This order is already booked with {$order->orderCourier->courierLabel()} (consignment {$order->orderCourier->consignment_id}).");
+        $provider = $this->provider($courier);
+        if (!$provider->configured()) {
+            $label = OrderCourier::COURIERS[$courier] ?? $courier;
+            throw new CourierException("{$label} is not connected yet. Add its API keys in Settings › Courier and try again.");
         }
 
-        if ($order->statusEnum() !== OrderStatus::Processing) {
-            throw new CourierException('Only orders in "Processing" can be handed to a courier.');
+        $lock = Cache::lock("courier-book:{$order->id}", 60);
+        if (!$lock->get()) {
+            throw new CourierException('This order is being sent to the courier right now. Refresh the page in a moment.');
         }
 
-        // The API call happens outside the DB transaction; a failure leaves nothing half-saved.
-        $result = $this->provider($courier)->createParcel($order, $options);
+        try {
+            $order = Order::with('orderItems.product', 'user', 'orderCourier')->findOrFail($order->id);
 
-        return DB::transaction(function () use ($order, $courier, $result, $adminId) {
-            $parcel = OrderCourier::create([
-                'order_id'        => $order->id,
-                'admin_id'        => $adminId,
-                'courier_name'    => $courier,
-                'consignment_id'  => $result['consignment_id'],
-                'tracking_code'   => $result['tracking_code'],
-                'status'          => $result['status'],
-                'shipping_charge' => $result['shipping_charge'],
-            ]);
+            if ($reason = $this->blockReason($order)) {
+                throw new CourierException($reason);
+            }
 
-            CourierLog::create([
-                'order_id'    => $order->id,
-                'status_from' => null,
-                'status_to'   => $result['status'],
-                'payload'     => $result['response'],
-                'remarks'     => "Parcel booked with {$parcel->courierLabel()}",
-            ]);
+            $options['cod_amount'] ??= $this->defaultCodAmount($order);
 
-            $this->orderStatus->transition(
-                $order,
-                OrderStatus::Shipped,
-                $adminId,
-                "Handed to {$parcel->courierLabel()} (consignment {$parcel->consignment_id})"
-            );
+            // The API call happens outside the DB transaction; a failure leaves nothing half-saved.
+            try {
+                $result = $provider->createParcel($order, $options);
+            } catch (CourierException $e) {
+                $this->recordFailure($order, $courier, $e->getMessage(), $adminId);
+
+                throw $e;
+            }
+
+            $parcel = DB::transaction(function () use ($order, $courier, $result, $adminId) {
+                $parcel = OrderCourier::updateOrCreate(['order_id' => $order->id], [
+                    'admin_id'          => $adminId,
+                    'courier_name'      => $courier,
+                    'consignment_id'    => $result['consignment_id'],
+                    'tracking_code'     => $result['tracking_code'],
+                    'status'            => $result['status'],
+                    'shipping_charge'   => $result['shipping_charge'],
+                    'sent_at'           => now(),
+                    'failed_at'         => null,
+                    'last_error'        => null,
+                    'status_checked_at' => now(),
+                ]);
+
+                CourierLog::create([
+                    'order_id'    => $order->id,
+                    'action'      => 'booked',
+                    'status_from' => null,
+                    'status_to'   => $result['status'],
+                    'payload'     => $result['response'],
+                    'remarks'     => "Parcel booked with {$parcel->courierLabel()}",
+                ]);
+
+                return $parcel;
+            });
+
+            // The parcel is booked at the courier either way; a refused transition must not lose that record.
+            try {
+                $this->orderStatus->transition($order, OrderStatus::Shipped, $adminId, "Handed to {$parcel->courierLabel()} (consignment {$parcel->consignment_id})");
+            } catch (InvalidOrderTransitionException|InsufficientStockException $e) {
+                Log::warning('Parcel booked but the order could not be marked shipped', ['order_id' => $order->order_id, 'reason' => $e->getMessage()]);
+            }
 
             return $parcel;
-        });
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * Send several orders with one courier. Orders that cannot be sent are skipped with the reason.
+     *
+     * @param  Collection<int, Order>  $orders
+     * @return array{sent: array<string, string>, failed: array<string, string>}
+     */
+    public function bookMany(Collection $orders, string $courier, ?int $adminId): array
+    {
+        $result = ['sent' => [], 'failed' => []];
+
+        foreach ($orders as $order) {
+            try {
+                $parcel = $this->book($order, $courier, [], $adminId);
+                $result['sent'][$order->order_id] = $parcel->tracking_code ?: $parcel->consignment_id;
+            } catch (CourierException $e) {
+                $result['failed'][$order->order_id] = $e->getMessage();
+            }
+        }
+
+        return $result;
     }
 
     /**
@@ -83,27 +158,41 @@ class CourierBookingService
      *
      * @throws CourierException
      */
-    public function refresh(OrderCourier $parcel, ?int $adminId): OrderCourier
+    public function refresh(OrderCourier $parcel, ?int $adminId, string $source = 'manual refresh'): OrderCourier
     {
-        $status = $this->provider($parcel->courier_name)->fetchStatus($parcel);
+        if (!$parcel->isBooked()) {
+            throw new CourierException('This order has not been booked with a courier yet.');
+        }
 
-        $this->applyStatus($parcel, $status, ['source' => 'manual refresh'], "{$parcel->courierLabel()} status refreshed", $adminId);
+        $status = $this->provider($parcel->courier_name)->getStatus($parcel);
+        $this->applyStatus($parcel, $status, ['source' => $source], "{$parcel->courierLabel()} status ({$source})", $adminId);
 
         return $parcel->fresh();
     }
 
     /**
-     * Record a courier status update (from refresh or webhook) and move the order when it implies delivery/return.
+     * Record a courier status update (refresh, poll or webhook) and move the order when it implies delivery/return.
+     * Unchanged statuses only update the "last checked" time.
+     *
+     * @param  array<string, mixed>  $attributes  extra parcel fields to store, e.g. shipping_charge from a webhook
      */
-    public function applyStatus(OrderCourier $parcel, string $newStatus, array $payload, string $remarks, ?int $adminId = null): void
+    public function applyStatus(OrderCourier $parcel, string $newStatus, array $payload, string $remarks, ?int $adminId = null, array $attributes = []): void
     {
+        $newStatus = CourierStatus::normalize($newStatus);
         $oldStatus = $parcel->status;
 
-        DB::transaction(function () use ($parcel, $newStatus, $oldStatus, $payload, $remarks) {
-            $parcel->update(['status' => $newStatus]);
+        if ($newStatus === $oldStatus) {
+            $parcel->update(['status_checked_at' => now()] + $attributes);
+
+            return;
+        }
+
+        DB::transaction(function () use ($parcel, $newStatus, $oldStatus, $payload, $remarks, $attributes) {
+            $parcel->update(['status' => $newStatus, 'status_checked_at' => now()] + $attributes);
 
             CourierLog::create([
                 'order_id'    => $parcel->order_id,
+                'action'      => 'status_changed',
                 'status_from' => $oldStatus,
                 'status_to'   => $newStatus,
                 'payload'     => $payload,
@@ -119,7 +208,7 @@ class CourierBookingService
         }
 
         try {
-            $this->orderStatus->transition($order, $target, $adminId, "{$parcel->courierLabel()} reported \"{$newStatus}\"");
+            $this->orderStatus->transition($order, $target, $adminId, "{$parcel->courierLabel()} reported \"" . CourierStatus::label($newStatus) . '"');
         } catch (InvalidOrderTransitionException|InsufficientStockException $e) {
             Log::warning('Courier status could not be applied to order', [
                 'order_id' => $order->order_id,
@@ -127,5 +216,21 @@ class CourierBookingService
                 'reason' => $e->getMessage(),
             ]);
         }
+    }
+
+    /** Remember the rejected attempt on the order so admins see "Failed to send" and the reason. */
+    private function recordFailure(Order $order, string $courier, string $message, ?int $adminId): void
+    {
+        OrderCourier::updateOrCreate(['order_id' => $order->id], [
+            'admin_id'       => $adminId,
+            'courier_name'   => $courier,
+            'consignment_id' => null,
+            'tracking_code'  => null,
+            'status'         => CourierStatus::FAILED,
+            'failed_at'      => now(),
+            'last_error'     => Str::limit($message, 1000),
+        ]);
+
+        Log::warning('Courier booking failed', ['order_id' => $order->order_id, 'courier' => $courier, 'error' => $message]);
     }
 }

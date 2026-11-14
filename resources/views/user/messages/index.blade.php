@@ -1,46 +1,66 @@
 @extends('user.layout')
 
-@section('title', 'Messages')
+@section('title', __('Messages'))
 
-@section('content')
-<div class="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700" x-data="chatComponent()">
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-            <h2 class="text-3xl font-black text-slate-900 tracking-tighter uppercase">Messages</h2>
-            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">Connect with our support and management team.</p>
+@section('account')
+<div class="space-y-5" x-data="chatComponent()">
+    <header>
+        <h1 class="font-display text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">{{ __('Messages') }}</h1>
+        <p class="mt-1 text-sm text-slate-500">{{ __('Questions about an order, delivery or a product? Our team replies here.') }}</p>
+    </header>
+
+    <section class="flex h-[calc(100dvh-20rem)] min-h-[420px] flex-col overflow-hidden rounded-[var(--sf-radius-lg)] border border-[var(--sf-border)] bg-white md:h-[600px]" aria-label="{{ __('Conversation with support') }}">
+        <div class="flex items-center gap-3 border-b border-[var(--sf-border)] px-4 py-3 md:px-5">
+            <span class="relative flex size-10 items-center justify-center rounded-full bg-brand-600 text-white" aria-hidden="true">
+                <i class="bi bi-headset"></i>
+                <span class="absolute bottom-0 right-0 size-2.5 rounded-full bg-emerald-500 ring-2 ring-white"></span>
+            </span>
+            <div>
+                <p class="text-sm font-semibold text-slate-900">{{ \App\Models\Setting::get('site_name', 'ONEMALL') }} {{ __('Support') }}</p>
+                <p class="text-xs text-slate-500">{{ __('We usually reply within minutes') }}</p>
+            </div>
         </div>
-    </div>
 
-    <div class="card border-0 shadow-sm overflow-hidden bg-white min-h-[500px] sm:min-h-[600px] flex flex-col relative">
-        <!-- Chat Area -->
-        <div class="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 max-h-[55vh] sm:max-h-[500px]" id="chatBox">
+        <div x-ref="box" class="flex-1 space-y-3 overflow-y-auto bg-slate-50/60 px-4 py-5 md:px-5" role="log" aria-live="polite">
+            <template x-if="loading">
+                <div class="space-y-3" aria-hidden="true">
+                    <div class="sf-skeleton h-12 w-2/3 rounded-2xl"></div>
+                    <div class="sf-skeleton ml-auto h-12 w-1/2 rounded-2xl"></div>
+                </div>
+            </template>
+            <template x-if="!loading && messages.length === 0">
+                <div class="flex h-full flex-col items-center justify-center text-center">
+                    <span class="flex size-14 items-center justify-center rounded-full bg-brand-50 text-2xl text-brand-600" aria-hidden="true"><i class="bi bi-chat-heart"></i></span>
+                    <p class="mt-3 font-semibold text-slate-900">{{ __('Start a conversation') }}</p>
+                    <p class="mt-1 max-w-xs text-sm text-slate-500">{{ __('Tell us your order number if your question is about an order.') }}</p>
+                </div>
+            </template>
             <template x-for="msg in messages" :key="msg.id">
-                <div :class="msg.is_admin ? 'flex justify-start' : 'flex justify-end'">
-                    <div :class="msg.is_admin ? 'bg-slate-100 text-slate-900 rounded-tr-2xl' : 'bg-primary text-white rounded-tl-2xl'" class="px-4 sm:px-6 py-3 sm:py-4 rounded-b-2xl max-w-[85%] sm:max-w-sm shadow-sm">
-                        <p class="text-sm font-medium" x-text="msg.message"></p>
-                        <span class="text-[10px] opacity-70 mt-2 block" x-text="formatDate(msg.created_at)"></span>
+                <div class="flex" :class="msg.is_admin ? 'justify-start' : 'justify-end'">
+                    <div class="max-w-[85%] sm:max-w-md">
+                        <div class="whitespace-pre-line break-words rounded-2xl px-4 py-2.5 text-sm shadow-[var(--sf-shadow-sm)]"
+                             :class="msg.is_admin ? 'rounded-bl-md bg-white text-slate-800 ring-1 ring-[var(--sf-border)]' : 'rounded-br-md bg-brand-600 text-white'"
+                             x-text="msg.message"></div>
+                        <p class="mt-1 px-1 text-[11px] text-slate-400" :class="!msg.is_admin && 'text-right'">
+                            <span x-text="formatDate(msg.created_at)"></span>
+                            <span x-show="msg.failed" class="font-semibold text-rose-600"> · {{ __('Not sent') }}</span>
+                        </p>
                     </div>
                 </div>
             </template>
-            <template x-if="messages.length === 0">
-                <div class="h-full flex items-center justify-center text-center opacity-50 flex-col pt-20">
-                    <i class="bi bi-chat-square-text text-6xl text-slate-300"></i>
-                    <p class="mt-4 text-sm font-bold uppercase tracking-widest text-slate-400">Start a conversation!</p>
-                </div>
-            </template>
         </div>
 
-        <!-- Input Area -->
-        <div class="p-4 sm:p-6 border-t border-slate-100 bg-slate-50">
-            <form @submit.prevent="sendMessage" class="flex gap-3">
-                <input type="text" x-model="newMessage" class="flex-1 px-4 sm:px-6 py-3 sm:py-4 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium text-sm" placeholder="Type your message..." required>
-                <button type="submit" class="px-5 sm:px-8 py-3 sm:py-4 bg-primary text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap">
-                    <span class="hidden sm:inline">Send</span>
-                    <i class="bi bi-send-fill"></i>
-                </button>
-            </form>
-        </div>
-    </div>
+        <form @submit.prevent="sendMessage" class="flex items-end gap-2 border-t border-[var(--sf-border)] p-3 md:p-4">
+            <label for="chat-message" class="sr-only">{{ __('Message') }}</label>
+            <textarea id="chat-message" x-model="newMessage" rows="1" maxlength="2000" placeholder="{{ __('Type a message…') }}"
+                      @keydown.enter="if (!$event.shiftKey) { $event.preventDefault(); sendMessage(); }"
+                      class="max-h-32 min-h-11 flex-1 resize-none rounded-[var(--sf-radius-sm)] border border-slate-300 px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-primary/25"></textarea>
+            <button type="submit" :disabled="!newMessage.trim()"
+                    class="flex size-11 shrink-0 items-center justify-center rounded-[var(--sf-radius-sm)] bg-brand-600 text-white hover:bg-brand-700 disabled:bg-slate-200 disabled:text-slate-400 sf-focus">
+                <span class="sr-only">{{ __('Send') }}</span><i class="bi bi-send-fill" aria-hidden="true"></i>
+            </button>
+        </form>
+    </section>
 </div>
 
 @push('scripts')
@@ -49,85 +69,65 @@
         Alpine.data('chatComponent', () => ({
             messages: [],
             newMessage: '',
-            channel: @json(auth()->check() ? \App\Support\ChatChannel::forUser(auth()->id()) : null),
+            loading: true,
+            channel: @json(\App\Support\ChatChannel::forUser(auth()->id())),
             init() {
                 this.fetchMessages();
                 this.markAsRead();
-                
-                // Initialize Echo listener (Requires Echo and Pusher to be compiled and configured)
+
                 if (window.Echo && this.channel) {
-                    window.Echo.private(this.channel)
-                        .listen('.message.sent', (e) => {
-                            // Only add if it's from admin
-                            if(e.is_admin) {
-                                this.messages.push(e);
-                                this.scrollToBottom();
-                                this.markAsRead();
-                            }
-                        });
+                    window.Echo.private(this.channel).listen('.message.sent', (e) => {
+                        if (e.is_admin) {
+                            this.messages.push(e);
+                            this.scrollToBottom();
+                            this.markAsRead();
+                        }
+                    });
                 }
             },
+            headers(json = false) {
+                return Object.assign({ 'X-CSRF-TOKEN': @js(csrf_token()), 'Accept': 'application/json' }, json ? { 'Content-Type': 'application/json' } : {});
+            },
             markAsRead() {
-                fetch('{{ route("user.messages.markRead") }}', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Accept': 'application/json'
-                    }
-                });
+                fetch(@js(route('user.messages.markRead')), { method: 'POST', headers: this.headers() });
             },
             fetchMessages() {
-                fetch('{{ route("user.messages.fetch") }}')
+                fetch(@js(route('user.messages.fetch')), { headers: this.headers() })
                     .then(res => res.json())
-                    .then(data => {
-                        this.messages = data;
-                        this.scrollToBottom();
-                    });
+                    .then(data => { this.messages = data; this.scrollToBottom(); })
+                    .finally(() => this.loading = false);
             },
             sendMessage() {
-                if (!this.newMessage.trim()) return;
-                
-                let messageText = this.newMessage;
-                this.newMessage = ''; // Optimistic clear
+                const text = this.newMessage.trim();
+                if (!text) return;
+                this.newMessage = '';
 
-                // Optimistically add to UI
-                let tempId = Date.now();
-                this.messages.push({
-                    id: tempId,
-                    is_admin: false,
-                    message: messageText,
-                    created_at: new Date().toISOString()
-                });
+                const tempId = 'tmp-' + Date.now();
+                this.messages.push({ id: tempId, is_admin: false, message: text, created_at: new Date().toISOString() });
                 this.scrollToBottom();
 
-                fetch('{{ route("user.messages.send") }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({ message: messageText })
-                })
-                .then(res => res.json())
-                .then(data => {
-                    // Replace temp optimistic message with DB real message ID if needed
-                    let index = this.messages.findIndex(m => m.id === tempId);
-                    if(index !== -1 && data.message) {
-                        this.messages[index].id = data.message.id;
-                    }
-                });
+                fetch(@js(route('user.messages.send')), { method: 'POST', headers: this.headers(true), body: JSON.stringify({ message: text }) })
+                    .then(res => res.ok ? res.json() : Promise.reject())
+                    .then(data => {
+                        const msg = this.messages.find(m => m.id === tempId);
+                        if (msg && data.message) msg.id = data.message.id;
+                    })
+                    .catch(() => {
+                        const msg = this.messages.find(m => m.id === tempId);
+                        if (msg) msg.failed = true;
+                    });
             },
-            formatDate(dateStr) {
-                if(!dateStr) return '';
-                return new Date(dateStr).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            formatDate(value) {
+                if (!value) return '';
+                const date = new Date(value);
+                const sameDay = date.toDateString() === new Date().toDateString();
+                return sameDay
+                    ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    : date.toLocaleDateString([], { day: 'numeric', month: 'short' }) + ', ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             },
             scrollToBottom() {
-                setTimeout(() => {
-                    let box = document.getElementById('chatBox');
-                    if(box) box.scrollTop = box.scrollHeight;
-                }, 100);
-            }
+                this.$nextTick(() => { this.$refs.box.scrollTop = this.$refs.box.scrollHeight; });
+            },
         }));
     });
 </script>

@@ -10,6 +10,8 @@
     $trendLabel = "vs previous {$periodDays} days";
 
     $attention = collect([
+        ['label' => 'Risky orders on hold', 'count' => $pending['on_hold'], 'icon' => 'bi-shield-exclamation', 'url' => route('orders.index', ['status' => 'on_hold']), 'can' => 'orders.view', 'tone' => 'red'],
+        ['label' => 'Risk checks that failed', 'count' => $pending['risk_unknown'], 'icon' => 'bi-question-octagon', 'url' => route('orders.index', ['risk' => 'unknown']), 'can' => 'orders.view'],
         ['label' => 'Orders awaiting confirmation', 'count' => $pending['orders'], 'icon' => 'bi-hourglass-split', 'url' => route('orders.index', ['status' => 'pending']), 'can' => 'orders.view'],
         ['label' => 'Reviews to moderate', 'count' => $pending['reviews'], 'icon' => 'bi-star-half', 'url' => route('admin.reviews.index'), 'can' => 'reviews.view'],
         ['label' => 'Unread customer messages', 'count' => $pending['messages'], 'icon' => 'bi-chat-dots', 'url' => route('admin.messages.index'), 'can' => 'messages.view'],
@@ -76,6 +78,7 @@
         </div>
     </x-admin.card>
 
+    <div class="flex flex-col gap-6">
     {{-- Needs attention --}}
     <x-admin.card title="Needs attention" description="Work waiting on your team." :padding="false">
         <ul class="divide-y divide-gray-200 dark:divide-gray-800">
@@ -88,7 +91,8 @@
                         <span class="flex-1 text-sm text-gray-700 dark:text-gray-300">{{ $item['label'] }}</span>
                         <span @class([
                             'min-w-8 rounded-md px-2 py-0.5 text-center text-sm font-semibold tabular-nums',
-                            'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300' => $item['count'] > 0,
+                            'bg-red-600 text-white dark:bg-red-500' => $item['count'] > 0 && ($item['tone'] ?? null) === 'red',
+                            'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300' => $item['count'] > 0 && ($item['tone'] ?? null) !== 'red',
                             'text-gray-400 dark:text-gray-500' => $item['count'] === 0,
                         ])>{{ $item['count'] }}</span>
                     </a>
@@ -98,6 +102,41 @@
             @endforelse
         </ul>
     </x-admin.card>
+
+    {{-- Courier balance --}}
+    @if($courier)
+        <x-admin.card title="Courier balance" description="Steadfast merchant account.">
+            <x-slot:actions>
+                @if($courier['configured'])
+                    <x-admin.button variant="ghost" size="sm" icon="bi-arrow-repeat" :href="route('admin.dashboard', ['refresh_balance' => 1])" title="Check the balance again">Refresh</x-admin.button>
+                @endif
+            </x-slot:actions>
+            @if(!$courier['configured'])
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    Steadfast is not connected.
+                    @can('settings.view')<a href="{{ route('admin.settings.index') }}#courier" class="rounded font-medium text-brand-600 hover:underline focus-ring dark:text-brand-400">Add the API keys in Settings › Courier</a>.@endcan
+                </p>
+            @elseif($courier['error'])
+                <x-admin.alert tone="warning">{{ $courier['error'] }}</x-admin.alert>
+            @else
+                <p class="text-2xl font-semibold text-gray-900 tabular-nums dark:text-white">Tk {{ number_format($courier['amount'], 2) }}</p>
+            @endif
+            @if($courier['checked_at'])
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Checked {{ \Illuminate\Support\Carbon::parse($courier['checked_at'])->diffForHumans() }}</p>
+            @endif
+            <dl class="mt-4 grid grid-cols-2 gap-3 border-t border-gray-200 pt-4 text-sm dark:border-gray-800">
+                <div>
+                    <dt class="text-xs text-gray-500 dark:text-gray-400">Parcels in transit</dt>
+                    <dd class="mt-0.5 font-semibold text-gray-900 tabular-nums dark:text-white">{{ number_format($courier['in_transit']) }}</dd>
+                </div>
+                <div>
+                    <dt class="text-xs text-gray-500 dark:text-gray-400">Failed to send</dt>
+                    <dd @class(['mt-0.5 font-semibold tabular-nums', 'text-red-600 dark:text-red-400' => $courier['failed'] > 0, 'text-gray-900 dark:text-white' => $courier['failed'] === 0])>{{ number_format($courier['failed']) }}</dd>
+                </div>
+            </dl>
+        </x-admin.card>
+    @endif
+    </div>
 </div>
 
 <div class="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-3">

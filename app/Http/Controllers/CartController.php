@@ -13,8 +13,9 @@ class CartController extends Controller
     {
     }
 
-    public function index()
+    public function index(\App\Services\CartPricer $pricer)
     {
+        $cartChanges = array_merge(session('cart_changes', []), $pricer->refreshSession());
         $cart = session()->get('cart', []);
         $total = collect($cart)->sum(fn($item) => $item['price'] * $item['quantity']);
         $coupon = $this->coupons->preview(session('coupon_code'), Auth::user(), $total);
@@ -27,9 +28,13 @@ class CartController extends Controller
 
         return view('frontend.cart.index', [
             'cart' => $cart,
-            'total' => $total,
-            'coupon' => $coupon['coupon'],
-            'discount' => $coupon['discount'],
+            'cartChanges' => $cartChanges,
+            'total' => (float) $total,
+            'coupon' => $coupon['error'] ? null : $coupon['coupon'],
+            'discount' => (float) $coupon['discount'],
+            'freeShippingThreshold' => app(\App\Services\CheckoutOptions::class)->freeShippingThreshold(),
+            'recommendations' => app(\App\Services\CartRecommendations::class)->forCart($cart, 4),
+            'wishlistIds' => Auth::check() ? \App\Models\Wishlist::where('user_id', Auth::id())->pluck('product_id')->toArray() : [],
         ]);
     }
 
@@ -45,19 +50,25 @@ class CartController extends Controller
         try {
             $coupon = $this->coupons->findValid($data['code'], Auth::user(), $subtotal);
         } catch (CouponException $e) {
-            return redirect()->route('cart.index')->withInput()->with('error', $e->getMessage());
+            return $this->couponRedirect($request)->withInput()->with('coupon_error', $e->getMessage());
         }
 
         session(['coupon_code' => $coupon->code]);
 
-        return redirect()->route('cart.index')->with('success', "Coupon {$coupon->code} applied: you save tk. " . number_format($this->coupons->discountFor($coupon, $subtotal), 0) . '.');
+        return $this->couponRedirect($request)->with('success', "Coupon {$coupon->code} applied: you save tk. " . number_format($this->coupons->discountFor($coupon, $subtotal), 0) . '.');
     }
 
-    public function removeCoupon()
+    public function removeCoupon(Request $request)
     {
         session()->forget('coupon_code');
 
-        return redirect()->route('cart.index')->with('success', 'Coupon removed.');
+        return $this->couponRedirect($request)->with('success', 'Coupon removed.');
+    }
+
+    /** Coupons can be applied from the cart or the checkout page; send the customer back where they were. */
+    private function couponRedirect(Request $request)
+    {
+        return redirect()->route($request->input('return') === 'checkout' ? 'checkout.index' : 'cart.index');
     }
 
     public function add(Request $request)
@@ -66,24 +77,24 @@ class CartController extends Controller
         $cart = session()->get('cart', []);
 
         $variantId = $request->variant_id;
-        
+        $quantity = max(1, min(99, (int) $request->input('quantity', 1)));
+
         // Cart key distinguishes between different variants of the same product
         $cartKey = $variantId ? $product->id . '-' . $variantId : $product->id;
 
         if (isset($cart[$cartKey])) {
-            $cart[$cartKey]['quantity']++;
+            $stock = $cart[$cartKey]['stock'] ?? null;
+            $wanted = $cart[$cartKey]['quantity'] + $quantity;
+            $cart[$cartKey]['quantity'] = $stock !== null ? max(1, min($wanted, (int) $stock)) : $wanted;
         } else {
-            $price = $product->discounted_price ?? $product->price;
+            $price = $product->unitPrice();
             $variantName = null;
             $stock = $product->stock;
 
             if ($variantId) {
                 $variant = $product->variants()->with('attributeValues.attribute')->findOrFail($variantId);
-                if ($variant->price) {
-                    // Variant specific price, apply discount if needed or just use as is
-                    // Assuming variant price is already final or base price
-                    $price = $variant->price; 
-                }
+                $variant->setRelation('product', $product);
+                $price = $variant->unitPrice();
                 $stock = $variant->stock;
                 
                 // Build variant string (e.g. "Color: Red | Size: M")
@@ -109,7 +120,7 @@ class CartController extends Controller
                 'variant_id' => $variantId,
                 'name'       => is_array($product->name) ? ($product->name['en'] ?? $product->name['bn']) : $product->name,
                 'variant_name'=> $variantName,
-                'quantity'   => 1,
+                'quantity'   => min($quantity, (int) $stock),
                 'price'      => $price,
                 'image'      => $image,
                 'stock'      => $stock,
@@ -117,6 +128,11 @@ class CartController extends Controller
         }
 
         session()->put('cart', $cart);
+
+        // Same event_id for the Pixel and the Conversions API. fetch() callers fire the returned event;
+        // form posts and "Buy now" redirect, so the event waits in the session for the next page.
+        $fbEvent = app(\App\Services\FacebookTracking::class)
+            ->addToCart($product, (float) $cart[$cartKey]['price'], $quantity, $request, nextPage: !$request->expectsJson());
 
         if ($request->has('buy_now')) {
             return redirect()->route('checkout.index');
@@ -131,6 +147,7 @@ class CartController extends Controller
                 'count' => $summary['count'],
                 'total' => $summary['total'],
                 'total_text' => money($summary['total']),
+                'fb_event' => $fbEvent,
             ]);
         }
 

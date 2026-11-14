@@ -5,6 +5,7 @@ namespace App\Enums;
 enum OrderStatus: string
 {
     case Pending = 'pending';
+    case OnHold = 'on_hold';
     case Confirmed = 'confirmed';
     case Processing = 'processing';
     case Shipped = 'shipped';
@@ -21,7 +22,8 @@ enum OrderStatus: string
     public function transitions(): array
     {
         return match ($this) {
-            self::Pending    => [self::Confirmed, self::Processing, self::Cancelled],
+            self::Pending    => [self::Confirmed, self::Processing, self::OnHold, self::Cancelled],
+            self::OnHold     => [self::Pending, self::Confirmed, self::Cancelled],
             self::Confirmed  => [self::Processing, self::Cancelled],
             self::Processing => [self::Shipped, self::Cancelled],
             self::Shipped    => [self::Delivered, self::Returned],
@@ -42,7 +44,7 @@ enum OrderStatus: string
      */
     public function holdsStock(): bool
     {
-        return in_array($this, [self::Pending, self::Confirmed, self::Processing], true);
+        return in_array($this, [self::Pending, self::OnHold, self::Confirmed, self::Processing], true);
     }
 
     /**
@@ -57,6 +59,7 @@ enum OrderStatus: string
     {
         return match ($this) {
             self::Pending    => 'Pending',
+            self::OnHold     => 'On Hold (Risky)',
             self::Confirmed  => 'Confirmed',
             self::Processing => 'Processing',
             self::Shipped    => 'Shipped',
@@ -67,10 +70,19 @@ enum OrderStatus: string
         };
     }
 
+    /**
+     * Status as the customer sees it: a held order is simply still waiting for confirmation.
+     */
+    public function customerFacing(): self
+    {
+        return $this === self::OnHold ? self::Pending : $this;
+    }
+
     public function badgeClasses(): string
     {
         return match ($this) {
             self::Pending    => 'bg-amber-50 text-amber-600 border-amber-100',
+            self::OnHold     => 'bg-rose-50 text-rose-600 border-rose-100',
             self::Confirmed  => 'bg-sky-50 text-sky-600 border-sky-100',
             self::Processing => 'bg-blue-50 text-blue-600 border-blue-100',
             self::Shipped    => 'bg-indigo-50 text-indigo-600 border-indigo-100',
@@ -85,6 +97,7 @@ enum OrderStatus: string
     {
         return match ($this) {
             self::Pending    => 'bi-clock-fill',
+            self::OnHold     => 'bi-shield-exclamation',
             self::Confirmed  => 'bi-patch-check-fill',
             self::Processing => 'bi-box-seam-fill',
             self::Shipped    => 'bi-truck',
@@ -101,7 +114,7 @@ enum OrderStatus: string
     public function customerMessage(): ?string
     {
         return match ($this) {
-            self::Pending    => null,
+            self::Pending, self::OnHold => null,
             self::Confirmed  => 'Your order has been confirmed and will be prepared shortly.',
             self::Processing => 'We are picking and packing your items.',
             self::Shipped    => 'Your order has been handed to the courier and is on its way.',
@@ -130,8 +143,9 @@ enum OrderStatus: string
         return collect(self::cases())->mapWithKeys(fn (self $s) => [$s->value => $s->label()])->all();
     }
 
+    /** Customer-facing badge (held orders look pending). */
     public static function badge(?string $value): string
     {
-        return self::tryFrom((string) $value)?->badgeClasses() ?? 'bg-slate-50 text-slate-500 border-slate-100';
+        return self::tryFrom((string) $value)?->customerFacing()->badgeClasses() ?? 'bg-slate-50 text-slate-500 border-slate-100';
     }
 }

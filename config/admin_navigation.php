@@ -44,6 +44,7 @@ return [
         'items' => [
             ['title' => 'Customers', 'icon' => 'bi-people', 'route' => 'users.index', 'can' => 'users.view', 'active' => ['users.*']],
             ['title' => 'Messages', 'icon' => 'bi-chat-dots', 'route' => 'admin.messages.index', 'can' => 'messages.view'],
+            ['title' => 'Phone blacklist', 'icon' => 'bi-telephone-x', 'route' => 'admin.blacklist.index', 'can' => 'orders.view'],
         ],
     ],
     [

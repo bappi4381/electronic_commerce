@@ -15,6 +15,7 @@
     $dd = 'mt-1 text-sm text-gray-900 dark:text-white';
     $dotTones = [
         'pending' => 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/15 dark:text-yellow-300',
+        'on_hold' => 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
         'confirmed' => 'bg-brand-100 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300',
         'processing' => 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300',
         'shipped' => 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300',
@@ -40,8 +41,10 @@
     <x-admin.status-badge type="order" :status="$order->status" />
     <x-admin.status-badge type="payment" :status="$order->payment_status" />
     <span class="text-sm text-gray-500 dark:text-gray-400">· {{ strtoupper($order->payment_method ?? 'COD') }}</span>
-    @if($parcel)
+    <x-admin.risk-badge :order="$order" />
+    @if($parcel?->isBooked())
         <span class="text-sm text-gray-500 dark:text-gray-400">· <i class="bi bi-truck" aria-hidden="true"></i> {{ $parcel->courierLabel() }}</span>
+        <x-admin.status-badge type="courier" :status="$parcel->status" />
     @endif
 </div>
 
@@ -62,7 +65,12 @@
                     </div>
                     <div>
                         <dt class="{{ $dt }}">Email</dt>
-                        <dd class="{{ $dd }} break-all">{{ $order->customerDisplayEmail() ?? '—' }}</dd>
+                        <dd class="{{ $dd }} break-all">
+                            {{ $order->customerDisplayEmail() ?? '—' }}
+                            @if($order->marketing_opt_in)
+                                <x-admin.status-badge tone="green" :dot="false" label="Subscribed to offers" class="ml-1" />
+                            @endif
+                        </dd>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
@@ -80,14 +88,18 @@
                         <dt class="{{ $dt }}">Shipping address</dt>
                         <dd class="{{ $dd }} whitespace-pre-line">{{ $order->shipping_address ?: '—' }}</dd>
                     </div>
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-3 gap-4">
                         <div>
-                            <dt class="{{ $dt }}">City</dt>
+                            <dt class="{{ $dt }}">City / zone</dt>
                             <dd class="{{ $dd }}">{{ $order->city ?: '—' }}</dd>
                         </div>
                         <div>
-                            <dt class="{{ $dt }}">Region</dt>
+                            <dt class="{{ $dt }}">Area / thana</dt>
                             <dd class="{{ $dd }}">{{ $order->region ?: '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="{{ $dt }}">Postcode</dt>
+                            <dd class="{{ $dd }} tabular-nums">{{ $order->postal_code ?: '—' }}</dd>
                         </div>
                     </div>
                     @if($order->order_notes)
@@ -163,7 +175,7 @@
 
         {{-- Courier --}}
         <x-admin.card title="Courier">
-            @if($parcel)
+            @if($parcel?->isBooked())
                 @can('orders.edit')
                     <x-slot:actions>
                         <form method="POST" action="{{ route('orders.courier.refresh', $order) }}">
@@ -185,20 +197,21 @@
                             @endif
                         </dd>
                     </div>
-                    <div><dt class="{{ $dt }}">Courier status</dt><dd class="{{ $dd }}"><x-admin.status-badge :status="$parcel->status ?? 'unknown'" tone="indigo" /></dd></div>
+                    <div><dt class="{{ $dt }}">Courier status</dt><dd class="{{ $dd }}"><x-admin.status-badge type="courier" :status="$parcel->status" /></dd></div>
                 </dl>
-                <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">Booked {{ $parcel->created_at->format('d M Y, h:i A') }}{{ $parcel->admin ? ' by ' . $parcel->admin->name : '' }}</p>
-                @if($order->courierLogs->isNotEmpty())
-                    <ul class="mt-4 divide-y divide-gray-200 border-t border-gray-200 text-sm dark:divide-gray-800 dark:border-gray-800">
-                        @foreach($order->courierLogs->sortByDesc('created_at') as $log)
-                            <li class="flex flex-wrap justify-between gap-2 py-2">
-                                <span><span class="font-medium text-gray-900 dark:text-white">{{ \Illuminate\Support\Str::of($log->status_to)->replace('_', ' ')->ucfirst() }}</span> <span class="text-gray-500 dark:text-gray-400">{{ $log->remarks }}</span></span>
-                                <span class="text-xs text-gray-500 dark:text-gray-400">{{ $log->created_at->format('d M, h:i A') }}</span>
-                            </li>
-                        @endforeach
-                    </ul>
+                <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">
+                    Sent {{ ($parcel->sent_at ?? $parcel->created_at)->format('d M Y, h:i A') }}{{ $parcel->admin ? ' by ' . $parcel->admin->name : '' }}
+                    @if((float) $parcel->shipping_charge > 0) · Delivery charge Tk {{ number_format($parcel->shipping_charge, 2) }}@endif
+                    @if($parcel->status_checked_at) · Status checked {{ $parcel->status_checked_at->diffForHumans() }}@endif
+                </p>
+            @else
+                @if($parcel?->hasFailed())
+                    <x-admin.alert tone="error" title="Failed to send to {{ $parcel->courierLabel() }}" class="mb-4">
+                        {{ $parcel->last_error }}
+                        <span class="mt-1 block text-xs opacity-80">{{ $parcel->failed_at?->format('d M Y, h:i A') }} · fix the problem and send again.</span>
+                    </x-admin.alert>
                 @endif
-            @elseif($status === OrderStatus::Processing)
+                @if($status === OrderStatus::Processing)
                 @can('orders.edit')
                     <form method="POST" action="{{ route('orders.courier.store', $order) }}" class="grid grid-cols-1 gap-4 md:grid-cols-2"
                           x-data="pathaoLocations()" x-init="$watch('courier', value => value === 'pathao' && loadCities())">
@@ -230,13 +243,38 @@
                             <x-admin.input name="note" label="Note for rider" optional maxlength="250" :value="$order->order_notes" />
                         </div>
                         <div class="flex flex-wrap items-center justify-between gap-4 md:col-span-2">
-                            <p class="text-xs text-gray-500 dark:text-gray-400">Booking sends the parcel to the courier and marks the order <strong>Shipped</strong>.</p>
-                            <x-admin.button type="submit" icon="bi-truck">Book parcel</x-admin.button>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Sending books the parcel with the courier and marks the order <strong>Shipped</strong>.</p>
+                            <x-admin.button type="submit" :icon="$parcel?->hasFailed() ? 'bi-arrow-repeat' : 'bi-truck'">{{ $parcel?->hasFailed() ? 'Retry sending' : 'Send to courier' }}</x-admin.button>
                         </div>
                     </form>
                 @endcan
-            @else
-                <p class="text-sm text-gray-500 dark:text-gray-400">Move the order to <strong>Processing</strong> to book a courier.</p>
+                @else
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Move the order to <strong>Processing</strong> to send it to a courier.</p>
+                @endif
+            @endif
+
+            @if($order->courierLogs->isNotEmpty())
+                <details class="group mt-4 border-t border-gray-200 pt-3 dark:border-gray-800">
+                    <summary class="flex cursor-pointer list-none items-center justify-between rounded text-sm font-medium text-gray-700 focus-ring dark:text-gray-300">
+                        Courier activity ({{ $order->courierLogs->count() }})
+                        <i class="bi bi-chevron-down text-xs transition-transform group-open:rotate-180" aria-hidden="true"></i>
+                    </summary>
+                    <ul class="mt-2 divide-y divide-gray-200 text-sm dark:divide-gray-800">
+                        @foreach($order->courierLogs->sortByDesc('id') as $log)
+                            <li class="flex flex-wrap items-start justify-between gap-2 py-2">
+                                <div class="min-w-0">
+                                    <span class="font-medium text-gray-900 dark:text-white">{{ $log->actionLabel() }}</span>
+                                    @if($log->status_to)<x-admin.status-badge type="courier" :status="$log->status_to" :dot="false" class="ml-1" />@endif
+                                    @if($log->status_code)
+                                        <span @class(['ml-1 font-mono text-xs', 'text-green-600 dark:text-green-400' => $log->status_code < 300, 'text-red-600 dark:text-red-400' => $log->status_code >= 300])>HTTP {{ $log->status_code }}</span>
+                                    @endif
+                                    @if($log->remarks)<p class="mt-0.5 break-words text-xs text-gray-500 dark:text-gray-400">{{ $log->remarks }}</p>@endif
+                                </div>
+                                <span class="shrink-0 text-xs text-gray-500 dark:text-gray-400">{{ $log->created_at->format('d M, h:i A') }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                </details>
             @endif
         </x-admin.card>
 
@@ -310,6 +348,136 @@
 
     {{-- Sidebar --}}
     <div class="space-y-6">
+        {{-- Delivery risk --}}
+        @php($risk = $order->riskLevelEnum())
+        @php($latestRisk = $order->riskLogs->first())
+        <x-admin.card title="Delivery risk" :description="$latestRisk ? 'Checked ' . $latestRisk->checked_at->diffForHumans() . ' · ' . (\App\Services\Fraud\FraudSettings::DRIVERS[$latestRisk->source] ?? $latestRisk->source) : 'Courier delivery history for this number.'">
+            @can('orders.edit')
+                <x-slot:actions>
+                    <form method="POST" action="{{ route('orders.risk.recheck', $order) }}">
+                        @csrf
+                        <x-admin.button type="submit" variant="secondary" size="sm" icon="bi-arrow-repeat">Re-check</x-admin.button>
+                    </form>
+                </x-slot:actions>
+            @endcan
+
+            <div class="space-y-4">
+                @if($blacklisted)
+                    <x-admin.alert tone="error" title="Blacklisted number">
+                        {{ $blacklisted->reason }}
+                        <span class="mt-1 block text-xs opacity-80">Added {{ $blacklisted->created_at->format('d M Y') }}{{ $blacklisted->admin ? ' by ' . $blacklisted->admin->name : '' }}</span>
+                    </x-admin.alert>
+                @endif
+
+                @if(!$risk)
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Not checked yet. The check runs in the background a few seconds after checkout (needs <code>php artisan queue:work</code>).</p>
+                @else
+                    <div class="flex flex-wrap items-center gap-2">
+                        <x-admin.status-badge :tone="$risk->tone()" :label="$risk->label()" class="text-sm" />
+                        @if($order->risk_reviewed_at)
+                            <x-admin.status-badge tone="green" :dot="false" label="Reviewed safe" />
+                        @endif
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ $risk->description() }}</p>
+
+                    @if($latestRisk && $risk !== \App\Enums\RiskLevel::Unknown)
+                        <dl class="grid grid-cols-4 gap-2 rounded-lg bg-gray-50 p-3 text-center dark:bg-gray-800/60">
+                            <div><dt class="text-[11px] text-gray-500 dark:text-gray-400">Parcels</dt><dd class="font-semibold tabular-nums text-gray-900 dark:text-white">{{ $latestRisk->total_orders }}</dd></div>
+                            <div><dt class="text-[11px] text-gray-500 dark:text-gray-400">Delivered</dt><dd class="font-semibold tabular-nums text-green-700 dark:text-green-400">{{ $latestRisk->delivered }}</dd></div>
+                            <div><dt class="text-[11px] text-gray-500 dark:text-gray-400">Cancelled</dt><dd class="font-semibold tabular-nums text-red-700 dark:text-red-400">{{ $latestRisk->cancelled }}</dd></div>
+                            <div><dt class="text-[11px] text-gray-500 dark:text-gray-400">Success</dt><dd class="font-semibold tabular-nums text-gray-900 dark:text-white">{{ $latestRisk->success_rate !== null ? rtrim(rtrim($latestRisk->success_rate, '0'), '.') . '%' : '—' }}</dd></div>
+                        </dl>
+                        @if($latestRisk->breakdown())
+                            <table class="w-full text-xs">
+                                <thead><tr class="text-left text-gray-500 dark:text-gray-400"><th class="py-1 font-medium">Courier</th><th class="py-1 text-right font-medium">Total</th><th class="py-1 text-right font-medium">Delivered</th><th class="py-1 text-right font-medium">Cancelled</th></tr></thead>
+                                <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                                    @foreach($latestRisk->breakdown() as $courierName => $row)
+                                        <tr class="text-gray-700 dark:text-gray-300">
+                                            <td class="py-1">{{ $courierName }}</td>
+                                            <td class="py-1 text-right tabular-nums">{{ $row['total'] }}</td>
+                                            <td class="py-1 text-right tabular-nums">{{ $row['delivered'] }}</td>
+                                            <td class="py-1 text-right tabular-nums">{{ $row['cancelled'] }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        @endif
+                    @elseif($latestRisk?->error())
+                        <x-admin.alert tone="warning" title="The check failed">{{ $latestRisk->error() }} The order was not blocked; use Re-check or review it manually.</x-admin.alert>
+                    @endif
+                @endif
+
+                @if($order->hasRiskFlag(\App\Services\Fraud\CheckoutGuard::FLAG_IP_VELOCITY))
+                    <x-admin.alert tone="warning">Placed after its IP address had reached the hourly order limit.</x-admin.alert>
+                @endif
+
+                @if($order->advance_amount > 0)
+                    <x-admin.alert tone="info" title="Advance payment requested">
+                        Collect Tk {{ number_format($order->advance_amount, 2) }} before confirming. The customer sees this on their order page.
+                    </x-admin.alert>
+                @endif
+
+                @if($order->risk_reviewed_at)
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Marked safe {{ $order->risk_reviewed_at->format('d M Y, h:i A') }}{{ $order->riskReviewer ? ' by ' . $order->riskReviewer->name : '' }}.</p>
+                @endif
+
+                @if($otherOrdersByPhone)
+                    <a href="{{ route('orders.index', ['q' => $order->phone_normalized]) }}" class="inline-flex items-center gap-1 rounded text-xs font-medium text-brand-600 hover:underline focus-ring dark:text-brand-400">
+                        {{ $otherOrdersByPhone }} other {{ \Illuminate\Support\Str::plural('order', $otherOrdersByPhone) }} from this number <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                    </a>
+                @endif
+
+                @can('orders.edit')
+                    <div class="flex flex-col gap-2 border-t border-gray-200 pt-4 dark:border-gray-800">
+                        @if(!$order->risk_reviewed_at && ($status === OrderStatus::OnHold || in_array($risk, [\App\Enums\RiskLevel::High, \App\Enums\RiskLevel::Medium, \App\Enums\RiskLevel::Unknown], true)))
+                            <form method="POST" action="{{ route('orders.risk.safe', $order) }}" x-data="{ open: false }">
+                                @csrf
+                                <x-admin.button type="button" variant="secondary" size="sm" icon="bi-shield-check" class="w-full" x-show="!open" @click="open = true">Mark as safe</x-admin.button>
+                                <div x-show="open" x-cloak class="space-y-2">
+                                    <x-admin.input name="note" label="Why is it safe?" optional maxlength="255" placeholder="e.g. Called the customer, confirmed" />
+                                    <x-admin.button type="submit" size="sm" icon="bi-shield-check" class="w-full">{{ $status === OrderStatus::OnHold ? 'Mark safe & release hold' : 'Mark as safe' }}</x-admin.button>
+                                </div>
+                            </form>
+                        @endif
+                        @unless($blacklisted)
+                            <form method="POST" action="{{ route('orders.risk.blacklist', $order) }}" x-data="{ open: false }">
+                                @csrf
+                                <x-admin.button type="button" variant="ghost" size="sm" icon="bi-telephone-x" class="w-full text-red-600 dark:text-red-400" x-show="!open" @click="open = true">Blacklist this number</x-admin.button>
+                                <div x-show="open" x-cloak class="space-y-2">
+                                    <x-admin.input name="reason" label="Reason" required maxlength="255" placeholder="e.g. Refused 3 deliveries" />
+                                    @if($status?->canTransitionTo(OrderStatus::Cancelled))
+                                        <x-admin.checkbox name="cancel_order" label="Also cancel this order" />
+                                    @endif
+                                    <x-admin.button type="submit" variant="danger" size="sm" icon="bi-telephone-x" class="w-full">Blacklist</x-admin.button>
+                                </div>
+                            </form>
+                        @endunless
+                    </div>
+                @endcan
+
+                @if($order->riskLogs->count() > 1)
+                    <details class="group border-t border-gray-200 pt-3 dark:border-gray-800">
+                        <summary class="flex cursor-pointer list-none items-center justify-between rounded text-sm font-medium text-gray-700 focus-ring dark:text-gray-300">
+                            Check history ({{ $order->riskLogs->count() }})
+                            <i class="bi bi-chevron-down text-xs transition-transform group-open:rotate-180" aria-hidden="true"></i>
+                        </summary>
+                        <ul class="mt-2 divide-y divide-gray-100 text-xs dark:divide-gray-800">
+                            @foreach($order->riskLogs as $log)
+                                <li class="flex items-center justify-between gap-2 py-1.5">
+                                    <span class="flex items-center gap-1.5">
+                                        <x-admin.status-badge :tone="$log->levelEnum()?->tone() ?? 'gray'" :dot="false" :label="$log->levelEnum()?->label() ?? $log->risk_level" />
+                                        @if($log->success_rate !== null)<span class="tabular-nums text-gray-600 dark:text-gray-300">{{ rtrim(rtrim($log->success_rate, '0'), '.') }}%</span>@endif
+                                        @if($log->wasCached())<span class="text-gray-400">cached</span>@endif
+                                    </span>
+                                    <span class="text-right text-gray-500 dark:text-gray-400">{{ $log->checked_at->format('d M, h:i A') }}{{ $log->admin ? ' · ' . $log->admin->name : '' }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </details>
+                @endif
+            </div>
+        </x-admin.card>
+
         @can('orders.edit')
             <x-admin.card title="Update status" description="Only valid next steps are shown.">
                 <div class="space-y-2">

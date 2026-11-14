@@ -1,5 +1,5 @@
 <div x-data="globalChat()" x-show="!$store.ui.searchOpen"
-     class="fixed right-4 z-[var(--sf-z-fab)] bottom-[calc(var(--sf-bottom-nav-h)+var(--sf-safe-bottom)+16px)] md:bottom-6 md:right-6">
+     class="fixed right-4 z-[var(--sf-z-fab)] bottom-[calc(var(--sf-bottom-nav-h)+var(--sf-safe-bottom)+16px+var(--sf-fab-lift,0px))] md:bottom-[calc(1.5rem+var(--sf-fab-lift,0px))] md:right-6">
     <!-- Chat Button -->
     <button type="button" @click="open = !open" :class="open ? 'scale-0 opacity-0' : 'scale-100 opacity-100'" aria-label="{{ __('Live chat with support') }}" :aria-expanded="open.toString()"
             class="w-14 h-14 md:w-16 md:h-16 bg-primary text-white rounded-full flex items-center justify-center text-2xl shadow-2xl shadow-primary/40 hover:scale-110 active:scale-95 transition-all absolute bottom-0 right-0 z-[100] sf-focus">

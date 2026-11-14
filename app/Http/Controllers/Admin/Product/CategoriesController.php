@@ -23,9 +23,12 @@ class CategoriesController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name'  => 'required|string|max:255',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
-            'type'  => 'nullable|in:blog,product',
+            'name'    => 'required|string|max:255',
+            'name_bn' => 'nullable|string|max:255',
+            'image'   => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'type'    => 'nullable|in:blog,product',
+            'icon'    => 'nullable|string|max:60',
+            'color'   => 'nullable|string|max:30',
         ]);
 
         $imagePath = null;
@@ -36,7 +39,7 @@ class CategoriesController extends Controller
 
         // Save name as translatable JSON (EN + BN)
         Category::create([
-            'name'  => ['en' => $request->name, 'bn' => $request->name_bn ?? $request->name],
+            'name'  => ['en' => $request->name, 'bn' => $request->filled('name_bn') ? $request->name_bn : $request->name],
             'type'  => $request->type ?? 'product',
             'image' => $imagePath,
             'icon'  => $request->icon ?? 'bi-tag',
@@ -68,8 +71,11 @@ class CategoriesController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'name'  => 'required|string|max:255',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'name'    => 'required|string|max:255',
+            'name_bn' => 'nullable|string|max:255',
+            'image'   => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'icon'    => 'nullable|string|max:60',
+            'color'   => 'nullable|string|max:30',
         ]);
 
         $category = Category::findOrFail($id);

@@ -42,9 +42,17 @@ return [
     ],
 
     'facebook' => [
+        // Facebook Login (Socialite)
         'client_id' => env('FACEBOOK_CLIENT_ID'),
         'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
         'redirect' => env('FACEBOOK_REDIRECT_URI'),
+
+        // Meta Pixel (browser) + Conversions API (server). Both can be switched off in Admin › Settings › Tracking.
+        'pixel_id' => env('FB_PIXEL_ID'),
+        'capi_access_token' => env('FB_CAPI_ACCESS_TOKEN'),
+        // Set while testing in Events Manager › Test events; leave empty in production.
+        'test_event_code' => env('FB_TEST_EVENT_CODE'),
+        'graph_version' => env('FB_GRAPH_VERSION', 'v19.0'),
     ],
 
     'sslcommerz' => [
@@ -58,6 +66,7 @@ return [
         'base_url' => env('STEADFAST_BASE_URL', 'https://portal.packzy.com/api/v1'),
         'api_key' => env('STEADFAST_API_KEY'),
         'secret_key' => env('STEADFAST_SECRET_KEY'),
+        // Bearer token entered in Steadfast portal › API › Webhook; webhooks without it are rejected.
         'webhook_secret' => env('STEADFAST_WEBHOOK_SECRET'),
         'webhook_header' => env('STEADFAST_WEBHOOK_HEADER', 'Authorization'),
         // {code} = tracking code

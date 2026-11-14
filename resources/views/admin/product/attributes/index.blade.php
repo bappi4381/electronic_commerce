@@ -54,7 +54,7 @@
                                 @endcan
                                 @can('products.delete')
                                     <form method="POST" action="{{ route('admin.attributes.destroy', $attribute) }}"
-                                          data-confirm="Its values are removed from the catalog. Variants that use them lose that option." data-confirm-title="Delete {{ $attribute->name }}?" data-confirm-button="Delete">
+                                          data-confirm="Attributes used by any product variant can't be deleted. Unused attributes and their values are removed permanently." data-confirm-title="Delete {{ $attribute->name }}?" data-confirm-button="Delete">
                                         @csrf @method('DELETE')
                                         <x-admin.button type="submit" variant="ghost" size="sm" icon="bi-trash" :loading="false" class="text-red-600 dark:text-red-400" title="Delete" aria-label="Delete {{ $attribute->name }}" />
                                     </form>
@@ -106,7 +106,7 @@
                                             {{ $value->value }}
                                             @can('products.delete')
                                                 <form method="POST" action="{{ route('admin.attributes.values.destroy', $value) }}"
-                                                      data-confirm="Variants using “{{ $value->value }}” lose this option." data-confirm-title="Remove {{ $value->value }}?" data-confirm-button="Remove">
+                                                      data-confirm="Values used by any product variant can't be removed." data-confirm-title="Remove {{ $value->value }}?" data-confirm-button="Remove">
                                                     @csrf @method('DELETE')
                                                     <button type="submit" class="flex size-5 items-center justify-center rounded text-gray-400 hover:bg-red-50 hover:text-red-600 focus-ring dark:hover:bg-red-500/10 dark:hover:text-red-400">
                                                         <span class="sr-only">Remove {{ $value->value }}</span><i class="bi bi-x text-base" aria-hidden="true"></i>

@@ -2,7 +2,7 @@
     $tabs = [
         ['route' => 'home', 'active' => 'home', 'label' => __('Home'), 'icon' => 'bi-house-door', 'iconActive' => 'bi-house-door-fill'],
         ['route' => 'products.index', 'active' => ['products.*', 'search.index'], 'label' => __('Shop'), 'icon' => 'bi-grid', 'iconActive' => 'bi-grid-fill'],
-        ['route' => 'flash-deals', 'active' => 'flash-deals', 'label' => __('Discount'), 'icon' => 'bi-tags', 'iconActive' => 'bi-tags-fill', 'dot' => true],
+        ['route' => 'flash-deals', 'active' => 'flash-deals', 'label' => __('Deals'), 'icon' => 'bi-tags', 'iconActive' => 'bi-tags-fill', 'dot' => true],
         ['route' => 'cart.index', 'active' => ['cart.*', 'checkout.*'], 'label' => __('Cart'), 'icon' => 'bi-bag', 'iconActive' => 'bi-bag-fill', 'cart' => true],
         auth()->check()
             ? ['route' => 'user.dashboard', 'active' => 'user.*', 'label' => __('Account'), 'icon' => 'bi-person', 'iconActive' => 'bi-person-fill']

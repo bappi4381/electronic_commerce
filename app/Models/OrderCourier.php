@@ -13,6 +13,35 @@ class OrderCourier extends Model
         'pathao'    => 'Pathao',
     ];
 
+    protected $casts = [
+        'sent_at' => 'datetime',
+        'failed_at' => 'datetime',
+        'status_checked_at' => 'datetime',
+        'shipping_charge' => 'decimal:2',
+    ];
+
+    /** The courier accepted the parcel (there is a consignment). */
+    public function isBooked(): bool
+    {
+        return filled($this->consignment_id);
+    }
+
+    /** The last attempt to send was rejected and nothing is booked yet. */
+    public function hasFailed(): bool
+    {
+        return !$this->isBooked() && $this->status === \App\Services\Courier\CourierStatus::FAILED;
+    }
+
+    public function statusLabel(): string
+    {
+        return \App\Services\Courier\CourierStatus::label($this->status);
+    }
+
+    public function statusTone(): string
+    {
+        return \App\Services\Courier\CourierStatus::tone($this->status);
+    }
+
     public function order()
     {
         return $this->belongsTo(Order::class)->withTrashed();

@@ -24,6 +24,13 @@ return [
 
     'return_days' => (int) env('STORE_RETURN_DAYS', 30),
 
+    // Times the admin types without a zone (e.g. the flash deal end) are read in this timezone.
+    'timezone' => env('STORE_TIMEZONE', 'Asia/Dhaka'),
+
+    // Flash sale: how many flagged products the campaign shows, and how long the product list is cached (seconds).
+    'flash_sale_limit' => 12,
+    'flash_sale_cache_seconds' => 60,
+
     'hotline' => env('STORE_HOTLINE'),
 
     // Shown in the desktop brand strip when those brands exist in the catalog (by name, case-insensitive).

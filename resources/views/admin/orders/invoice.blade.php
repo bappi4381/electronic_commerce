@@ -219,8 +219,8 @@
                         @if($order->customerDisplayPhone()){{ $order->customerDisplayPhone() }}<br>@endif
                         @if($order->alt_phone)Alt: {{ $order->alt_phone }}<br>@endif
                         @if($order->customerDisplayEmail()){{ $order->customerDisplayEmail() }}<br>@endif
-                        {{ $order->shipping_address ?? 'Shipping address not available' }}<br>
-                        {{ collect([$order->region, $order->city])->filter()->implode(', ') }}
+                        {!! nl2br(e($order->shipping_address ?? 'Shipping address not available')) !!}<br>
+                        {{ collect([$order->region, $order->city])->filter()->implode(', ') }}{{ $order->postal_code ? ' - ' . $order->postal_code : '' }}
                     </div>
                 </div>
             </td>

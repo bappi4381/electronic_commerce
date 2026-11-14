@@ -18,7 +18,7 @@ class CheckoutOptions
     ];
 
     /**
-     * @return list<array{name: string, charge: float}>
+     * @return list<array{name: string, charge: float, eta: string}>
      */
     public function zones(): array
     {
@@ -26,7 +26,11 @@ class CheckoutOptions
 
         return collect(is_array($zones) ? $zones : [])
             ->filter(fn ($zone) => is_array($zone) && trim((string) ($zone['name'] ?? '')) !== '')
-            ->map(fn (array $zone) => ['name' => trim($zone['name']), 'charge' => max(0, (float) ($zone['charge'] ?? 0))])
+            ->map(fn (array $zone) => [
+                'name' => trim($zone['name']),
+                'charge' => max(0, (float) ($zone['charge'] ?? 0)),
+                'eta' => trim((string) ($zone['eta'] ?? '')),
+            ])
             ->values()
             ->all();
     }
@@ -34,6 +38,25 @@ class CheckoutOptions
     public function defaultCharge(): float
     {
         return max(0, (float) Setting::get('shipping_default_charge', 110));
+    }
+
+    /** Delivery time shown for "Other" areas, e.g. "3-5 days". Empty when not set. */
+    public function defaultEta(): string
+    {
+        return trim((string) Setting::get('shipping_default_eta', ''));
+    }
+
+    /**
+     * Zone name => charge and delivery estimate, with "Other" last.
+     *
+     * @return array<string, array{charge: float, eta: string}>
+     */
+    public function deliveryOptions(): array
+    {
+        return collect($this->zones())
+            ->mapWithKeys(fn (array $zone) => [$zone['name'] => ['charge' => $zone['charge'], 'eta' => $zone['eta']]])
+            ->put(self::OTHER_ZONE, ['charge' => $this->defaultCharge(), 'eta' => $this->defaultEta()])
+            ->all();
     }
 
     public function freeShippingThreshold(): ?float

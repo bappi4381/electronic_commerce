@@ -27,7 +27,7 @@
     $icon = $product->relationLoaded('category') ? Storefront::categoryIcon($product->category) : 'bi-box-seam';
     $url = route('products.show', $product->id);
     $inWishlist = in_array($product->id, $wishlistIds ?? [], true);
-    $soldPercent = $sold > 0 && $stock !== null ? (int) round($sold / ($sold + $stock) * 100) : null;
+    $soldPercent = $sold !== null && $stock !== null && $sold + $stock > 0 ? (int) round($sold / ($sold + $stock) * 100) : null;
     $rail = $variant === 'rail';
 @endphp
 
@@ -83,9 +83,9 @@
         @if($soldPercent !== null)
             <div class="mt-2">
                 <div class="h-1.5 overflow-hidden rounded-full bg-sale-soft" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $soldPercent }}" aria-label="{{ __(':count sold', ['count' => $sold]) }}">
-                    <div class="h-full rounded-full bg-sale" style="width: {{ max(6, $soldPercent) }}%"></div>
+                    <div class="h-full rounded-full bg-sale" style="width: {{ $sold > 0 ? max(6, $soldPercent) : 0 }}%"></div>
                 </div>
-                <p class="mt-1 text-[11px] font-medium text-slate-500">{{ __(':count sold', ['count' => localized_number($sold)]) }}</p>
+                <p class="mt-1 text-[11px] font-medium text-slate-500">{{ $sold > 0 ? __(':count sold', ['count' => localized_number($sold)]) : __('Be the first to buy') }}</p>
             </div>
         @elseif($lowStock)
             <p class="mt-1 text-[11px] font-semibold text-[var(--sf-warning)]">{{ __('Only :count left', ['count' => localized_number($stock)]) }}</p>

@@ -6,6 +6,8 @@ use App\Enums\OrderStatus;
 use App\Exceptions\CourierException;
 use App\Models\Order;
 use App\Models\OrderCourier;
+use App\Support\BdPhone;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -13,16 +15,18 @@ use Illuminate\Support\Facades\Http;
 /**
  * Pathao Courier merchant API (OAuth password grant, Bearer token).
  */
-class PathaoService implements CourierProvider
+class PathaoService implements CourierInterface
 {
-    private const TOKEN_CACHE_KEY = 'pathao.access_token';
+    use LogsCourierCalls;
+
+    public const TOKEN_CACHE_KEY = 'pathao.access_token';
 
     public function createParcel(Order $order, array $options): array
     {
         $storeId = $options['store_id'] ?? config('services.pathao.store_id');
 
         if (!$storeId) {
-            throw new CourierException('Pathao store is not configured. Set PATHAO_STORE_ID.');
+            throw new CourierException('Pathao store is not configured. Add the store ID in Settings › Courier.');
         }
 
         $payload = array_filter([
@@ -43,7 +47,7 @@ class PathaoService implements CourierProvider
             'item_description'    => mb_substr($order->orderItems->map(fn ($i) => ($i->product?->name ?? 'Item') . ' x' . $i->quantity)->implode(', '), 0, 250),
         ], fn ($value) => $value !== null && $value !== '');
 
-        $data = $this->request('post', '/aladdin/api/v1/orders', $payload, 'create the parcel');
+        $data = $this->request('post', '/aladdin/api/v1/orders', $payload, 'create the parcel', orderId: $order->id, logAction: 'create_parcel');
         $parcel = $data['data'] ?? [];
 
         if (empty($parcel['consignment_id'])) {
@@ -53,28 +57,40 @@ class PathaoService implements CourierProvider
         return [
             'consignment_id'  => (string) $parcel['consignment_id'],
             'tracking_code'   => (string) $parcel['consignment_id'],
-            'status'          => (string) ($parcel['order_status'] ?? 'Pending'),
+            'status'          => CourierStatus::normalize($parcel['order_status'] ?? 'Pending'),
             'shipping_charge' => (float) ($parcel['delivery_fee'] ?? 0),
             'response'        => $data,
         ];
     }
 
-    public function fetchStatus(OrderCourier $parcel): string
+    public function getStatus(OrderCourier $parcel): string
     {
-        $data = $this->request('get', '/aladdin/api/v1/orders/' . urlencode($parcel->consignment_id) . '/info', [], 'fetch the parcel status');
+        $data = $this->request('get', '/aladdin/api/v1/orders/' . urlencode($parcel->consignment_id) . '/info', [], 'fetch the parcel status', orderId: $parcel->order_id, logAction: 'status_check');
         $status = $data['data']['order_status'] ?? null;
 
         if (!$status) {
             throw new CourierException('Pathao did not return an order status.');
         }
 
-        return (string) $status;
+        return CourierStatus::normalize($status);
+    }
+
+    public function configured(): bool
+    {
+        return collect(['client_id', 'client_secret', 'username', 'password', 'store_id'])
+            ->every(fn ($key) => filled(config("services.pathao.{$key}")));
+    }
+
+    /** Pathao's merchant API has no balance endpoint. */
+    public function getBalance(): ?float
+    {
+        return null;
     }
 
     public function orderStatusFor(string $courierStatus): ?OrderStatus
     {
-        return match (strtolower(str_replace(['_', '-'], ' ', $courierStatus))) {
-            'delivered', 'partial delivery' => OrderStatus::Delivered,
+        return match (CourierStatus::normalize($courierStatus)) {
+            'delivered', 'partial_delivery' => OrderStatus::Delivered,
             'returned', 'return'            => OrderStatus::Returned,
             default                         => null,
         };
@@ -96,22 +112,40 @@ class PathaoService implements CourierProvider
         return Cache::remember("pathao.zones.{$cityId}", now()->addDay(), fn () => $this->request('get', "/aladdin/api/v1/cities/{$cityId}/zone-list", [], 'load zones')['data']['data'] ?? []);
     }
 
-    private function request(string $method, string $path, array $payload, string $action, bool $retried = false): array
+    private function request(string $method, string $path, array $payload, string $action, bool $retried = false, ?int $orderId = null, ?string $logAction = null): array
     {
-        $response = Http::baseUrl($this->baseUrl())
-            ->withToken($this->token())
-            ->acceptJson()
-            ->asJson()
-            ->timeout(30)
-            ->{$method}($path, $payload);
+        try {
+            $response = Http::baseUrl($this->baseUrl())
+                ->withToken($this->token())
+                ->acceptJson()
+                ->asJson()
+                ->timeout($this->timeout)
+                ->connectTimeout(10)
+                ->{$method}($path, $payload);
+        } catch (ConnectionException $e) {
+            $message = "Pathao did not answer within {$this->timeout} seconds while trying to {$action}. Please try again.";
+            $logAction && $this->logCall($orderId, $logAction, $payload, null, $message);
+
+            throw new CourierException($message);
+        }
 
         if ($response->status() === 401 && !$retried) {
             Cache::forget(self::TOKEN_CACHE_KEY);
 
-            return $this->request($method, $path, $payload, $action, true);
+            return $this->request($method, $path, $payload, $action, true, $orderId, $logAction);
         }
 
-        return $this->decode($response, $action);
+        try {
+            $data = $this->decode($response, $action);
+        } catch (CourierException $e) {
+            $logAction && $this->logCall($orderId, $logAction, $payload, $response, $e->getMessage());
+
+            throw $e;
+        }
+
+        $logAction && $this->logCall($orderId, $logAction, $payload, $response);
+
+        return $data;
     }
 
     private function token(): string
@@ -123,17 +157,21 @@ class PathaoService implements CourierProvider
 
         foreach (['client_id', 'client_secret', 'username', 'password'] as $key) {
             if (!config("services.pathao.{$key}")) {
-                throw new CourierException('Pathao is not configured. Set PATHAO_CLIENT_ID, PATHAO_CLIENT_SECRET, PATHAO_USERNAME and PATHAO_PASSWORD.');
+                throw new CourierException('Pathao is not configured. Add the client ID, client secret, login email and password in Settings › Courier.');
             }
         }
 
-        $response = Http::baseUrl($this->baseUrl())->acceptJson()->asJson()->timeout(30)->post('/aladdin/api/v1/issue-token', [
-            'client_id'     => config('services.pathao.client_id'),
-            'client_secret' => config('services.pathao.client_secret'),
-            'username'      => config('services.pathao.username'),
-            'password'      => config('services.pathao.password'),
-            'grant_type'    => 'password',
-        ]);
+        try {
+            $response = Http::baseUrl($this->baseUrl())->acceptJson()->asJson()->timeout($this->timeout)->connectTimeout(10)->post('/aladdin/api/v1/issue-token', [
+                'client_id'     => config('services.pathao.client_id'),
+                'client_secret' => config('services.pathao.client_secret'),
+                'username'      => config('services.pathao.username'),
+                'password'      => config('services.pathao.password'),
+                'grant_type'    => 'password',
+            ]);
+        } catch (ConnectionException) {
+            throw new CourierException("Pathao did not answer within {$this->timeout} seconds while signing in. Please try again.");
+        }
 
         $data = $this->decode($response, 'authenticate');
 
@@ -169,13 +207,7 @@ class PathaoService implements CourierProvider
 
     private function phone(Order $order): string
     {
-        $phone = preg_replace('/\D+/', '', (string) $order->customerDisplayPhone());
-        $phone = str_starts_with($phone, '880') ? substr($phone, 2) : $phone;
-
-        if (strlen($phone) !== 11) {
-            throw new CourierException('Pathao needs an 11-digit recipient phone number; this order has "' . $order->customerDisplayPhone() . '".');
-        }
-
-        return $phone;
+        return BdPhone::normalize($order->customerDisplayPhone())
+            ?? throw new CourierException('Recipient phone "' . ($order->customerDisplayPhone() ?: 'missing') . '" is not a valid Bangladeshi mobile number (01XXXXXXXXX). Fix it in "Edit order" and send again.');
     }
 }

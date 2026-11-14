@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Coupon;
 use App\Models\Product;
 use App\Models\Setting;
+use App\Services\FlashSale;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -38,29 +39,74 @@ class CouponController extends Controller
         $request->validate([
             'discount' => 'required|numeric|min:0|max:100',
             'is_flash_deal' => 'nullable|boolean',
+            'flash_discount' => 'nullable|numeric|min:0.01|max:100',
         ]);
 
-        $product->update([
-            'discount' => $request->discount,
-            'is_flash_deal' => $request->has('is_flash_deal'),
-            'discounted_price' => $product->price - ($product->price * ($request->discount / 100))
-        ]);
+        $flash = $request->boolean('is_flash_deal');
+        $productName = is_array($product->name) ? ($product->name[app()->getLocale()] ?? $product->name['en'] ?? 'Product') : $product->getTranslation('name', 'en');
 
-        $productName = is_array($product->name) ? ($product->name[app()->getLocale()] ?? $product->name['en'] ?? 'Product') : $product->name;
-        return back()->with('success', 'Discount updated for ' . $productName);
+        // A separate flash % keeps the regular discount safe when the campaign ends.
+        if ($flash && !$request->filled('flash_discount')) {
+            return back()->with('error', "Enter the flash discount % for {$productName}.");
+        }
+
+        // While a flash discount is applied, the regular discount waits in pre_flash_discount.
+        if ($product->pre_flash_discount !== null) {
+            $product->pre_flash_discount = $request->discount;
+        } else {
+            $product->applyDiscount((float) $request->discount);
+        }
+        $product->is_flash_deal = $flash;
+        $product->flash_discount = $flash && $request->filled('flash_discount') ? $request->flash_discount : null;
+        $product->save();
+
+        $flashSale = app(FlashSale::class);
+        $flashSale->sync();
+
+        $note = match (true) {
+            !$flash => '',
+            $flashSale->status() === FlashSale::STATUS_ENDED => ' The campaign has ended, so the flash price is not live: set new start and end times above.',
+            $flashSale->status() === FlashSale::STATUS_SCHEDULED => ' The flash price goes live when the campaign starts.',
+            default => ' The flash price is live now.',
+        };
+
+        return back()->with('success', 'Discount updated for ' . $productName . '.' . $note);
     }
 
-    public function updateFlashDeal(Request $request)
+    public function updateFlashDeal(Request $request, FlashSale $flashSale)
     {
-        $data = $request->validate([
-            'flash_deal_title' => 'required|string|max:255',
-            'flash_deal_end_time' => 'nullable|date',
-        ]);
+        $data = $request->validate(self::flashDealRules());
 
         Setting::set('flash_deal_title', $data['flash_deal_title']);
+        Setting::set('flash_deal_start_time', $data['flash_deal_start_time'] ?? null);
         Setting::set('flash_deal_end_time', $data['flash_deal_end_time'] ?? null);
+        Setting::set('flash_deal_auto_end', $request->boolean('flash_deal_auto_end') ? '1' : '0');
+        $flashSale->sync();
 
         return back()->with('success', 'Flash deal schedule updated.');
+    }
+
+    /** "End campaign now": restore prices and take every product out of the campaign. */
+    public function endFlashDeal(Request $request, FlashSale $flashSale)
+    {
+        $closed = $flashSale->end($request->boolean('remove_discounts', true));
+
+        activity('marketing')->causedBy(auth('admin')->user())
+            ->withProperties(['products' => $closed, 'remove_discounts' => $request->boolean('remove_discounts', true)])
+            ->log('Ended the flash deal campaign');
+
+        return back()->with('success', "Flash deal ended. {$closed} " . \Illuminate\Support\Str::plural('product', $closed) . ' left the campaign and regular prices are back.');
+    }
+
+    /** Shared with Settings › Campaigns. */
+    public static function flashDealRules(bool $titleRequired = true): array
+    {
+        return [
+            'flash_deal_title' => [$titleRequired ? 'required' : 'nullable', 'string', 'max:255'],
+            'flash_deal_start_time' => 'nullable|date',
+            'flash_deal_end_time' => 'nullable|date|after:flash_deal_start_time',
+            'flash_deal_auto_end' => 'nullable|boolean',
+        ];
     }
 
     public function create()

@@ -23,7 +23,7 @@ class TrackingController extends Controller
         $phone = trim($request->phone);
 
         $order = Order::with(['orderCourier', 'statusHistories', 'courierLogs' => function($q) {
-            $q->orderBy('created_at', 'desc');
+            $q->customerVisible()->orderBy('created_at', 'desc');
         }, 'user'])
         ->where('order_id', trim($request->order_id))
         ->where(function ($query) use ($phone) {

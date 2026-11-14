@@ -19,7 +19,32 @@ class Order extends Model
     protected $casts = [
         'stock_released_at' => 'datetime',
         'discount_amount' => 'decimal:2',
+        'marketing_opt_in' => 'boolean',
+        'risk_flags' => 'array',
+        'risk_checked_at' => 'datetime',
+        'risk_reviewed_at' => 'datetime',
+        'advance_amount' => 'decimal:2',
     ];
+
+    public function riskLevelEnum(): ?\App\Enums\RiskLevel
+    {
+        return \App\Enums\RiskLevel::tryFrom((string) $this->risk_level);
+    }
+
+    public function riskLogs()
+    {
+        return $this->hasMany(CustomerRiskLog::class)->latest('checked_at')->latest('id');
+    }
+
+    public function riskReviewer()
+    {
+        return $this->belongsTo(Admin::class, 'risk_reviewed_by');
+    }
+
+    public function hasRiskFlag(string $flag): bool
+    {
+        return in_array($flag, $this->risk_flags ?? [], true);
+    }
 
     /** Unambiguous characters (no 0/O, 1/I/L) so IDs are easy to read back over the phone. */
     private const ID_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -138,6 +163,13 @@ class Order extends Model
                 $order->order_id = static::generateOrderId();
             }
         });
+
+        // Fraud checks and duplicate detection look orders up by the normalised number.
+        static::saving(function ($order) {
+            if ($order->isDirty('phone') || !$order->exists) {
+                $order->phone_normalized = \App\Support\BdPhone::normalize($order->phone) ?? $order->phone_normalized;
+            }
+        });
     }
 
     public function getActivitylogOptions(): LogOptions
@@ -146,7 +178,8 @@ class Order extends Model
             ->useLogName('orders')
             ->logOnly([
                 'status', 'payment_status', 'total_price', 'delivery_charge', 'discount_amount',
-                'shipping_address', 'city', 'region', 'phone', 'alt_phone', 'order_notes',
+                'shipping_address', 'city', 'region', 'postal_code', 'phone', 'alt_phone', 'order_notes',
+                'risk_level', 'advance_amount',
             ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();

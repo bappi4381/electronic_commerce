@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin\Product;
 
 use App\Http\Controllers\Controller;
+use App\Models\AttributeValue;
 use App\Models\Brand;
 use App\Models\Product;
 use App\Models\ProductImage;
@@ -84,19 +85,20 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate($this->rules() + [
-            'description_en' => 'nullable|string',
-            'description_bn' => 'nullable|string',
-            'model'       => 'nullable|string|max:100',
-            'low_stock_threshold' => 'nullable|integer|min:0',
-        ]);
+        $request->validate($this->rules());
+        $this->assertDistinctOptions($request->input('variants', []));
 
         DB::transaction(function () use ($request) {
-            $product = Product::create($this->productAttributes($request));
+            $attributes = $this->productAttributes($request);
+            // Flagged from this form: its discount doubles as the flash discount, so the campaign end keeps it.
+            $attributes['flash_discount'] = $attributes['is_flash_deal'] && $attributes['discount'] > 0 ? $attributes['discount'] : null;
+            $product = Product::create($attributes);
 
             $this->storeImages($request, $product);
             $this->syncVariants($product, $request->input('variants', []));
         });
+
+        app(\App\Services\FlashSale::class)->sync();
 
         return redirect()->route('admin.products.index')->with('success', 'Product created successfully with variants!');
     }
@@ -121,13 +123,31 @@ class ProductController extends Controller
     public function update(Request $request, Product $product)
     {
         $request->validate($this->rules());
+        $this->assertDistinctOptions($request->input('variants', []));
 
         DB::transaction(function () use ($request, $product) {
-            $product->update($this->productAttributes($request));
+            $attributes = $this->productAttributes($request);
+
+            if (!$attributes['is_flash_deal']) {
+                $attributes['flash_discount'] = null;
+            } elseif ($product->flash_discount === null && $attributes['discount'] > 0) {
+                $attributes['flash_discount'] = $attributes['discount'];
+            }
+
+            // A flash discount is live: the form's discount is the regular one, applied again when the campaign stops.
+            if ($product->pre_flash_discount !== null) {
+                $attributes['pre_flash_discount'] = $attributes['discount'];
+                unset($attributes['discount']);
+                $attributes['discounted_price'] = round($attributes['price'] - $attributes['price'] * (float) $product->discount / 100, 2);
+            }
+
+            $product->update($attributes);
 
             $this->storeImages($request, $product);
             $this->syncVariants($product, $request->input('variants', []));
         });
+
+        app(\App\Services\FlashSale::class)->sync();
 
         return redirect()->route('admin.products.index')->with('success', 'Product updated successfully!');
     }
@@ -169,7 +189,13 @@ class ProductController extends Controller
             'brand_id'    => 'nullable|exists:brands,id',
             'price'       => 'required|numeric|min:0',
             'discount'    => 'nullable|numeric|min:0|max:100',
-            'video_link'  => 'nullable|url',
+            'description_en' => 'nullable|string|max:20000',
+            'description_bn' => 'nullable|string|max:20000',
+            'model'       => 'nullable|string|max:100',
+            'warranty_period' => 'nullable|string|max:100',
+            'low_stock_threshold' => 'nullable|integer|min:0|max:100000',
+            'is_flash_deal' => 'nullable|boolean',
+            'video_link'  => 'nullable|url|max:500',
             'images'      => 'nullable|array',
             'images.*'    => 'image|mimes:jpg,jpeg,png,webp|max:2048',
             'variants'                        => 'nullable|array',
@@ -199,7 +225,7 @@ class ProductController extends Controller
             'model'       => $request->model,
             'warranty_period' => $request->warranty_period,
             'video_link'  => $request->video_link,
-            'low_stock_threshold' => $request->input('low_stock_threshold', 5),
+            'low_stock_threshold' => $request->filled('low_stock_threshold') ? (int) $request->input('low_stock_threshold') : 5,
             'is_flash_deal' => $request->boolean('is_flash_deal'),
         ];
     }
@@ -276,6 +302,40 @@ class ProductController extends Controller
                 $removed->attributeValues()->detach();
                 $removed->delete();
             }
+        }
+    }
+
+    /**
+     * Each variant needs its own combination of options (one value per attribute), otherwise customers
+     * cannot pick between them and stock is split across identical rows.
+     */
+    private function assertDistinctOptions(array $rows): void
+    {
+        $attributeOf = AttributeValue::whereIn('id', collect($rows)->pluck('attribute_value_ids')->flatten()->filter()->unique())
+            ->with('attribute:id,name')
+            ->get()
+            ->keyBy('id');
+        $seen = [];
+
+        foreach ($rows as $index => $row) {
+            $ids = collect($row['attribute_value_ids'] ?? [])->map(fn ($id) => (int) $id)->unique()->sort()->values();
+
+            $perAttribute = $ids->groupBy(fn ($id) => $attributeOf->get($id)?->attribute_id);
+            if ($clash = $perAttribute->first(fn ($group) => $group->count() > 1)) {
+                throw ValidationException::withMessages([
+                    "variants.{$index}.attribute_value_ids" => 'Pick only one ' . ($attributeOf->get($clash->first())?->attribute?->name ?? 'value') . ' per variant.',
+                ]);
+            }
+
+            $key = $ids->implode(',');
+            if (isset($seen[$key])) {
+                throw ValidationException::withMessages([
+                    "variants.{$index}.attribute_value_ids" => $key === ''
+                        ? 'Variants ' . ($seen[$key] + 1) . ' and ' . ($index + 1) . ' both have no options. Give each variant different options.'
+                        : 'Variant ' . ($index + 1) . ' has the same options as variant ' . ($seen[$key] + 1) . '.',
+                ]);
+            }
+            $seen[$key] = $index;
         }
     }
 

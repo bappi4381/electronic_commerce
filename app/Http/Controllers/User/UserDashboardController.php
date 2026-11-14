@@ -18,16 +18,30 @@ use Illuminate\Http\Request;
 class UserDashboardController extends Controller
 {
     use AuthorizesRequests;
+    /** Order list tabs: query value => statuses it covers (null = every order). */
+    private const ORDER_TABS = [
+        'all' => null,
+        'active' => [OrderStatus::Pending, OrderStatus::OnHold, OrderStatus::Confirmed, OrderStatus::Processing, OrderStatus::Shipped],
+        'delivered' => [OrderStatus::Delivered],
+        'closed' => [OrderStatus::Cancelled, OrderStatus::Returned, OrderStatus::Refunded],
+    ];
+
+    private const ORDER_CARD_RELATIONS = ['orderItems.product.images'];
+
     public function userDashboard() {
         $user = Auth::user();
+        $active = array_map(fn (OrderStatus $s) => $s->value, self::ORDER_TABS['active']);
+
         $stats = [
             'total_orders' => $user->orders()->count(),
-            'pending_orders' => $user->orders()->where('status', 'pending')->count(),
-            'delivered_orders' => $user->orders()->where('status', 'delivered')->count(),
+            'active_orders' => $user->orders()->whereIn('status', $active)->count(),
+            'delivered_orders' => $user->orders()->where('status', OrderStatus::Delivered->value)->count(),
             'wishlist_count' => $user->wishlist()->count(),
         ];
-        $recentOrders = $user->orders()->latest()->take(5)->get();
-        return view('user.dashboard.index', compact('stats', 'recentOrders'));
+        $recentOrders = $user->orders()->with(self::ORDER_CARD_RELATIONS)->latest()->take(3)->get();
+        $activeOrder = $user->orders()->whereIn('status', $active)->with(['statusHistories', 'orderItems'])->latest()->first();
+
+        return view('user.dashboard.index', compact('user', 'stats', 'recentOrders', 'activeOrder'));
     }
 
     public function profileIndex() {
@@ -85,19 +99,33 @@ class UserDashboardController extends Controller
         return redirect()->route('user.profile')->with('success', 'Profile updated successfully.');
     }
 
-    public function userOrders() {
-       $user = Auth::user();
+    public function userOrders(Request $request) {
+        $user = Auth::user();
+        $tab = array_key_exists($request->query('status'), self::ORDER_TABS) ? $request->query('status') : 'all';
+        $statusesOf = fn (string $key) => self::ORDER_TABS[$key] ? array_map(fn (OrderStatus $s) => $s->value, self::ORDER_TABS[$key]) : null;
 
-        // Fetch orders and make sure it returns a Collection
-        $orders = $user->orders()->latest()->paginate(10); // or ->get() for non-paginated
+        $orders = $user->orders()
+            ->when($statusesOf($tab), fn ($q, $statuses) => $q->whereIn('status', $statuses))
+            ->with(self::ORDER_CARD_RELATIONS)
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
 
-        return view('user.orders.index', compact('orders'));
+        $counts = collect(self::ORDER_TABS)->keys()->mapWithKeys(fn ($key) => [
+            $key => $user->orders()->when($statusesOf($key), fn ($q, $statuses) => $q->whereIn('status', $statuses))->count(),
+        ]);
+
+        return view('user.orders.index', compact('orders', 'tab', 'counts'));
     }
 
     public function userOrderDetails(Order $order) {
         $this->authorize('view', $order); // ensure user owns order
-        $order->load('orderItems.product', 'orderItems.variant.attributeValues.attribute', 'statusHistories', 'orderCourier');
-        return view('user.orders.details', compact('order'));
+        $order->load(['orderItems.product.images', 'orderItems.variant.attributeValues.attribute', 'statusHistories', 'orderCourier', 'courierLogs' => fn ($q) => $q->customerVisible()]);
+
+        $checkout = app(\App\Services\CheckoutOptions::class);
+        $deliveryEta = $checkout->deliveryOptions()[$order->city]['eta'] ?? $checkout->defaultEta();
+
+        return view('user.orders.details', compact('order', 'deliveryEta'));
     }
 
     public function cancelOrder(Order $order, OrderStatusService $orderStatus)
@@ -119,15 +147,25 @@ class UserDashboardController extends Controller
     }
 
     public function trackOrderForm() {
-        return view('user.orders.track');
+        return view('user.orders.track', ['activeOrders' => $this->activeOrdersForTracking()]);
     }
 
     public function trackOrder(Request $request) {
         $request->validate(['order_id' => 'required|string']);
-        $order = Auth::user()->orders()->with('statusHistories', 'orderCourier')->where('order_id', $request->order_id)->first();
-        return $order 
-            ? view('user.orders.track', compact('order'))
-            : redirect()->back()->with('error', 'Order not found!');
+        $order = Auth::user()->orders()->with(['statusHistories', 'orderCourier', 'courierLogs' => fn ($q) => $q->customerVisible()])->where('order_id', trim($request->order_id))->first();
+        return $order
+            ? view('user.orders.track', ['order' => $order, 'activeOrders' => $this->activeOrdersForTracking()])
+            : redirect()->back()->withInput()->with('error', 'Order not found!');
+    }
+
+    private function activeOrdersForTracking()
+    {
+        return Auth::user()->orders()
+            ->whereIn('status', array_map(fn (OrderStatus $s) => $s->value, self::ORDER_TABS['active']))
+            ->with('orderItems')
+            ->latest()
+            ->take(5)
+            ->get();
     }
 
     public function userMessages() {

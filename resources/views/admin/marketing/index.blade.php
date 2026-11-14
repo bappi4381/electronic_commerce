@@ -5,8 +5,7 @@
 @section('content')
 @php
     $flashTitle = \App\Models\Setting::get('flash_deal_title', 'Flash Deals');
-    $flashEnd = \App\Models\Setting::get('flash_deal_end_time');
-    $flashEndAt = $flashEnd ? \Illuminate\Support\Carbon::parse($flashEnd) : null;
+    $flashEndAt = app(\App\Services\FlashSale::class)->endsAt();
     $liveCoupons = $coupons->filter(fn ($c) => $c->status
         && !($c->ends_at && $c->ends_at->isPast())
         && !($c->starts_at && $c->starts_at->isFuture())
@@ -30,20 +29,21 @@
                        :hint="$flashEndAt ? ($flashEndAt->isPast() ? 'Ended ' . $flashEndAt->diffForHumans() : 'In ' . $flashEndAt->diffForHumans(null, true)) : null" icon="bi-lightning-charge" />
 </div>
 
-<x-admin.card title="Flash deal campaign" description="Products join the campaign when they have a discount above 0% and the flash deal box is ticked below." class="mb-6">
-    <form method="POST" action="{{ route('marketing.flashDeal') }}" class="flex flex-col gap-4 md:flex-row md:items-end">
+<x-admin.card title="Flash deal campaign" description="Tick “Flash” on a product below and give it a flash discount. It applies only between the start and end time; regular prices come back afterwards." class="mb-6">
+    <form method="POST" action="{{ route('marketing.flashDeal') }}">
         @csrf
-        <div class="flex-1">
-            <x-admin.input name="flash_deal_title" label="Campaign title" required :value="$flashTitle" placeholder="e.g. Eid Flash Sale" :disabled="!$canEdit" />
-        </div>
-        <div class="flex-1">
-            <x-admin.input name="flash_deal_end_time" type="datetime-local" label="Ends at" :value="$flashEndAt?->format('Y-m-d\TH:i')" :disabled="!$canEdit" />
-        </div>
+        @include('admin.marketing.partials.flash-campaign', ['canEdit' => $canEdit, 'titleRequired' => true])
         @if($canEdit)
-            <x-admin.button type="submit" icon="bi-calendar-check">Save schedule</x-admin.button>
+            <div class="mt-5 flex justify-end">
+                <x-admin.button type="submit" icon="bi-calendar-check">Save schedule</x-admin.button>
+            </div>
         @endif
     </form>
 </x-admin.card>
+@if($canEdit)
+    <form id="flash-end-form" method="POST" action="{{ route('marketing.flashDeal.end') }}" class="hidden"
+          data-confirm="Flash prices switch back to regular prices and every product leaves the campaign." data-confirm-title="End the flash deal now?" data-confirm-button="End campaign">@csrf</form>
+@endif
 
 <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
     {{-- Coupons --}}
@@ -118,7 +118,7 @@
         <x-admin.data-table :paginator="$products" search="search" search-placeholder="Search products…"
             :columns="[
                 ['label' => 'Product', 'sortable' => true],
-                ['label' => 'Discount', 'align' => 'right'],
+                ['label' => 'Regular % · Flash %', 'align' => 'right'],
             ]"
             empty-title="No products" empty-icon="bi-box-seam">
             @foreach($products as $product)
@@ -150,24 +150,32 @@
                     </td>
                     <td data-label="Discount" class="whitespace-nowrap text-right">
                         @if($canEdit)
-                            <form method="POST" action="{{ route('marketing.updateDiscount', $product) }}" class="inline-flex items-center gap-3">
+                            <form method="POST" action="{{ route('marketing.updateDiscount', $product) }}" class="inline-flex items-center gap-3"
+                                  x-data="{ flash: @js((bool) $product->is_flash_deal) }">
                                 @csrf
+                                <div class="relative w-20">
+                                    <label for="discount-{{ $product->id }}" class="sr-only">Regular discount for {{ $productName }}</label>
+                                    <input id="discount-{{ $product->id }}" type="number" name="discount" min="0" max="100" step="0.01" value="{{ $product->regularDiscount() }}" title="Regular discount"
+                                           class="block h-9 w-full rounded-lg border border-gray-300 bg-white pl-3 pr-7 text-right text-sm tabular-nums shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-gray-700 dark:bg-gray-900">
+                                    <span class="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-xs text-gray-400">%</span>
+                                </div>
                                 <label class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-300">
-                                    <input type="checkbox" name="is_flash_deal" value="1" @checked($product->is_flash_deal)
+                                    <input type="checkbox" name="is_flash_deal" value="1" x-model="flash"
                                            class="size-4 rounded border-gray-300 text-brand-600 focus:ring-2 focus:ring-brand-500/40 dark:border-gray-600 dark:bg-gray-800">
                                     Flash
                                 </label>
-                                <div class="relative w-20">
-                                    <label for="discount-{{ $product->id }}" class="sr-only">Discount for {{ $productName }}</label>
-                                    <input id="discount-{{ $product->id }}" type="number" name="discount" min="0" max="100" step="0.01" value="{{ (float) $product->discount }}"
-                                           class="block h-9 w-full rounded-lg border border-gray-300 bg-white pl-3 pr-7 text-right text-sm tabular-nums shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-gray-700 dark:bg-gray-900">
-                                    <span class="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-xs text-gray-400">%</span>
+                                <div class="relative w-20" x-show="flash" x-cloak>
+                                    <label for="flash-discount-{{ $product->id }}" class="sr-only">Flash discount for {{ $productName }}</label>
+                                    <input id="flash-discount-{{ $product->id }}" type="number" name="flash_discount" min="0" max="100" step="0.01" value="{{ $product->flash_discount !== null ? (float) $product->flash_discount : ($product->regularDiscount() ?: '') }}"
+                                           placeholder="Flash" title="Flash discount (applies only while the campaign runs)" :required="flash"
+                                           class="block h-9 w-full rounded-lg border border-indigo-300 bg-indigo-50/50 pl-3 pr-7 text-right text-sm tabular-nums shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-indigo-500/40 dark:bg-gray-900">
+                                    <span class="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-xs text-indigo-400">%</span>
                                 </div>
                                 <x-admin.button type="submit" variant="secondary" size="sm" icon="bi-check-lg" aria-label="Save discount for {{ $productName }}" />
                             </form>
                         @else
-                            <span class="tabular-nums">{{ (float) $product->discount }}%</span>
-                            @if($product->is_flash_deal)<x-admin.status-badge tone="indigo" :dot="false" label="Flash" class="ml-1" />@endif
+                            <span class="tabular-nums">{{ $product->regularDiscount() }}%</span>
+                            @if($product->is_flash_deal)<x-admin.status-badge tone="indigo" :dot="false" :label="'Flash ' . (float) ($product->flash_discount ?? $product->discount) . '%'" class="ml-1" />@endif
                         @endif
                     </td>
                 </tr>

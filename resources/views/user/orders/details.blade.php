@@ -1,228 +1,204 @@
 @extends('user.layout')
 
-@section('title', 'Order Details')
+@use('App\Support\Storefront')
 
-@section('content')
-<div class="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-    <!-- Header Section -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div class="flex items-center gap-6">
-            <a href="{{ route('user.orders.index') }}" class="w-12 h-12 bg-white border border-slate-100 rounded-2xl flex items-center justify-center text-slate-400 hover:text-primary hover:border-primary/20 transition-all shadow-sm group">
-                <i class="bi bi-arrow-left group-hover:-translate-x-1 transition-transform"></i>
+@section('title', __('Order #:id', ['id' => $order->order_id]))
+
+@section('account')
+@php
+    $fmt = fn ($amount) => money($amount, null, fmod((float) $amount, 1.0) != 0.0 ? 2 : 0);
+    $status = $order->statusEnum()?->customerFacing();
+    $paid = (bool) $order->paymentStatusEnum()?->isCollected();
+    $isCod = $order->payment_method === 'cod';
+    $canCancel = $status?->holdsStock() && !$paid;
+    $courier = $order->orderCourier?->isBooked() ? $order->orderCourier : null;
+    $card = 'rounded-[var(--sf-radius-lg)] border border-[var(--sf-border)] bg-white p-5 md:p-6';
+    $label = 'text-xs font-medium uppercase tracking-wider text-slate-500';
+    $units = (int) $order->orderItems->sum('quantity');
+    $needsAdvance = $order->advance_amount > 0 && $isCod && !$paid && $status?->holdsStock();
+    $timeline = $order->statusHistories->reject(fn ($h) => $h->isRiskReview())->map(fn ($h) => [
+        'at' => $h->created_at,
+        'title' => __($h->toStatus()?->label() ?? ucfirst($h->to_status)),
+        'desc' => $h->note ?: __($h->toStatus()?->customerMessage() ?? ''),
+        'icon' => $h->toStatus()?->icon() ?? 'bi-dot',
+    ])->concat($order->courierLogs->map(fn ($log) => [
+        'at' => $log->created_at,
+        'title' => ($courier?->courierLabel() ?? __('Courier')) . ': ' . ucfirst(str_replace('_', ' ', $log->status_to)),
+        'desc' => $log->remarks,
+        'icon' => 'bi-truck',
+    ]))->sortByDesc('at')->values();
+@endphp
+
+<div class="space-y-5">
+    <a href="{{ route('user.orders.index') }}" class="inline-flex min-h-10 items-center gap-1.5 rounded text-sm font-medium text-slate-600 hover:text-brand-700 sf-focus">
+        <i class="bi bi-arrow-left" aria-hidden="true"></i> {{ __('Back to orders') }}
+    </a>
+
+    <header class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+            <div class="flex flex-wrap items-center gap-3">
+                <h1 class="font-display text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">{{ __('Order') }} <span class="font-mono">#{{ $order->order_id }}</span></h1>
+                <span class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold {{ \App\Enums\OrderStatus::badge($order->status) }}">
+                    <i class="bi {{ $status?->icon() ?? 'bi-circle' }}" aria-hidden="true"></i> {{ __($status?->label() ?? ucfirst($order->status)) }}
+                </span>
+            </div>
+            <p class="mt-1 text-sm text-slate-500">{{ __('Placed on :date', ['date' => $order->created_at->format('d M Y, h:i A')]) }} · {{ trans_choice(':count item|:count items', $units, ['count' => localized_number($units)]) }}</p>
+        </div>
+        <div class="flex w-full flex-wrap gap-2 sm:w-auto">
+            <a href="{{ route('orders.invoice.download', $order->id) }}" class="flex h-10 flex-1 items-center justify-center gap-2 rounded-[var(--sf-radius-sm)] border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 hover:border-brand-600 hover:text-brand-700 sm:flex-none sf-focus">
+                <i class="bi bi-download" aria-hidden="true"></i> {{ __('Invoice') }}
             </a>
+            @if($canCancel)
+                <form method="POST" action="{{ route('user.orders.cancel', $order) }}" class="flex-1 sm:flex-none"
+                      x-data @submit="if (!confirm(@js(__('Cancel order #:id? This cannot be undone.', ['id' => $order->order_id])))) $event.preventDefault()">
+                    @csrf @method('PATCH')
+                    <button type="submit" class="flex h-10 w-full items-center justify-center gap-2 rounded-[var(--sf-radius-sm)] border border-rose-200 bg-white px-4 text-sm font-semibold text-rose-700 hover:bg-rose-50 sf-focus">
+                        <i class="bi bi-x-circle" aria-hidden="true"></i> {{ __('Cancel order') }}
+                    </button>
+                </form>
+            @endif
+        </div>
+    </header>
+
+    @if($needsAdvance)
+        <div class="flex gap-3 rounded-[var(--sf-radius)] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="status">
+            <i class="bi bi-wallet2 mt-0.5 text-amber-600" aria-hidden="true"></i>
             <div>
-                <h2 class="text-xl sm:text-3xl font-black text-slate-900 tracking-tighter uppercase">Order #{{ $order->order_id }}</h2>
-                <p class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">Placed on {{ $order->created_at->format('d M, Y \a\t h:i A') }}</p>
+                <p class="font-semibold">{{ __('Advance payment needed') }}</p>
+                <p class="mt-0.5">{{ __('To confirm this cash-on-delivery order, please pay :amount in advance. Our team will call you with the payment details.', ['amount' => $fmt($order->advance_amount)]) }}</p>
             </div>
         </div>
-        
-        <div class="flex items-center gap-4">
-            @php
-                $statusStyles = \App\Enums\OrderStatus::badge($order->status);
-            @endphp
-            <span class="px-6 py-2.5 rounded-2xl border text-[10px] font-black uppercase tracking-widest {{ $statusStyles }} shadow-sm">
-                {{ $order->statusEnum()?->label() ?? $order->status }}
-            </span>
-            <a href="{{ route('orders.invoice.download', $order->id) }}" target="_blank" class="w-12 h-12 bg-white border border-slate-100 rounded-2xl flex items-center justify-center text-slate-400 hover:text-primary hover:border-primary/20 transition-all shadow-sm">
-                <i class="bi bi-printer"></i>
-            </a>
+    @endif
+
+    {{-- Progress --}}
+    <section class="{{ $card }}" aria-labelledby="progress-title">
+        <div class="mb-5 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 id="progress-title" class="text-lg font-semibold text-slate-900">{{ __('Delivery progress') }}</h2>
+            @if($deliveryEta && $status?->holdsStock())
+                <p class="text-sm text-slate-500"><i class="bi bi-truck text-brand-600" aria-hidden="true"></i> {{ __('Usually delivered in :eta', ['eta' => $deliveryEta]) }}</p>
+            @endif
         </div>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <!-- Main Content: Items List -->
-        <div class="lg:col-span-8 space-y-6">
-            <div class="card border-0 shadow-sm overflow-hidden bg-white">
-                <div class="px-8 py-6 border-b border-slate-50 flex items-center justify-between">
-                    <h3 class="text-sm font-black text-slate-900 tracking-widest uppercase flex items-center gap-3">
-                        <i class="bi bi-box-seam text-primary"></i>
-                        Ordered Items
-                    </h3>
-                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ $order->orderItems->count() }} Items</span>
+        <x-store.order-progress :order="$order" />
+        @if($courier)
+            <div class="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[var(--sf-radius)] bg-slate-50 px-4 py-3">
+                <div class="text-sm">
+                    <p class="text-slate-500">{{ __(':courier tracking code', ['courier' => $courier->courierLabel()]) }}</p>
+                    <p class="font-mono font-semibold text-slate-900">{{ $courier->tracking_code ?: $courier->consignment_id }}</p>
                 </div>
-                
-                @if(isset($order->orderItems) && $order->orderItems->count() > 0)
-                    <div class="divide-y divide-slate-50">
-                        @foreach($order->orderItems as $item)
-                            <div class="px-6 py-6 md:px-8 md:py-8 flex flex-col sm:flex-row sm:items-center gap-6 sm:gap-8 group hover:bg-slate-50/30 transition-colors">
-                                <!-- Product Image placeholder -->
-                                <div class="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 rounded-2xl flex-shrink-0 flex items-center justify-center border border-slate-100 overflow-hidden group-hover:scale-105 transition-transform">
-                                    @if($item->product && $item->product->images->first())
-                                        <img src="{{ asset('storage/' . $item->product->images->first()->image) }}" class="w-full h-full object-contain p-2">
-                                    @elseif(isset($item->product->thumbnail))
-                                        <img src="{{ asset($item->product->thumbnail) }}" class="w-full h-full object-cover">
-                                    @else
-                                        <i class="bi bi-image text-slate-200 text-2xl"></i>
-                                    @endif
-                                </div>
-                                
-                                <div class="flex-grow space-y-1">
-                                    <h4 class="text-sm font-black text-slate-900 tracking-tighter uppercase group-hover:text-primary transition-colors leading-tight">
-                                        {{ $item->product->name ?? 'N/A' }}
-                                    </h4>
-                                    @if($item->variant && $item->variant->attributeValues->isNotEmpty())
-                                        <p class="text-[10px] font-bold text-slate-500">{{ $item->variant->attributeValues->map(fn ($v) => $v->attribute?->name . ': ' . $v->value)->implode(' · ') }}</p>
-                                    @endif
-                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                        Qty: <span class="text-slate-900">{{ $item->quantity }}</span>
-                                        @if($item->variant?->sku) · SKU <span class="text-slate-600">{{ $item->variant->sku }}</span> @endif
-                                    </p>
-                                </div>
-                                
-                                <div class="text-left sm:text-right w-full sm:w-auto flex sm:flex-col justify-between sm:justify-start items-center sm:items-end border-t border-slate-50 sm:border-0 pt-4 sm:pt-0 mt-2 sm:mt-0">
-                                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest sm:mb-1">Price</span>
-                                    <div class="text-right">
-                                        <p class="text-sm font-black text-slate-900">tk. {{ number_format($item->price * $item->quantity, 2) }}</p>
-                                        @if($item->quantity > 1)
-                                            <p class="text-[9px] font-medium text-slate-400">tk. {{ number_format($item->price, 2) }} / unit</p>
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                @else
-                    <div class="p-16 text-center text-slate-400 font-bold text-xs uppercase tracking-widest">
-                        No items found for this order.
-                    </div>
+                @if($courier->trackingUrl())
+                    <a href="{{ $courier->trackingUrl() }}" target="_blank" rel="noopener" class="flex h-10 items-center gap-2 rounded-[var(--sf-radius-sm)] bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700 sf-focus">
+                        {{ __('Track parcel') }} <i class="bi bi-box-arrow-up-right text-xs" aria-hidden="true"></i>
+                    </a>
                 @endif
             </div>
+        @endif
+    </section>
 
-            <!-- Delivery Info Card -->
-            <div class="card border-0 shadow-sm p-6 sm:p-10 lg:p-12 bg-white relative overflow-hidden">
-                <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-[100px] -z-10"></div>
-                <h4 class="text-lg font-black text-slate-900 tracking-tighter uppercase mb-8 flex items-center gap-4">
-                    <span class="w-10 h-10 bg-slate-100 text-primary rounded-xl flex items-center justify-center shadow-inner">
-                        <i class="bi bi-truck"></i>
-                    </span>
-                    Shipping Information
-                </h4>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
-                    <div class="space-y-4">
-                        <p class="text-[9px] font-black uppercase text-slate-400 tracking-widest">Delivery Address</p>
-                        <div class="bg-slate-50/50 p-6 rounded-2xl border border-slate-100">
-                            <p class="text-xs font-black text-slate-900 uppercase mb-2">{{ $order->customerDisplayName() }}</p>
-                            @if($order->customerDisplayPhone())
-                                <p class="text-xs font-bold text-slate-600 mb-2"><i class="bi bi-telephone"></i> {{ $order->customerDisplayPhone() }}</p>
-                            @endif
-                            <p class="text-xs font-medium text-slate-500 leading-relaxed">{{ $order->shipping_address }}</p>
-                            <p class="text-xs font-black text-slate-900 mt-2">{{ collect([$order->city, $order->region])->filter()->implode(', ') }}</p>
-                        </div>
-                    </div>
-                    <div class="space-y-4">
-                        <p class="text-[9px] font-black uppercase text-slate-400 tracking-widest">Payment Details</p>
-                        <div class="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 space-y-4">
-                            <div class="flex items-center gap-4">
-                                <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
-                                    <i class="bi bi-credit-card text-primary"></i>
-                                </div>
-                                <div>
-                                    <p class="text-[10px] font-black text-slate-900 uppercase tracking-tighter">{{ $order->payment_method === 'cod' ? 'Cash on delivery' : 'Online payment' }}</p>
-                                    <span class="inline-block mt-1 px-2 py-0.5 rounded-md border text-[9px] font-black uppercase tracking-widest {{ \App\Enums\PaymentStatus::badge($order->payment_status) }}">{{ $order->paymentStatusEnum()?->label() ?? $order->payment_status }}</span>
-                                </div>
+    <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div class="min-w-0 space-y-5">
+            {{-- Items --}}
+            <section class="overflow-hidden rounded-[var(--sf-radius-lg)] border border-[var(--sf-border)] bg-white" aria-labelledby="items-title">
+                <h2 id="items-title" class="border-b border-[var(--sf-border)] px-5 py-4 text-lg font-semibold text-slate-900 md:px-6">{{ __('Items') }}</h2>
+                <ul class="divide-y divide-[var(--sf-border)]">
+                    @foreach($order->orderItems as $item)
+                        @php($variantName = $item->variant?->attributeValues->map(fn ($v) => $v->attribute?->name . ': ' . $v->value)->implode(' · '))
+                        <li class="flex items-center gap-4 px-5 py-4 md:px-6">
+                            <x-store.image :src="Storefront::imageUrl($item->product?->images->first()?->image)" :alt="(string) ($item->product?->name ?? '')" :width="72" :height="72"
+                                           class="size-[72px] shrink-0 rounded-[var(--sf-radius)] border border-[var(--sf-border)] bg-slate-50 [&_i]:!text-2xl" img-class="p-1.5 mix-blend-multiply" />
+                            <div class="min-w-0 flex-1">
+                                @if($item->product && !$item->product->trashed())
+                                    <a href="{{ route('products.show', $item->product_id) }}" class="line-clamp-2 rounded text-sm font-medium text-slate-900 hover:text-brand-700 sf-focus">{{ $item->product->name }}</a>
+                                @else
+                                    <p class="text-sm font-medium text-slate-500">{{ $item->product?->name ?? __('Product no longer available') }}</p>
+                                @endif
+                                @if($variantName)<p class="mt-0.5 text-xs text-slate-500">{{ $variantName }}</p>@endif
+                                <p class="mt-0.5 text-xs tabular-nums text-slate-500">{{ localized_number($item->quantity) }} × {{ $fmt($item->price) }}</p>
                             </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tracking & Timeline -->
-            <div class="card border-0 shadow-sm p-6 sm:p-10 bg-white space-y-8">
-                <h4 class="text-lg font-black text-slate-900 tracking-tighter uppercase flex items-center gap-4">
-                    <span class="w-10 h-10 bg-slate-100 text-primary rounded-xl flex items-center justify-center shadow-inner"><i class="bi bi-clock-history"></i></span>
-                    Order Timeline
-                </h4>
-
-                @if($order->orderCourier)
-                    <div class="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                            <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">{{ $order->orderCourier->courierLabel() }} tracking code</p>
-                            <p class="text-sm font-black text-slate-900 font-mono">{{ $order->orderCourier->tracking_code ?: $order->orderCourier->consignment_id }}</p>
-                        </div>
-                        @if($order->orderCourier->trackingUrl())
-                            <a href="{{ $order->orderCourier->trackingUrl() }}" target="_blank" rel="noopener" class="px-4 py-2 rounded-xl bg-primary text-white text-[10px] font-black uppercase tracking-widest">Track parcel <i class="bi bi-box-arrow-up-right"></i></a>
-                        @endif
-                    </div>
-                @endif
-
-                <ol class="relative border-l border-slate-100 ml-4 space-y-6">
-                    @foreach($order->statusHistories->reverse() as $history)
-                        <li class="ml-6">
-                            <span class="absolute -left-3 flex items-center justify-center w-6 h-6 rounded-full border {{ \App\Enums\OrderStatus::badge($history->to_status) }}">
-                                <i class="bi {{ $history->toStatus()?->icon() ?? 'bi-dot' }} text-[10px]"></i>
-                            </span>
-                            <p class="text-xs font-black uppercase tracking-widest text-slate-900">{{ $history->toStatus()?->label() ?? $history->to_status }}</p>
-                            <p class="text-[11px] text-slate-500">{{ $history->note ?: $history->toStatus()?->customerMessage() }}</p>
-                            <p class="text-[10px] font-bold text-slate-400 mt-1">{{ $history->created_at->format('d M Y, h:i A') }}</p>
+                            <p class="shrink-0 text-sm font-semibold tabular-nums text-slate-900">{{ $fmt($item->subtotal ?? $item->price * $item->quantity) }}</p>
                         </li>
                     @endforeach
-                </ol>
-            </div>
+                </ul>
+            </section>
+
+            {{-- Timeline --}}
+            <section class="{{ $card }}" aria-labelledby="timeline-title">
+                <h2 id="timeline-title" class="text-lg font-semibold text-slate-900">{{ __('Updates') }}</h2>
+                @if($timeline->isNotEmpty())
+                    <ol class="relative ml-4 mt-5 space-y-6 border-l border-[var(--sf-border)]">
+                        @foreach($timeline as $event)
+                            <li class="ml-6">
+                                <span @class(['absolute -left-4 flex size-8 items-center justify-center rounded-full ring-4 ring-white',
+                                              'bg-brand-600 text-white' => $loop->first,
+                                              'bg-brand-50 text-brand-600' => !$loop->first]) aria-hidden="true">
+                                    <i class="bi {{ $event['icon'] }} text-sm"></i>
+                                </span>
+                                <div class="flex flex-wrap items-baseline justify-between gap-x-4">
+                                    <p class="text-sm font-semibold text-slate-900">{{ $event['title'] }}</p>
+                                    <time datetime="{{ $event['at']->toIso8601String() }}" class="text-xs text-slate-500">{{ $event['at']->format('d M Y, h:i A') }}</time>
+                                </div>
+                                @if($event['desc'])<p class="mt-0.5 text-sm text-slate-600">{{ $event['desc'] }}</p>@endif
+                            </li>
+                        @endforeach
+                    </ol>
+                @else
+                    <p class="mt-3 text-sm text-slate-500">{{ __('No updates yet.') }}</p>
+                @endif
+            </section>
         </div>
 
-        <!-- Sidebar: Order Summary -->
-        <div class="lg:col-span-4 space-y-8">
-            <div class="card border-0 shadow-xl p-6 sm:p-10 lg:p-12 bg-slate-900 text-white relative overflow-hidden group">
-                <div class="absolute -top-10 -right-10 w-32 h-32 bg-primary/20 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700"></div>
-                
-                <div class="relative z-10 space-y-10">
-                    <h4 class="text-lg font-black tracking-tighter uppercase border-b border-white/10 pb-6 flex items-center justify-between">
-                        Order Summary
-                        <i class="bi bi-receipt text-primary"></i>
-                    </h4>
-
-                    <div class="space-y-5">
-                        <div class="flex justify-between items-center">
-                            <span class="text-[10px] font-black uppercase text-slate-500 tracking-widest">Subtotal</span>
-                            <span class="text-sm font-bold">tk. {{ number_format($order->itemsSubtotal(), 2) }}</span>
-                        </div>
-                        @if((float) $order->discount_amount > 0)
-                            <div class="flex justify-between items-center">
-                                <span class="text-[10px] font-black uppercase text-emerald-400 tracking-widest">Coupon {{ $order->coupon_code }}</span>
-                                <span class="text-sm font-bold text-emerald-400">− tk. {{ number_format($order->discount_amount, 2) }}</span>
-                            </div>
-                        @endif
-                        <div class="flex justify-between items-center">
-                            <span class="text-[10px] font-black uppercase text-slate-500 tracking-widest">Delivery Fee</span>
-                            <span class="text-sm font-bold text-green-400">tk. {{ number_format($order->delivery_charge ?? 0, 2) }}</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-[10px] font-black uppercase text-slate-500 tracking-widest">Tax (VAT 0%)</span>
-                            <span class="text-sm font-bold">tk. 0.00</span>
-                        </div>
-                        <div class="pt-6 border-t border-white/10 flex justify-between items-end">
-                            <span class="text-[11px] font-black uppercase text-primary tracking-[0.2em]">Grand Total</span>
-                            <span class="text-3xl font-black tracking-tighter text-white">tk. {{ number_format($order->total_price, 2) }}</span>
-                        </div>
+        <div class="space-y-5">
+            {{-- Summary --}}
+            <section class="{{ $card }}" aria-labelledby="summary-title">
+                <h2 id="summary-title" class="text-lg font-semibold text-slate-900">{{ __('Payment summary') }}</h2>
+                <dl class="mt-4 space-y-2.5 text-sm">
+                    <div class="flex justify-between gap-4"><dt class="text-slate-600">{{ __('Subtotal') }}</dt><dd class="tabular-nums text-slate-900">{{ $fmt($order->itemsSubtotal()) }}</dd></div>
+                    @if((float) $order->discount_amount > 0)
+                        <div class="flex justify-between gap-4"><dt class="text-slate-600">{{ __('Discount') }} @if($order->coupon_code)<span class="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold uppercase text-slate-700">{{ $order->coupon_code }}</span>@endif</dt><dd class="tabular-nums text-emerald-700">−{{ $fmt($order->discount_amount) }}</dd></div>
+                    @endif
+                    <div class="flex justify-between gap-4"><dt class="text-slate-600">{{ __('Shipping') }}</dt><dd class="tabular-nums text-slate-900">{{ (float) $order->delivery_charge > 0 ? $fmt($order->delivery_charge) : __('Free') }}</dd></div>
+                    <div class="flex items-baseline justify-between gap-4 border-t border-[var(--sf-border)] pt-3">
+                        <dt class="font-semibold text-slate-900">{{ __('Total') }}</dt>
+                        <dd class="font-display text-xl font-bold tabular-nums text-slate-900">{{ $fmt($order->total_price) }}</dd>
                     </div>
+                </dl>
+                <div class="mt-4 flex items-center justify-between gap-3 rounded-[var(--sf-radius-sm)] bg-slate-50 px-3 py-2.5 text-sm">
+                    <span class="flex items-center gap-2 text-slate-700"><i class="bi {{ $isCod ? 'bi-cash-coin' : 'bi-credit-card' }} text-slate-500" aria-hidden="true"></i>{{ $isCod ? __('Cash on delivery') : __('Online payment') }}</span>
+                    <span class="rounded-full border px-2 py-0.5 text-xs font-semibold {{ \App\Enums\PaymentStatus::badge($order->payment_status) }}">{{ __($order->paymentStatusEnum()?->label() ?? ucfirst((string) $order->payment_status)) }}</span>
+                </div>
+            </section>
 
-                    <div class="pt-6">
-                        <a href="{{ route('user.orders.track', ['order_id' => $order->order_id]) }}" class="w-full py-5 bg-primary hover:bg-primary-dark text-white font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl shadow-2xl shadow-primary/30 transition-all flex items-center justify-center gap-3 active:scale-95 group/btn">
-                            Track Order Status
-                            <i class="bi bi-geo-alt group-hover/btn:animate-bounce"></i>
-                        </a>
+            {{-- Delivery --}}
+            <section class="{{ $card }}" aria-labelledby="delivery-title">
+                <h2 id="delivery-title" class="text-lg font-semibold text-slate-900">{{ __('Delivery') }}</h2>
+                <dl class="mt-4 space-y-4 text-sm">
+                    <div>
+                        <dt class="{{ $label }}">{{ __('Recipient') }}</dt>
+                        <dd class="mt-1 text-slate-800">{{ $order->customerDisplayName() }}<br><span class="tabular-nums text-slate-600">{{ $order->customerDisplayPhone() }}@if($order->alt_phone) · {{ $order->alt_phone }}@endif</span></dd>
                     </div>
-                </div>
-            </div>
+                    <div>
+                        <dt class="{{ $label }}">{{ __('Address') }}</dt>
+                        <dd class="mt-1 text-slate-800">
+                            <span class="whitespace-pre-line">{{ $order->shipping_address }}</span><br>
+                            <span class="text-slate-600">{{ collect([$order->region, $order->city === \App\Services\CheckoutOptions::OTHER_ZONE ? null : $order->city])->filter()->implode(', ') }}{{ $order->postal_code ? ' - ' . $order->postal_code : '' }}</span>
+                        </dd>
+                    </div>
+                    @if($order->order_notes)
+                        <div>
+                            <dt class="{{ $label }}">{{ __('Your note') }}</dt>
+                            <dd class="mt-1 rounded-[var(--sf-radius-sm)] bg-slate-50 px-3 py-2 text-slate-700">{{ $order->order_notes }}</dd>
+                        </div>
+                    @endif
+                </dl>
+            </section>
 
-            <div class="card border-0 shadow-sm p-8 bg-white space-y-6">
-                <h4 class="text-[10px] font-black text-slate-900 tracking-widest uppercase">Need Assistance?</h4>
-                <div class="space-y-4">
-                    <a href="#" class="flex items-center gap-4 group">
-                        <div class="w-10 h-10 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
-                            <i class="bi bi-chat-dots"></i>
-                        </div>
-                        <span class="text-[10px] font-black text-slate-600 uppercase tracking-widest">Live Chat Support</span>
-                    </a>
-                    <a href="{{ route('orders.invoice.download', $order->id) }}" target="_blank" class="flex items-center gap-4 group">
-                        <div class="w-10 h-10 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
-                            <i class="bi bi-file-earmark-pdf"></i>
-                        </div>
-                        <span class="text-[10px] font-black text-slate-600 uppercase tracking-widest">Download Invoice</span>
-                    </a>
-                </div>
-            </div>
+            <a href="{{ route('user.messages.index') }}" class="flex items-center gap-3 rounded-[var(--sf-radius-lg)] border border-[var(--sf-border)] bg-white p-4 hover:border-brand-300 sf-focus">
+                <i class="bi bi-chat-dots text-xl text-brand-600" aria-hidden="true"></i>
+                <span class="min-w-0 flex-1">
+                    <span class="block text-sm font-semibold text-slate-900">{{ __('Problem with this order?') }}</span>
+                    <span class="block text-xs text-slate-500">{{ __('Message support and mention #:id', ['id' => $order->order_id]) }}</span>
+                </span>
+                <i class="bi bi-chevron-right text-xs text-slate-400" aria-hidden="true"></i>
+            </a>
         </div>
     </div>
 </div>

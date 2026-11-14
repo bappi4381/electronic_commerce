@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\Wishlist;
+use App\Services\FlashSale;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -17,32 +18,42 @@ class HomeController extends Controller
     /** Initial size of the "Just For You" grid. */
     private const FEED_SIZE = 15;
 
-    public function index()
+    /** Price the customer actually pays: the discounted price when set, otherwise the list price. */
+    private const EFFECTIVE_PRICE = 'COALESCE(NULLIF(discounted_price, 0), price)';
+
+    private const CATALOG_SORTS = [
+        'newest' => 'Newest arrivals',
+        'popular' => 'Best selling',
+        'price_low' => 'Price: low to high',
+        'price_high' => 'Price: high to low',
+        'rating' => 'Top rated',
+        'discount' => 'Biggest discount',
+    ];
+
+    /** Deals page discount chips: query value => inclusive [min %, max %] of the rounded discount. */
+    private const DISCOUNT_BANDS = [
+        'upto-20' => [1, 20],
+        'upto-40' => [1, 40],
+        '60-plus' => [60, 100],
+    ];
+
+    private const DEALS_PER_PAGE = 20;
+
+    public function index(FlashSale $flashSale)
     {
         $wishlistIds = Auth::check() ? Wishlist::where('user_id', Auth::id())->pluck('product_id')->toArray() : [];
 
         $latestProducts = Product::with(self::CARD_RELATIONS)->latest()->take(self::FEED_SIZE)->get();
         $feedHasMore = Product::count() > self::FEED_SIZE;
 
-        // Flash deals: discounted, flagged and in stock; units sold drive the progress bar.
-        $flashDealProducts = Product::where('is_flash_deal', true)
-            ->where('discount', '>', 0)
-            ->whereHas('variants', fn ($q) => $q->where('stock', '>', 0))
-            ->with(self::CARD_RELATIONS)
-            ->withSum('orderItems', 'quantity')
-            ->latest()
-            ->take(12)
-            ->get();
-
-        $flashDealTitle = \App\Models\Setting::get('flash_deal_title', __('Flash Sale'));
-        $flashDealEndTime = \App\Models\Setting::get('flash_deal_end_time');
+        $flashCampaign = $flashSale->campaign();
+        $flashDealProducts = $flashSale->products();
 
         $heroBanners = \App\Models\Banner::where('type', 'hero')->where('status', true)->orderBy('order')->get();
         $subBanners = \App\Models\Banner::where('type', 'sub_banner')->where('status', true)->orderBy('order')->take(2)->get();
 
         $departments = collect(\App\View\Composers\StorefrontComposer::localizedDepartments())->filter(fn ($d) => $d['count'] > 0)->values();
         $feedTabs = $departments->sortByDesc('count')->take(5)->values();
-        $brands = $this->featuredBrands();
 
         return view('frontend.pages.home', compact(
             'latestProducts',
@@ -51,82 +62,102 @@ class HomeController extends Controller
             'heroBanners',
             'subBanners',
             'flashDealProducts',
-            'flashDealTitle',
-            'flashDealEndTime',
+            'flashCampaign',
             'departments',
             'feedTabs',
-            'brands',
         ));
     }
 
-    /** Brands from config('store.featured_brands') that have products, topped up with the largest brands. */
-    private function featuredBrands()
-    {
-        $featured = array_map('mb_strtolower', config('store.featured_brands', []));
-
-        $brands = \App\Models\Brand::where('status', true)->whereHas('products')->withCount('products')->get();
-        $picked = $brands->filter(fn ($b) => in_array(mb_strtolower($b->name), $featured, true))
-            ->sortBy(fn ($b) => array_search(mb_strtolower($b->name), $featured, true));
-
-        return $picked->concat($brands->whereNotIn('id', $picked->pluck('id'))->sortByDesc('products_count'))->take(12)->values();
-    }
     public function products(Request $request)
     {
-        $categories = Category::where('type', 'product')->withCount('products')->get();
-        $brands = \App\Models\Brand::where('status', true)->whereHas('products')->withCount('products')->orderBy('name')->get();
+        $search = trim((string) $request->get('search'));
+        $sort = array_key_exists($request->get('sort'), self::CATALOG_SORTS) ? $request->get('sort') : 'newest';
+        $minPrice = is_numeric($request->get('min_price')) ? max(0, (float) $request->get('min_price')) : null;
+        $maxPrice = is_numeric($request->get('max_price')) ? max(0, (float) $request->get('max_price')) : null;
+        $inStock = $request->boolean('in_stock');
+        $onSale = $request->boolean('on_sale');
 
-        $products = Product::query()->with(self::CARD_RELATIONS);
+        $departments = Category::where('type', 'product')->whereNull('parent_id')
+            ->with(['children' => fn ($q) => $q->withCount('products')->orderBy('id')])
+            ->withCount('products')
+            ->orderBy('id')
+            ->get()
+            ->each(fn ($c) => $c->total_count = $c->products_count + $c->children->sum('products_count'))
+            ->filter(fn ($c) => $c->total_count > 0)
+            ->values();
 
-        // Search (name is now JSON, use JSON_EXTRACT or LIKE on raw value)
-        if ($request->search) {
-            $s = $request->search;
-            $products->where(function($query) use ($s) {
-                $query->whereRaw('JSON_EXTRACT(name, "$.en") LIKE ?', ["%{$s}%"])
-                      ->orWhereRaw('JSON_EXTRACT(name, "$.bn") LIKE ?', ["%{$s}%"])
-                      ->orWhereHas('brand', fn ($brand) => $brand->where('name', 'like', "%{$s}%"))
-                      ->orWhere('model', 'like', "%{$s}%");
-            });
-        }
+        $activeCategory = $request->filled('category')
+            ? Category::where('type', 'product')->with(['parent', 'children'])->find((int) $request->get('category'))
+            : null;
+        $categoryIds = $activeCategory ? $activeCategory->children->pluck('id')->push($activeCategory->id)->all() : null;
 
-        if ($request->category) {
-            $products->where('category_id', $request->category);
-        }
+        $activeBrand = $request->filled('brand') ? \App\Models\Brand::where('slug', $request->get('brand'))->first() : null;
 
-        if ($request->brand) {
-            $products->whereHas('brand', fn ($brand) => $brand->where('slug', $request->brand));
-        }
+        // Every filter except brand, so the brand list can show counts for the current selection.
+        $applyFilters = function ($query) use ($search, $categoryIds, $minPrice, $maxPrice, $inStock, $onSale) {
+            return $query
+                ->when($search !== '', fn ($q) => $q->where(fn ($q) => $q
+                    ->whereRaw('JSON_EXTRACT(name, "$.en") LIKE ?', ["%{$search}%"])
+                    ->orWhereRaw('JSON_EXTRACT(name, "$.bn") LIKE ?', ["%{$search}%"])
+                    ->orWhereHas('brand', fn ($b) => $b->where('name', 'like', "%{$search}%"))
+                    ->orWhere('model', 'like', "%{$search}%")))
+                ->when($categoryIds, fn ($q) => $q->whereIn('category_id', $categoryIds))
+                ->when($minPrice !== null, fn ($q) => $q->whereRaw(self::EFFECTIVE_PRICE . ' >= ?', [$minPrice]))
+                ->when($maxPrice !== null, fn ($q) => $q->whereRaw(self::EFFECTIVE_PRICE . ' <= ?', [$maxPrice]))
+                ->when($inStock, fn ($q) => $q->whereHas('variants', fn ($v) => $v->where('stock', '>', 0)))
+                ->when($onSale, fn ($q) => $q->whereNotNull('discounted_price')->where('discounted_price', '>', 0)->whereColumn('discounted_price', '<', 'price'));
+        };
 
-        if ($request->min_price) {
-            $products->where('price', '>=', $request->min_price);
-        }
+        $brands = \App\Models\Brand::where('status', true)
+            ->withCount(['products' => fn ($q) => $applyFilters($q)])
+            ->having('products_count', '>', 0)
+            ->orderBy('name')
+            ->get();
 
-        if ($request->max_price) {
-            $products->where('price', '<=', $request->max_price);
-        }
+        $products = $applyFilters(Product::query())
+            ->when($activeBrand, fn ($q) => $q->where('brand_id', $activeBrand->id))
+            ->when($request->filled('brand') && !$activeBrand, fn ($q) => $q->whereRaw('1 = 0'))
+            ->with(self::CARD_RELATIONS);
 
-        // Sorting
-        $sort = $request->get('sort', 'newest');
-        switch ($sort) {
-            case 'price_low':
-                $products->orderBy('price', 'asc');
-                break;
-            case 'price_high':
-                $products->orderBy('price', 'desc');
-                break;
-            case 'newest':
-            default:
-                $products->latest();
-                break;
-        }
+        match ($sort) {
+            'popular' => $products->withSum('orderItems', 'quantity')->orderByDesc('order_items_sum_quantity')->latest(),
+            'price_low' => $products->orderByRaw(self::EFFECTIVE_PRICE . ' asc'),
+            'price_high' => $products->orderByRaw(self::EFFECTIVE_PRICE . ' desc'),
+            'rating' => $products->orderByDesc('rating_avg')->orderByDesc('rating_count'),
+            'discount' => $products->orderByRaw('(price - ' . self::EFFECTIVE_PRICE . ') / NULLIF(price, 0) desc')->latest(),
+            default => $products->latest(),
+        };
 
-        $products = $products->paginate(12)->withQueryString();
+        $products = $products->paginate(24)->withQueryString();
+        $priceBounds = Product::selectRaw('MIN(' . self::EFFECTIVE_PRICE . ') as min, MAX(' . self::EFFECTIVE_PRICE . ') as max')->first();
         $wishlistIds = Auth::check() ? Wishlist::where('user_id', Auth::id())->pluck('product_id')->toArray() : [];
 
-        return view('frontend.pages.products', compact('categories', 'brands', 'products', 'wishlistIds'));
+        $filters = array_filter([
+            'search' => $search !== '' ? $search : null,
+            'category' => $activeCategory?->id,
+            'brand' => $activeBrand?->slug,
+            'min_price' => $minPrice,
+            'max_price' => $maxPrice,
+            'in_stock' => $inStock ?: null,
+            'on_sale' => $onSale ?: null,
+        ], fn ($v) => $v !== null);
+
+        return view('frontend.pages.products', [
+            'products' => $products,
+            'departments' => $departments,
+            'activeCategory' => $activeCategory,
+            'brands' => $brands,
+            'activeBrand' => $activeBrand,
+            'filters' => $filters,
+            'sort' => $sort,
+            'sorts' => array_map(fn ($label) => __($label), self::CATALOG_SORTS),
+            'priceBounds' => ['min' => (int) floor((float) $priceBounds?->min), 'max' => (int) ceil((float) $priceBounds?->max)],
+            'wishlistIds' => $wishlistIds,
+        ]);
     }
     public function show($id)
     {
-        $product = Product::with(['images', 'category', 'brand', 'reactions', 'variants.attributeValues.attribute'])->findOrFail($id);
+        $product = Product::with(['images', 'category.parent', 'brand', 'variants.attributeValues.attribute'])->withCount('reactions')->findOrFail($id);
 
         // Public reviews are approved ones; authors also see their own pending/rejected reviews.
         $reviews = $product->comments()
@@ -137,16 +168,41 @@ class HomeController extends Controller
             ->get();
         $product->setRelation('comments', $reviews);
         
-        // Related products from the same category
+        // Same category first, topped up with the same brand.
         $relatedProducts = Product::where('category_id', $product->category_id)
-            ->where('id', '!=', $id)
+            ->where('id', '!=', $product->id)
             ->with(self::CARD_RELATIONS)
-            ->take(4)
+            ->latest()
+            ->take(10)
             ->get();
+        if ($relatedProducts->count() < 10 && $product->brand_id) {
+            $relatedProducts = $relatedProducts->concat(Product::where('brand_id', $product->brand_id)
+                ->whereNotIn('id', $relatedProducts->pluck('id')->push($product->id))
+                ->with(self::CARD_RELATIONS)
+                ->latest()
+                ->take(10 - $relatedProducts->count())
+                ->get());
+        }
 
-        $wishlistIds = Auth::check() ? Wishlist::where('user_id', Auth::id())->pluck('product_id')->toArray() : [];
+        $ratingCounts = $product->approvedReviews()->whereNotNull('rating')
+            ->selectRaw('rating, COUNT(*) as total')->groupBy('rating')->pluck('total', 'rating');
 
-        return view('frontend.pages.singleProduct', compact('product', 'relatedProducts', 'wishlistIds'));
+        $checkout = app(\App\Services\CheckoutOptions::class);
+        $flashCampaign = $product->is_flash_deal ? app(FlashSale::class)->campaign() : null;
+
+        app(\App\Services\FacebookTracking::class)->viewContent($product, (float) ($product->discounted_price ?: $product->price), request());
+
+        return view('frontend.pages.singleProduct', [
+            'product' => $product,
+            'relatedProducts' => $relatedProducts,
+            'wishlistIds' => Auth::check() ? Wishlist::where('user_id', Auth::id())->pluck('product_id')->toArray() : [],
+            'liked' => Auth::check() && $product->reactions()->where('user_id', Auth::id())->exists(),
+            'ratingCounts' => $ratingCounts,
+            'deliveryOptions' => $checkout->deliveryOptions(),
+            'freeShippingThreshold' => $checkout->freeShippingThreshold(),
+            'codAvailable' => in_array('cod', $checkout->paymentMethods(), true),
+            'flashDealEnd' => $flashCampaign['ends_at'] ?? null,
+        ]);
     }
 
     /**
@@ -248,11 +304,48 @@ class HomeController extends Controller
         return back()->with('success', 'Comment deleted successfully!');
     }
     
-    public function flashDeals()
+    /**
+     * Deals page: the running flash sale (same data as the homepage) and every discounted product,
+     * biggest discount first, with discount-range and department filters.
+     */
+    public function flashDeals(Request $request, FlashSale $flashSale)
     {
-        // Fetch all products with actual discounts (discount > 0)
-        $products = Product::where('discount', '>', 0)->with(self::CARD_RELATIONS)->latest()->paginate(12);
-        return view('frontend.pages.flash-deals', compact('products'));
+        $band = array_key_exists((string) $request->query('off'), self::DISCOUNT_BANDS) ? (string) $request->query('off') : null;
+        $percent = 'ROUND((price - ' . self::EFFECTIVE_PRICE . ') * 100.0 / price)';
+        $onSale = fn ($query) => $query->where('discount', '>', 0)->where('price', '>', 0)->whereRaw(self::EFFECTIVE_PRICE . ' < price');
+
+        $departments = Category::where('type', 'product')->whereNull('parent_id')->with('children:id,parent_id')->orderBy('id')->get(['id', 'name']);
+        $activeCategory = $request->filled('category') ? $departments->firstWhere('id', (int) $request->query('category')) : null;
+
+        $discounts = $onSale(Product::query())
+            ->when($activeCategory, fn ($q) => $q->whereIn('category_id', $activeCategory->children->pluck('id')->push($activeCategory->id)))
+            ->when($band, fn ($q) => $q->whereRaw("{$percent} BETWEEN ? AND ?", self::DISCOUNT_BANDS[$band]))
+            ->with(self::CARD_RELATIONS)
+            ->orderByRaw("{$percent} DESC")
+            ->orderByDesc('id')
+            ->paginate(self::DEALS_PER_PAGE)
+            ->withQueryString();
+
+        // Department filter options: only departments that have something on sale.
+        $countsByCategory = $onSale(Product::query())->selectRaw('category_id, COUNT(*) as total')->groupBy('category_id')->pluck('total', 'category_id');
+        $categories = $departments
+            ->map(fn (Category $department) => [
+                'id' => $department->id,
+                'name' => $department->name,
+                'count' => (int) $countsByCategory->only($department->children->pluck('id')->push($department->id)->all())->sum(),
+            ])
+            ->filter(fn ($department) => $department['count'] > 0)
+            ->values();
+
+        return view('frontend.pages.flash-deals', [
+            'campaign' => $flashSale->campaign(),
+            'flashProducts' => $flashSale->products(),
+            'discounts' => $discounts,
+            'categories' => $categories,
+            'activeCategory' => $activeCategory?->id,
+            'band' => $band,
+            'wishlistIds' => Auth::check() ? Wishlist::where('user_id', Auth::id())->pluck('product_id')->toArray() : [],
+        ]);
     }
 
     /** "Just For You" pages as card HTML: ?skip=&take=&category= (category includes its subcategories). */

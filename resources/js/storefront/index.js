@@ -112,6 +112,7 @@ export function registerStorefront(Alpine) {
                     return;
                 }
                 Alpine.store('cart').set(data);
+                window.fbTrack?.(data.fb_event);
                 this.added = true;
                 setTimeout(() => (this.added = false), 2000);
                 Alpine.store('toast').push(t('addedToCart', 'Added to cart: :name').replace(':name', name), 'success', { label: t('viewCart', 'View cart'), url: config().routes.cart });
@@ -171,23 +172,30 @@ export function registerStorefront(Alpine) {
         },
     }));
 
-    Alpine.data('countdown', (end) => {
-        let target = end ? new Date(String(end).replace(' ', 'T')).getTime() : 0;
-        // No (or a past) campaign end: run a rolling 12-hour window so the timer is never stuck at zero.
-        if (!target || Number.isNaN(target) || target < Date.now()) target = Date.now() + 12 * 3600 * 1000;
+    // end and serverNow are ISO 8601 strings with an offset. Counting against the server's clock keeps the timer
+    // right even when the visitor's device clock or timezone is off.
+    Alpine.data('countdown', (end, serverNow) => {
+        const target = end ? Date.parse(end) : NaN;
+        const skew = serverNow ? Date.parse(serverNow) - Date.now() : 0;
+        const now = () => Date.now() + (Number.isNaN(skew) ? 0 : skew);
         const pad = (n) => String(n).padStart(2, '0');
 
         return {
-            d: '00', h: '00', m: '00', s: '00', label: '',
+            d: '00', h: '00', m: '00', s: '00', label: '', ended: false,
             init() {
                 this.tick();
-                this.timer = setInterval(() => this.tick(), 1000);
+                if (!this.ended) this.timer = setInterval(() => this.tick(), 1000);
             },
             destroy() {
                 clearInterval(this.timer);
             },
             tick() {
-                const left = Math.max(0, target - Date.now());
+                const left = Number.isNaN(target) ? 0 : Math.max(0, target - now());
+                if (left === 0 && !this.ended) {
+                    this.ended = true;
+                    clearInterval(this.timer);
+                    this.$dispatch('countdown-ended');
+                }
                 const days = Math.floor(left / 86400000);
                 const hours = Math.floor((left % 86400000) / 3600000);
                 const minutes = Math.floor((left % 3600000) / 60000);

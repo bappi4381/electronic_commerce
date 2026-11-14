@@ -27,10 +27,11 @@
             <x-admin.input name="customer_name" label="Recipient name" maxlength="100" :value="$order->customerDisplayName()" />
             <x-admin.input name="phone" label="Phone" maxlength="20" :value="$order->customerDisplayPhone()" />
             <div class="md:col-span-2">
-                <x-admin.input name="shipping_address" label="Shipping address" maxlength="255" :value="$order->shipping_address" />
+                <x-admin.textarea name="shipping_address" label="Shipping address" rows="2" maxlength="255" :value="$order->shipping_address" />
             </div>
-            <x-admin.input name="city" label="City" maxlength="100" :value="$order->city" />
-            <x-admin.input name="region" label="Region" maxlength="100" :value="$order->region" />
+            <x-admin.input name="city" label="City / zone" maxlength="100" :value="$order->city" />
+            <x-admin.input name="region" label="Area / thana" optional maxlength="100" :value="$order->region" />
+            <x-admin.input name="postal_code" label="Postcode" optional maxlength="20" :value="$order->postal_code" />
             <x-admin.input name="alt_phone" label="Alternative phone" optional maxlength="20" :value="$order->alt_phone" />
             <x-admin.input name="delivery_charge" type="number" label="Delivery charge" prefix="Tk" step="0.01" min="0"
                            :value="$order->delivery_charge" :disabled="!$itemsEditable" />

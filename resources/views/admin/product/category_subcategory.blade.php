@@ -13,7 +13,7 @@
 
 <div x-data="{
         category: { id: null, name: '', name_bn: '', icon: '', color: '' },
-        sub: { id: null, name: '', category_id: '' },
+        sub: { id: null, name: '', name_bn: '', category_id: '' },
         editCategory(data) { this.category = data; this.$dispatch('open-modal', 'edit-category'); },
         editSub(data) { this.sub = data; this.$dispatch('open-modal', 'edit-subcategory'); },
      }">
@@ -26,7 +26,9 @@
                     <form method="POST" action="{{ route('categories.store') }}" enctype="multipart/form-data" class="space-y-4">
                         @csrf
                         <input type="hidden" name="type" value="product">
-                        <x-admin.input name="name" label="Name" required maxlength="255" placeholder="e.g. Smartphones" :old="false" id="new-category-name" />
+                        <x-admin.input name="name" label="Name (English)" required maxlength="255" placeholder="e.g. Smartphones" :old="false" id="new-category-name" />
+                        <x-admin.input name="name_bn" label="নাম (বাংলা)" optional maxlength="255" placeholder="যেমন স্মার্টফোন" :old="false" id="new-category-name-bn"
+                                       hint="Leave empty to show the English name on the Bangla site." />
                         <div class="grid grid-cols-2 gap-4">
                             <x-admin.input name="icon" label="Icon" optional placeholder="bi-phone" :old="false" id="new-category-icon"
                                            hint="Bootstrap icon class." />
@@ -42,7 +44,8 @@
                     <form method="POST" action="{{ route('subcategories.store') }}" class="space-y-4">
                         @csrf
                         <x-admin.select name="category_id" label="Parent category" required placeholder="Select a category" :options="$parentOptions" id="new-sub-parent" />
-                        <x-admin.input name="name" label="Name" required maxlength="255" placeholder="e.g. Flagship phones" :old="false" id="new-sub-name" />
+                        <x-admin.input name="name" label="Name (English)" required maxlength="255" placeholder="e.g. Flagship phones" :old="false" id="new-sub-name" />
+                        <x-admin.input name="name_bn" label="নাম (বাংলা)" optional maxlength="255" :old="false" id="new-sub-name-bn" />
                         <x-admin.button type="submit" variant="secondary" icon="bi-plus-lg" class="w-full">Add subcategory</x-admin.button>
                     </form>
                 </x-admin.card>
@@ -92,7 +95,7 @@
                                     <div class="flex shrink-0 items-center gap-1">
                                         @can('products.edit')
                                             <x-admin.button variant="ghost" size="sm" icon="bi-pencil" title="Edit" aria-label="Edit {{ $name($sub) }}"
-                                                            @click="editSub({{ \Illuminate\Support\Js::from(['id' => $sub->id, 'name' => $sub->getTranslation('name', 'en'), 'category_id' => (string) $category->id]) }})" />
+                                                            @click="editSub({{ \Illuminate\Support\Js::from(['id' => $sub->id, 'name' => $sub->getTranslation('name', 'en'), 'name_bn' => $sub->getTranslation('name', 'bn', false), 'category_id' => (string) $category->id]) }})" />
                                         @endcan
                                         @can('products.delete')
                                             <form method="POST" action="{{ route('subcategories.destroy', $sub->id) }}"
@@ -147,7 +150,8 @@
                         @endforeach
                     </select>
                 </x-admin.field>
-                <x-admin.input name="name" id="edit-sub-name" label="Name" required maxlength="255" x-model="sub.name" :old="false" />
+                <x-admin.input name="name" id="edit-sub-name" label="Name (English)" required maxlength="255" x-model="sub.name" :old="false" />
+                <x-admin.input name="name_bn" id="edit-sub-name-bn" label="নাম (বাংলা)" optional maxlength="255" x-model="sub.name_bn" :old="false" />
             </form>
             <x-slot:footer>
                 <x-admin.button variant="secondary" @click="$dispatch('close-modal', 'edit-subcategory')">Cancel</x-admin.button>

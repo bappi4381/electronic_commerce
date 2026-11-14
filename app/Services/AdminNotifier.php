@@ -29,6 +29,16 @@ class AdminNotifier
         $this->send('orders.view', fn () => new NewOrderPlaced($order));
     }
 
+    public function riskyOrder(Order $order, \App\Services\Fraud\RiskResult $result, bool $held): void
+    {
+        $this->send('orders.view', fn () => new \App\Notifications\Admin\RiskyOrderFlagged($order, $result, $held));
+    }
+
+    public function riskCheckFailed(Order $order, string $reason): void
+    {
+        $this->send('orders.view', fn () => new \App\Notifications\Admin\RiskCheckFailed($order, $reason));
+    }
+
     public function lowStock(ProductVariant $variant, int $stock, int $threshold): void
     {
         $this->send('products.view', fn () => new LowStockAlert($variant, $stock, $threshold));

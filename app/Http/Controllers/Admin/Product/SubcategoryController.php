@@ -5,6 +5,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 /**
  * SubcategoryController
@@ -18,15 +19,13 @@ class SubcategoryController extends Controller
     // Store subcategory as a child Category
     public function store(Request $request)
     {
-        $request->validate([
-            'category_id' => 'required|exists:categories,id',
-            'name'        => 'required|string|max:255',
-        ]);
+        $data = $this->validated($request);
+        $parent = Category::findOrFail($data['category_id']);
 
         Category::create([
-            'parent_id' => $request->category_id,
-            'name'      => $request->name,
-            'type'      => 'product',
+            'parent_id' => $parent->id,
+            'name'      => ['en' => $data['name'], 'bn' => $data['name_bn'] ?? $data['name']],
+            'type'      => $parent->type ?? 'product',
         ]);
 
         return back()->with('success', 'Subcategory created successfully.');
@@ -35,16 +34,17 @@ class SubcategoryController extends Controller
     // Update child category
     public function update(Request $request, $id)
     {
-        $request->validate([
-            'category_id' => 'required|exists:categories,id',
-            'name'        => 'required|string|max:255',
-        ]);
-
         $subcategory = Category::findOrFail($id);
-        $subcategory->update([
-            'parent_id' => $request->category_id,
-            'name'      => $request->name,
-        ]);
+        $data = $this->validated($request, $subcategory);
+        $parent = Category::findOrFail($data['category_id']);
+
+        $subcategory->parent_id = $parent->id;
+        $subcategory->type = $parent->type ?? $subcategory->type;
+        $subcategory->setTranslation('name', 'en', $data['name']);
+        if (filled($data['name_bn'] ?? null)) {
+            $subcategory->setTranslation('name', 'bn', $data['name_bn']);
+        }
+        $subcategory->save();
 
         return back()->with('success', 'Subcategory updated successfully.');
     }
@@ -65,5 +65,22 @@ class SubcategoryController extends Controller
         }
 
         return back()->with('success', 'Subcategory deleted successfully.');
+    }
+
+    /** The parent must be a top-level category other than the subcategory itself (two levels only). */
+    private function validated(Request $request, ?Category $subcategory = null): array
+    {
+        return $request->validate([
+            'category_id' => [
+                'required',
+                Rule::exists('categories', 'id')->whereNull('parent_id'),
+                Rule::notIn(array_filter([$subcategory?->id])),
+            ],
+            'name'    => 'required|string|max:255',
+            'name_bn' => 'nullable|string|max:255',
+        ], [
+            'category_id.exists' => 'Choose a top-level category as the parent.',
+            'category_id.not_in' => 'A category cannot be its own parent.',
+        ]);
     }
 }

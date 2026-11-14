@@ -1,6 +1,6 @@
 {{--
     Coloured status pill.
-    type="order" / "payment" use the enum labels; otherwise the status is humanised.
+    type="order" / "payment" use the enum labels, type="courier" the courier labels (CourierStatus); otherwise the status is humanised.
     tone overrides the colour: gray | green | yellow | red | blue | indigo | orange | brand
 --}}
 @props([
@@ -16,7 +16,7 @@
 
     $tones = [
         'order' => [
-            'pending' => 'yellow', 'confirmed' => 'brand', 'processing' => 'blue', 'shipped' => 'indigo',
+            'pending' => 'yellow', 'on_hold' => 'red', 'confirmed' => 'brand', 'processing' => 'blue', 'shipped' => 'indigo',
             'delivered' => 'green', 'cancelled' => 'red', 'returned' => 'orange', 'refunded' => 'gray',
         ],
         'payment' => [
@@ -31,11 +31,14 @@
         ],
     ];
 
-    $tone ??= $tones[$type ?? 'generic'][$value] ?? $tones['generic'][$value] ?? 'gray';
+    $tone ??= $type === 'courier'
+        ? \App\Services\Courier\CourierStatus::tone($value)
+        : ($tones[$type ?? 'generic'][$value] ?? $tones['generic'][$value] ?? 'gray');
 
     $label ??= match ($type) {
         'order' => \App\Enums\OrderStatus::tryFrom($value)?->label(),
         'payment' => \App\Enums\PaymentStatus::tryFrom($value)?->label(),
+        'courier' => \App\Services\Courier\CourierStatus::label($value),
         default => null,
     } ?? \Illuminate\Support\Str::of($value)->replace(['_', '-'], ' ')->ucfirst();
 

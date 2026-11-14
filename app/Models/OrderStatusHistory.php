@@ -34,4 +34,11 @@ class OrderStatusHistory extends Model
     {
         return $this->from_status ? OrderStatus::tryFrom($this->from_status) : null;
     }
+
+    /** Putting an order on hold for risk, or releasing it back to pending: internal, hidden from customers. */
+    public function isRiskReview(): bool
+    {
+        return $this->to_status === OrderStatus::OnHold->value
+            || ($this->from_status === OrderStatus::OnHold->value && $this->to_status === OrderStatus::Pending->value);
+    }
 }

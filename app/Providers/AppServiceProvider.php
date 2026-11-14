@@ -16,7 +16,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Collects the Pixel events of one request; must not leak between requests (queues, Octane).
+        $this->app->scoped(\App\Services\FacebookTracking::class);
     }
 
     /**
@@ -24,6 +25,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        \App\Services\Courier\CourierSettings::apply();
+
         Gate::before(function ($user, $ability) {
             if ($user instanceof Admin && $user->hasRole('Super Admin')) {
                 return true;

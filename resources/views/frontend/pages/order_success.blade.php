@@ -1,288 +1,201 @@
 @extends('frontend.layout')
 
-@section('title', 'Order Confirmed')
+@use('App\Support\Storefront')
+
+@section('title', __('Order confirmed'))
 
 @section('content')
-<!-- Page Header -->
-<div class="bg-slate-900 py-16 relative overflow-hidden">
-    <div class="absolute inset-0 opacity-20">
-        <div class="absolute top-0 right-0 w-96 h-96 bg-primary rounded-full blur-[150px]"></div>
-    </div>
-    <div class="max-w-7xl mx-auto px-4 relative z-10 text-center">
-        <h1 class="text-4xl lg:text-5xl font-black text-white tracking-tighter uppercase mb-4">{{ __('Order Confirmed') }}</h1>
-        <div class="flex items-center justify-center gap-2 text-slate-400 font-bold text-xs uppercase tracking-widest">
-            <a href="{{ route('home') }}" class="hover:text-primary transition-colors">{{ __('Home') }}</a>
-            <i class="bi bi-chevron-right text-[10px]"></i>
-            <span class="text-white">{{ __('Success') }}</span>
+@php
+    $fmt = fn ($amount) => money($amount, null, fmod((float) $amount, 1.0) != 0.0 ? 2 : 0);
+    $paid = (bool) $order->paymentStatusEnum()?->isCollected();
+    $isCod = $order->payment_method === 'cod';
+    $firstName = \Illuminate\Support\Str::of($order->customerDisplayName())->before(' ');
+    $phone = $order->customerDisplayPhone();
+    $email = $order->customerDisplayEmail();
+    $subtotal = $order->itemsSubtotal();
+    $discount = (float) $order->discount_amount;
+    $itemCount = (int) $order->orderItems->sum('quantity');
+    $owner = auth()->id() === $order->user_id;
+    $label = 'text-xs font-medium uppercase tracking-wider text-slate-500';
+    $card = 'rounded-[var(--sf-radius-lg)] border border-[var(--sf-border)] bg-white p-5 md:p-6';
+@endphp
+
+<div class="mx-auto max-w-6xl px-4 pb-12 pt-5 md:pb-16 md:pt-8">
+    <x-checkout.steps current="done" class="mx-auto max-w-xl" />
+
+    <div class="mt-8 lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-8">
+        <div class="min-w-0 space-y-5">
+            {{-- Thank-you header --}}
+            <header class="flex items-center gap-4">
+                <span class="flex size-14 shrink-0 items-center justify-center rounded-full border-2 border-emerald-500 text-2xl text-emerald-600 md:size-16 md:text-3xl" aria-hidden="true">
+                    <i class="bi bi-check-lg"></i>
+                </span>
+                <div class="min-w-0" x-data="{ copied: false }">
+                    <p class="flex items-center gap-1.5 text-sm text-slate-500">
+                        {{ __('Order') }} <span class="font-mono font-semibold text-slate-700">#{{ $order->order_id }}</span>
+                        <button type="button" @click="navigator.clipboard?.writeText(@js($order->order_id)); copied = true; setTimeout(() => copied = false, 2000)"
+                                class="flex size-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 sf-focus">
+                            <span class="sr-only">{{ __('Copy order number') }}</span>
+                            <i class="bi" :class="copied ? 'bi-check2 text-emerald-600' : 'bi-copy'" aria-hidden="true"></i>
+                        </button>
+                        <span x-show="copied" x-cloak x-transition.opacity class="text-xs font-medium text-emerald-600" role="status">{{ __('Copied') }}</span>
+                    </p>
+                    <h1 class="font-display text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">{{ __('Thank you, :name!', ['name' => $firstName]) }}</h1>
+                </div>
+            </header>
+
+            {{-- Confirmation message --}}
+            <section class="{{ $card }}" aria-labelledby="confirmed-title">
+                <h2 id="confirmed-title" class="text-lg font-semibold text-slate-900">
+                    {{ $paid ? __('Your payment was received') : __('Your order is confirmed') }}
+                </h2>
+                <p class="mt-1.5 text-sm leading-relaxed text-slate-600">
+                    @if($isCod)
+                        {!! __('Our team may call :phone to confirm the order. Please keep :amount ready to pay the courier in cash.', ['phone' => '<strong class="text-slate-900">' . e($phone) . '</strong>', 'amount' => '<strong class="text-slate-900">' . e($fmt($order->total_price)) . '</strong>']) !!}
+                    @elseif($paid)
+                        {{ __('We have received your online payment. Your order is now being prepared.') }}
+                    @else
+                        {{ __('We are waiting for the payment gateway to confirm your payment. This page will show it once confirmed.') }}
+                    @endif
+                </p>
+                @if($email)
+                    <p class="mt-3 flex items-center gap-2 rounded-[var(--sf-radius-sm)] bg-slate-50 px-3 py-2.5 text-sm text-slate-600">
+                        <i class="bi bi-envelope-check text-brand-600" aria-hidden="true"></i>
+                        <span>{!! __('A confirmation has been sent to :email.', ['email' => '<strong class="text-slate-900">' . e($email) . '</strong>']) !!}</span>
+                    </p>
+                @endif
+            </section>
+
+            {{-- Delivery progress --}}
+            <section class="{{ $card }}" aria-labelledby="progress-title">
+                <div class="mb-5 flex flex-wrap items-baseline justify-between gap-2">
+                    <h2 id="progress-title" class="text-lg font-semibold text-slate-900">{{ __('Order status') }}</h2>
+                    @if($deliveryEta)
+                        <p class="text-sm text-slate-500"><i class="bi bi-truck text-brand-600" aria-hidden="true"></i> {{ __('Estimated delivery: :eta', ['eta' => $deliveryEta]) }}</p>
+                    @endif
+                </div>
+                <x-store.order-progress :order="$order" />
+            </section>
+
+            {{-- Customer information --}}
+            <section class="{{ $card }}" aria-labelledby="info-title">
+                <h2 id="info-title" class="text-lg font-semibold text-slate-900">{{ __('Customer information') }}</h2>
+                <dl class="mt-4 grid grid-cols-1 gap-x-8 gap-y-5 text-sm sm:grid-cols-2">
+                    <div>
+                        <dt class="{{ $label }}">{{ __('Contact') }}</dt>
+                        <dd class="mt-1.5 space-y-0.5 text-slate-800">
+                            <p class="font-medium">{{ $order->customerDisplayName() }}</p>
+                            @if($email)<p class="break-all text-slate-600">{{ $email }}</p>@endif
+                            @if($phone)<p class="tabular-nums text-slate-600">{{ $phone }}@if($order->alt_phone) · {{ $order->alt_phone }}@endif</p>@endif
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="{{ $label }}">{{ __('Payment method') }}</dt>
+                        <dd class="mt-1.5 flex flex-wrap items-center gap-2 text-slate-800">
+                            <i class="bi {{ $isCod ? 'bi-cash-coin' : 'bi-credit-card' }} text-slate-500" aria-hidden="true"></i>
+                            {{ $isCod ? __('Cash on delivery (COD)') : __('Online payment (SSLCommerz)') }}
+                            <span @class(['rounded-full px-2 py-0.5 text-xs font-semibold',
+                                          'bg-emerald-50 text-emerald-700' => $paid,
+                                          'bg-amber-50 text-amber-700' => !$paid])>
+                                {{ $paid ? __('Paid') : ($isCod ? __('Pay on delivery') : __('Awaiting payment')) }}
+                            </span>
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="{{ $label }}">{{ __('Shipping address') }}</dt>
+                        <dd class="mt-1.5 text-slate-800">
+                            <p class="whitespace-pre-line">{{ $order->shipping_address }}</p>
+                            <p class="text-slate-600">{{ collect([$order->region, $order->city === \App\Services\CheckoutOptions::OTHER_ZONE ? null : $order->city])->filter()->implode(', ') }}{{ $order->postal_code ? ' - ' . $order->postal_code : '' }}</p>
+                            <p class="text-slate-600">{{ __('Bangladesh') }}</p>
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="{{ $label }}">{{ __('Delivery method') }}</dt>
+                        <dd class="mt-1.5 text-slate-800">
+                            <p>{{ __('Standard home delivery') }}</p>
+                            <p class="text-slate-600">{{ (float) $order->delivery_charge > 0 ? $fmt($order->delivery_charge) : __('Free') }}@if($deliveryEta) · {{ $deliveryEta }}@endif</p>
+                        </dd>
+                    </div>
+                    @if($order->order_notes)
+                        <div class="sm:col-span-2">
+                            <dt class="{{ $label }}">{{ __('Order note') }}</dt>
+                            <dd class="mt-1.5 rounded-[var(--sf-radius-sm)] bg-slate-50 px-3 py-2.5 text-slate-700">{{ $order->order_notes }}</dd>
+                        </div>
+                    @endif
+                </dl>
+            </section>
+
+            {{-- Actions --}}
+            <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                <a href="{{ route('products.index') }}" class="flex h-12 items-center justify-center gap-2 rounded-[var(--sf-radius-sm)] bg-brand-600 px-6 text-sm font-semibold text-white hover:bg-brand-700 sf-focus">
+                    {{ __('Continue shopping') }} <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                </a>
+                @if($owner)
+                    <a href="{{ route('user.orders.details', $order) }}" class="flex h-12 items-center justify-center gap-2 rounded-[var(--sf-radius-sm)] border border-slate-300 bg-white px-6 text-sm font-semibold text-slate-800 hover:border-brand-600 hover:text-brand-700 sf-focus">
+                        <i class="bi bi-receipt" aria-hidden="true"></i> {{ __('View order') }}
+                    </a>
+                    <a href="{{ route('orders.invoice.download', $order->id) }}" class="flex h-12 items-center justify-center gap-2 rounded-[var(--sf-radius-sm)] px-4 text-sm font-semibold text-slate-600 hover:bg-white hover:text-slate-900 sf-focus">
+                        <i class="bi bi-download" aria-hidden="true"></i> {{ __('Download invoice') }}
+                    </a>
+                @else
+                    <a href="{{ route('tracking.index') }}" class="flex h-12 items-center justify-center gap-2 rounded-[var(--sf-radius-sm)] border border-slate-300 bg-white px-6 text-sm font-semibold text-slate-800 hover:border-brand-600 hover:text-brand-700 sf-focus">
+                        <i class="bi bi-truck" aria-hidden="true"></i> {{ __('Track order') }}
+                    </a>
+                @endif
+            </div>
+            <p class="text-sm text-slate-500">
+                {{ __('Need help with this order?') }}
+                <a href="{{ route('contact') }}" class="font-semibold text-brand-700 hover:underline">{{ __('Contact us') }}</a>
+            </p>
         </div>
+
+        {{-- Order summary --}}
+        <aside class="mt-8 lg:sticky lg:top-24 lg:mt-0" aria-labelledby="success-summary-title">
+            <div class="rounded-[var(--sf-radius-lg)] border border-[var(--sf-border)] bg-white p-5 md:p-6">
+                <h2 id="success-summary-title" class="text-lg font-semibold text-slate-900">{{ __('Order summary') }}</h2>
+                <ul class="mt-4 space-y-4">
+                    @foreach($order->orderItems as $item)
+                        @php($variantName = $item->variant?->attributeValues->map(fn ($v) => $v->attribute?->name . ': ' . $v->value)->implode(' · '))
+                        <li class="flex items-center gap-4">
+                            <div class="relative shrink-0">
+                                <x-store.image :src="Storefront::imageUrl($item->product?->images->first()?->image)" :alt="(string) ($item->product?->name ?? __('Product'))" :width="64" :height="64"
+                                               class="size-16 rounded-[var(--sf-radius)] border border-[var(--sf-border)] bg-slate-50 [&_i]:!text-2xl" img-class="p-1 mix-blend-multiply" />
+                                <span class="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-600 px-1.5 text-[11px] font-semibold text-white">{{ localized_number($item->quantity) }}</span>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p class="line-clamp-2 text-sm font-medium leading-snug text-slate-900">{{ $item->product?->name ?? __('Product no longer available') }}</p>
+                                @if($variantName)<p class="mt-0.5 truncate text-xs text-slate-500">{{ $variantName }}</p>@endif
+                            </div>
+                            <p class="shrink-0 text-sm font-medium tabular-nums text-slate-900">{{ $fmt($item->subtotal) }}</p>
+                        </li>
+                    @endforeach
+                </ul>
+
+                <dl class="mt-5 space-y-2.5 border-t border-[var(--sf-border)] pt-5 text-sm">
+                    <div class="flex justify-between gap-4">
+                        <dt class="text-slate-600">{{ __('Subtotal') }} · {{ trans_choice(':count item|:count items', $itemCount, ['count' => localized_number($itemCount)]) }}</dt>
+                        <dd class="font-medium tabular-nums text-slate-900">{{ $fmt($subtotal) }}</dd>
+                    </div>
+                    @if($discount > 0)
+                        <div class="flex justify-between gap-4">
+                            <dt class="text-slate-600">{{ __('Discount') }} @if($order->coupon_code)<span class="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold uppercase text-slate-700">{{ $order->coupon_code }}</span>@endif</dt>
+                            <dd class="font-medium tabular-nums text-emerald-700">−{{ $fmt($discount) }}</dd>
+                        </div>
+                    @endif
+                    <div class="flex justify-between gap-4">
+                        <dt class="text-slate-600">{{ __('Shipping') }}</dt>
+                        <dd class="font-medium tabular-nums text-slate-900">{{ (float) $order->delivery_charge > 0 ? $fmt($order->delivery_charge) : __('Free') }}</dd>
+                    </div>
+                    <div class="flex items-baseline justify-between gap-4 border-t border-[var(--sf-border)] pt-4">
+                        <dt class="text-base font-semibold text-slate-900">{{ __('Total') }}</dt>
+                        <dd class="flex items-baseline gap-2">
+                            <span class="text-xs text-slate-500">BDT</span>
+                            <span class="font-display text-2xl font-bold tabular-nums text-slate-900">{{ $fmt($order->total_price) }}</span>
+                        </dd>
+                    </div>
+                </dl>
+            </div>
+        </aside>
     </div>
 </div>
-
-<section class="pt-24 pb-44 bg-slate-50">
-    <div class="max-w-5xl mx-auto px-4">
-        <!-- Success Banner Card -->
-        <div class="bg-white rounded-[40px] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 lg:p-12 text-center mb-12 relative overflow-hidden">
-            <!-- Decorative light glow -->
-            <div class="absolute -top-24 -left-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-[80px]"></div>
-            <div class="absolute -bottom-24 -right-24 w-48 h-48 bg-primary/10 rounded-full blur-[80px]"></div>
-
-            <!-- Success Icon with animation -->
-            <div class="inline-flex items-center justify-center w-24 h-24 bg-emerald-50 rounded-full mb-6 border border-emerald-100 shadow-inner group">
-                <i class="bi bi-check-circle-fill text-5xl text-emerald-500 animate-pulse"></i>
-            </div>
-            
-            <h2 class="text-3xl lg:text-4xl font-black text-slate-900 tracking-tighter uppercase mb-3">{{ __('Order Placed Successfully!') }}</h2>
-                {{ __('Thank you for your order. We\'ve sent a confirmation email to') }} <span class="font-bold text-slate-700">{{ $order->user->email }}</span> {{ __('with all details and your invoice receipt.') }}
-            </p>
-            
-            <!-- Order Info Badges -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-slate-50 rounded-3xl border border-slate-100 max-w-3xl mx-auto">
-                <div class="text-center md:border-r border-slate-200/60 last:border-0 py-2">
-                    <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest block mb-1">{{ __('Order ID') }}</span>
-                    <span class="text-xs font-black text-slate-900 uppercase tracking-tighter flex items-center justify-center gap-1.5">
-                        {{ $order->order_id }}
-                        <button onclick="navigator.clipboard.writeText('{{ $order->order_id }}'); alert('Order ID copied to clipboard!')" class="text-slate-400 hover:text-primary transition-colors text-[10px]" title="Copy Order ID">
-                            <i class="bi bi-copy"></i>
-                        </button>
-                    </span>
-                </div>
-                <div class="text-center md:border-r border-slate-200/60 last:border-0 py-2">
-                    <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest block mb-1">{{ __('Date') }}</span>
-                    <span class="text-xs font-bold text-slate-900">{{ $order->created_at->format('M d, Y') }}</span>
-                </div>
-                <div class="text-center md:border-r border-slate-200/60 last:border-0 py-2">
-                    <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest block mb-1">{{ __('Total Amount') }}</span>
-                    <span class="text-xs font-black text-primary">{{ number_format($order->total_price, 2) }} Tk</span>
-                </div>
-                <div class="text-center py-2">
-                    <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest block mb-1">{{ __('Payment Method') }}</span>
-                    <span class="text-xs font-bold text-slate-900 uppercase tracking-tighter">{{ $order->payment_method === 'cod' ? 'COD' : 'Online Pay' }}</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Left Info Block: Delivery Info & Purchased Items -->
-            <div class="lg:col-span-2 space-y-8">
-                <!-- Delivery Info Card -->
-                <div class="bg-white rounded-[32px] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 relative overflow-hidden">
-                    <h3 class="text-lg font-black text-slate-900 tracking-tighter uppercase mb-6 flex items-center gap-3">
-                        <span class="w-8 h-8 bg-primary/10 text-primary rounded-lg flex items-center justify-center text-sm"><i class="bi bi-geo-alt-fill"></i></span>
-                        {{ __('Delivery Details') }}
-                    </h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
-                        <div>
-                            <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest block mb-1">{{ __('Recipient Name') }}</span>
-                            <span class="font-bold text-slate-800">{{ $order->user->name }}</span>
-                        </div>
-                        <div>
-                            <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest block mb-1">{{ __('Phone Number') }}</span>
-                            <span class="font-bold text-slate-800">{{ $order->user->phone }}</span>
-                        </div>
-                        @if($order->alt_phone)
-                        <div>
-                            <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest block mb-1">{{ __('Alternate Phone') }}</span>
-                            <span class="font-bold text-slate-800">{{ $order->alt_phone }}</span>
-                        </div>
-                        @endif
-                        <div class="sm:col-span-2">
-                            <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest block mb-1">{{ __('Shipping Address') }}</span>
-                            <span class="font-semibold text-slate-700 leading-relaxed">{{ $order->shipping_address }}, {{ $order->city }}</span>
-                        </div>
-                        @if($order->order_notes)
-                        <div class="sm:col-span-2">
-                            <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest block mb-1">{{ __('Order Notes') }}</span>
-                            <span class="text-xs text-slate-500 italic leading-relaxed bg-slate-50 p-4 rounded-2xl block border border-slate-100">{{ $order->order_notes }}</span>
-                        </div>
-                        @endif
-                    </div>
-                </div>
-
-                <!-- Purchased Items Card -->
-                <div class="bg-white rounded-[32px] shadow-xl shadow-slate-200/50 border border-slate-100 p-8">
-                    <h3 class="text-lg font-black text-slate-900 tracking-tighter uppercase mb-6 flex items-center gap-3">
-                        <span class="w-8 h-8 bg-primary/10 text-primary rounded-lg flex items-center justify-center text-sm"><i class="bi bi-basket3-fill"></i></span>
-                        {{ __('Order Items') }}
-                    </h3>
-                    <div class="divide-y divide-slate-100">
-                        @foreach($order->orderItems as $item)
-                            <div class="flex items-center gap-4 py-5 first:pt-0 last:pb-0 group">
-                                <div class="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center p-2 border border-slate-100 shrink-0">
-                                    <img src="{{ $item->product && $item->product->images->first() ? asset('storage/' . $item->product->images->first()->image) : 'https://images.unsplash.com/photo-1526733169359-81173747976e?q=80&w=1470&auto=format&fit=crop' }}" 
-                                         alt="{{ $item->product->name ?? 'Product' }}" class="max-w-full max-h-full object-contain group-hover:scale-110 transition-transform duration-300">
-                                </div>
-                                <div class="flex-grow min-w-0">
-                                    <h5 class="text-xs font-bold text-slate-800 truncate leading-snug group-hover:text-primary transition-colors">
-                                        {{ $item->product->name ?? 'Unknown Product' }}
-                                    </h5>
-                                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
-                                        @if($item->product && $item->product->brand)
-                                            {{ __('Brand') }}: {{ $item->product->brand }}
-                                        @endif
-                                        @if($item->product && $item->product->storage)
-                                            | {{ $item->product->storage }}
-                                        @endif
-                                    </p>
-                                </div>
-                                <div class="text-right shrink-0">
-                                    <div class="text-xs font-black text-slate-900">{{ number_format($item->price, 2) }} Tk</div>
-                                    <div class="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">{{ __('Qty') }}: {{ $item->quantity }}</div>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-
-                    <!-- Small Totals Section -->
-                    <div class="mt-6 pt-6 border-t border-slate-100 space-y-3">
-                        <div class="flex justify-between items-center text-xs text-slate-400 font-medium">
-                            <span>{{ __('Subtotal') }}</span>
-                            <span class="font-bold text-slate-700">{{ number_format($order->total_price - $order->delivery_charge, 2) }} Tk</span>
-                        </div>
-                        <div class="flex justify-between items-center text-xs text-slate-400 font-medium">
-                            <span>{{ __('Delivery Charge') }}</span>
-                            <span class="font-bold text-slate-700">{{ number_format($order->delivery_charge, 2) }} Tk</span>
-                        </div>
-                        <div class="flex justify-between items-center pt-3 border-t border-dashed border-slate-200">
-                            <span class="text-sm font-black text-slate-900 uppercase tracking-tighter">{{ __('Grand Total') }}</span>
-                            <span class="text-lg font-black text-primary tracking-tighter">{{ number_format($order->total_price, 2) }} Tk</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right Info Block: Stepper & Navigation -->
-            <div class="space-y-8">
-                <!-- Stepper Progress Tracker Card -->
-                <div class="bg-white rounded-[32px] shadow-xl shadow-slate-200/50 border border-slate-100 p-8">
-                    <h3 class="text-lg font-black text-slate-900 tracking-tighter uppercase mb-6 flex items-center gap-3">
-                        <span class="w-8 h-8 bg-primary/10 text-primary rounded-lg flex items-center justify-center text-sm"><i class="bi bi-truck-flatbed"></i></span>
-                        {{ __('Order Status') }}
-                    </h3>
-                    
-                    <!-- Stepper Timeline -->
-                    <div class="space-y-6 py-2">
-                        <!-- Step 1: Placed -->
-                        <div class="flex items-start gap-4">
-                            <div class="flex flex-col items-center shrink-0">
-                                <div class="w-8 h-8 rounded-full bg-emerald-500 ring-4 ring-emerald-50 flex items-center justify-center text-white">
-                                    <i class="bi bi-check text-base"></i>
-                                </div>
-                                <div class="w-0.5 h-10 bg-emerald-200 mt-2"></div>
-                            </div>
-                            <div class="pt-1">
-                                <h4 class="text-xs font-black text-slate-900 uppercase tracking-tight">{{ __('Order Placed') }}</h4>
-                                <p class="text-[10px] text-slate-400 font-medium mt-0.5">{{ __('We\'ve received your order.') }}</p>
-                            </div>
-                        </div>
-
-                        <!-- Step 2: Processing -->
-                        @php
-                            $isProcessing = in_array($order->status, ['confirmed', 'processing', 'shipped', 'delivered', 'returned', 'refunded']);
-                        @endphp
-                        <div class="flex items-start gap-4">
-                            <div class="flex flex-col items-center shrink-0">
-                                <div class="w-8 h-8 rounded-full {{ $isProcessing ? 'bg-primary ring-4 ring-primary-light/30 text-white' : 'bg-slate-200 text-slate-400' }} flex items-center justify-center">
-                                    @if($isProcessing)
-                                        <i class="bi bi-check text-base"></i>
-                                    @else
-                                        <span class="text-xs font-bold">2</span>
-                                    @endif
-                                </div>
-                                <div class="w-0.5 h-10 {{ $isProcessing ? 'bg-primary/30' : 'bg-slate-200' }} mt-2"></div>
-                            </div>
-                            <div class="pt-1">
-                                <h4 class="text-xs font-black {{ $isProcessing ? 'text-slate-900' : 'text-slate-400' }} uppercase tracking-tight">{{ __('Processing') }}</h4>
-                                <p class="text-[10px] text-slate-400 font-medium mt-0.5">{{ __('Quality check and packaging.') }}</p>
-                            </div>
-                        </div>
-
-                        <!-- Step 3: Shipped -->
-                        @php
-                            $isShipped = in_array($order->status, ['shipped', 'delivered', 'returned', 'refunded']);
-                        @endphp
-                        <div class="flex items-start gap-4">
-                            <div class="flex flex-col items-center shrink-0">
-                                <div class="w-8 h-8 rounded-full {{ $isShipped ? 'bg-primary ring-4 ring-primary-light/30 text-white' : 'bg-slate-200 text-slate-400' }} flex items-center justify-center">
-                                    @if($isShipped)
-                                        <i class="bi bi-check text-base"></i>
-                                    @else
-                                        <span class="text-xs font-bold">3</span>
-                                    @endif
-                                </div>
-                                <div class="w-0.5 h-10 {{ $isShipped ? 'bg-primary/30' : 'bg-slate-200' }} mt-2"></div>
-                            </div>
-                            <div class="pt-1">
-                                <h4 class="text-xs font-black {{ $isShipped ? 'text-slate-900' : 'text-slate-400' }} uppercase tracking-tight">{{ __('Shipped') }}</h4>
-                                <p class="text-[10px] text-slate-400 font-medium mt-0.5">{{ __('On the way to your door.') }}</p>
-                            </div>
-                        </div>
-
-                        <!-- Step 4: Delivered -->
-                        @php
-                            $isDelivered = in_array($order->status, ['delivered', 'returned', 'refunded']);
-                        @endphp
-                        <div class="flex items-start gap-4">
-                            <div class="flex flex-col items-center shrink-0">
-                                <div class="w-8 h-8 rounded-full {{ $isDelivered ? 'bg-emerald-500 ring-4 ring-emerald-50 text-white' : 'bg-slate-200 text-slate-400' }} flex items-center justify-center">
-                                    @if($isDelivered)
-                                        <i class="bi bi-check text-base"></i>
-                                    @else
-                                        <span class="text-xs font-bold">4</span>
-                                    @endif
-                                </div>
-                            </div>
-                            <div class="pt-1">
-                                <h4 class="text-xs font-black {{ $isDelivered ? 'text-slate-900' : 'text-slate-400' }} uppercase tracking-tight">{{ __('Delivered') }}</h4>
-                                <p class="text-[10px] text-slate-400 font-medium mt-0.5">{{ __('Enjoy your tech products!') }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Payment Status Card -->
-                <div class="bg-white rounded-[32px] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 text-center">
-                    <span class="text-[9px] font-black uppercase text-slate-400 tracking-widest block mb-2">{{ __('Payment Status') }}</span>
-                    @if($order->payment_status === 'paid')
-                        <span class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-emerald-50 text-emerald-600 text-xs font-black uppercase tracking-wider border border-emerald-100">
-                            <i class="bi bi-shield-fill-check"></i> {{ __('Paid') }}
-                        </span>
-                    @else
-                        <span class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-amber-50 text-amber-600 text-xs font-black uppercase tracking-wider border border-amber-100">
-                            <i class="bi bi-hourglass-split"></i> {{ __('Pending Payment') }}
-                        </span>
-                    @endif
-                    
-                    <p class="text-[10px] text-slate-400 font-semibold leading-relaxed mt-4 uppercase">
-                        @if($order->payment_method === 'cod')
-                            {{ __('Please prepare') }} <strong>{{ number_format($order->total_price, 2) }} Tk</strong> {{ __('in cash for the courier when the package is delivered.') }}
-                        @else
-                            {{ __('Your transaction has been securely processed online. Thank you!') }}
-                        @endif
-                    </p>
-                </div>
-
-                <!-- Sleek Action Buttons -->
-                <div class="space-y-4">
-                    <a href="{{ route('products.index') }}" class="w-full bg-slate-900 hover:bg-primary text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.25em] flex items-center justify-center gap-2 transition-all shadow-xl shadow-slate-900/10 active:scale-95 group">
-                        <i class="bi bi-arrow-left group-hover:-translate-x-1 transition-transform"></i> {{ __('Continue Shopping') }}
-                    </a>
-
-                    @auth
-                        <a href="{{ route('user.orders.index') }}" class="w-full bg-white hover:bg-slate-50 text-slate-900 py-5 rounded-2xl border-2 border-slate-900/10 font-black text-xs uppercase tracking-[0.25em] flex items-center justify-center gap-2 transition-all active:scale-95">
-                            <i class="bi bi-truck"></i> {{ __('Track My Order') }}
-                        </a>
-                    @else
-                        <a href="{{ route('user.orders.track') }}" class="w-full bg-white hover:bg-slate-50 text-slate-900 py-5 rounded-2xl border-2 border-slate-900/10 font-black text-xs uppercase tracking-[0.25em] flex items-center justify-center gap-2 transition-all active:scale-95">
-                            <i class="bi bi-truck"></i> {{ __('Track My Order') }}
-                        </a>
-                    @endauth
-
-                    <a href="{{ route('orders.invoice.download', $order->id) }}" target="_blank" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-4 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95">
-                        <i class="bi bi-printer"></i> {{ __('Print Invoice') }}
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
 @endsection

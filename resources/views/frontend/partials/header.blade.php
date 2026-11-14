@@ -5,7 +5,7 @@
     $navLinks = [
         ['route' => 'home', 'label' => __('Home'), 'active' => 'home'],
         ['route' => 'products.index', 'label' => __('Products'), 'active' => 'products.*'],
-        ['route' => 'flash-deals', 'label' => __('Discount'), 'active' => 'flash-deals'],
+        ['route' => 'flash-deals', 'label' => __('Deals'), 'active' => 'flash-deals'],
         ['route' => 'frontend.articles', 'label' => __('Tech Blog'), 'active' => 'frontend.articles*'],
         ['route' => 'contact', 'label' => __('Contact'), 'active' => 'contact'],
     ];
@@ -215,7 +215,7 @@
         </ul>
 
         <a href="{{ route('flash-deals') }}" class="flex h-8 items-center gap-2 rounded-full bg-sale px-4 text-xs font-bold text-white shadow-lg shadow-sale/30 hover:brightness-110 sf-focus">
-            <i class="bi bi-lightning-charge-fill" aria-hidden="true"></i> {{ __('Discount Products') }}
+            <i class="bi bi-lightning-charge-fill" aria-hidden="true"></i> {{ __('Deals') }}
         </a>
     </div>
 </nav>

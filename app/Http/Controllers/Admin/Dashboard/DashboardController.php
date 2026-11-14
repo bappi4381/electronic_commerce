@@ -3,9 +3,14 @@
 namespace App\Http\Controllers\Admin\Dashboard;
 
 use App\Enums\OrderStatus;
+use App\Exceptions\CourierException;
 use App\Http\Controllers\Controller;
 use App\Models\Message;
 use App\Models\Order;
+use App\Models\OrderCourier;
+use App\Services\Courier\CourierStatus;
+use App\Services\Courier\SteadfastService;
+use Illuminate\Support\Facades\Cache;
 use App\Models\Product;
 use App\Models\ProductComment;
 use App\Models\ProductVariant;
@@ -46,6 +51,9 @@ class DashboardController extends Controller
 
         $pending = [
             'orders'   => Order::where('status', OrderStatus::Pending->value)->count(),
+            'on_hold'  => Order::where('status', OrderStatus::OnHold->value)->count(),
+            'risk_unknown' => Order::where('risk_level', \App\Enums\RiskLevel::Unknown->value)->whereNull('risk_reviewed_at')
+                ->whereIn('status', [OrderStatus::Pending->value, OrderStatus::OnHold->value, OrderStatus::Confirmed->value])->count(),
             'reviews'  => ProductComment::withoutGlobalScope('active_user')->where('status', ProductComment::STATUS_PENDING)->count(),
             'messages' => Message::where('is_admin', false)->where('is_read', false)->count(),
             'refunds'  => Refund::where('status', 'pending')->count(),
@@ -63,7 +71,45 @@ class DashboardController extends Controller
             'pending'          => $pending,
             'recentOrders'     => $recentOrders,
             'chart'            => $this->monthlySales($now),
+            'courier'          => $this->courierWidget(request()->boolean('refresh_balance')),
         ]);
+    }
+
+    /**
+     * Steadfast balance (cached 5 minutes, errors included, so a slow courier API cannot stall every dashboard load)
+     * plus parcel counts. Null for admins who cannot see orders.
+     */
+    private function courierWidget(bool $refresh): ?array
+    {
+        if (!auth('admin')->user()?->can('orders.view')) {
+            return null;
+        }
+
+        $steadfast = app(SteadfastService::class);
+        $cacheKey = 'courier.steadfast.balance';
+
+        if ($refresh) {
+            Cache::forget($cacheKey);
+        }
+
+        $balance = !$steadfast->configured()
+            ? ['configured' => false, 'amount' => null, 'error' => null, 'checked_at' => null]
+            : Cache::remember($cacheKey, 300, function () use ($steadfast) {
+                try {
+                    $amount = $steadfast->getBalance();
+                    $error = null;
+                } catch (CourierException $e) {
+                    $amount = null;
+                    $error = $e->getMessage();
+                }
+
+                return ['configured' => true, 'amount' => $amount, 'error' => $error, 'checked_at' => now()->toIso8601String()];
+            });
+
+        return $balance + [
+            'in_transit' => OrderCourier::whereNotNull('consignment_id')->whereNotIn('status', CourierStatus::FINAL)->count(),
+            'failed'     => OrderCourier::whereNull('consignment_id')->where('status', CourierStatus::FAILED)->count(),
+        ];
     }
 
     /**

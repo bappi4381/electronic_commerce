@@ -1,192 +1,122 @@
 @extends('user.layout')
 
-@section('title', 'Dashboard Overview')
+@section('title', __('My account'))
 
-@section('content')
-<div class="space-y-8">
-    <!-- Header Section -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-            <h2 class="text-3xl font-black text-slate-900 tracking-tighter uppercase">{{ __('Overview') }}</h2>
-            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">{{ __('Everything you need to manage your account.') }}</p>
-        </div>
-        <div class="flex items-center gap-3">
-            <span class="text-[10px] font-black uppercase text-slate-500 tracking-widest bg-white px-5 py-3 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-2">
-                <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                {{ __('System Online') }}
-            </span>
-        </div>
-    </div>
+@section('account')
+@php
+    $firstName = \Illuminate\Support\Str::of($user->name)->before(' ');
+    $hour = (int) now()->format('G');
+    $greeting = $hour < 12 ? __('Good morning') : ($hour < 17 ? __('Good afternoon') : __('Good evening'));
+    $card = 'rounded-[var(--sf-radius-lg)] border border-[var(--sf-border)] bg-white p-5 md:p-6';
+    $statCards = [
+        ['label' => __('Total orders'), 'value' => $stats['total_orders'], 'icon' => 'bi-bag', 'tone' => 'bg-brand-50 text-brand-600', 'url' => route('user.orders.index')],
+        ['label' => __('In progress'), 'value' => $stats['active_orders'], 'icon' => 'bi-hourglass-split', 'tone' => 'bg-amber-50 text-amber-600', 'url' => route('user.orders.index', ['status' => 'active'])],
+        ['label' => __('Delivered'), 'value' => $stats['delivered_orders'], 'icon' => 'bi-house-check', 'tone' => 'bg-emerald-50 text-emerald-600', 'url' => route('user.orders.index', ['status' => 'delivered'])],
+        ['label' => __('Wishlist'), 'value' => $stats['wishlist_count'], 'icon' => 'bi-heart', 'tone' => 'bg-rose-50 text-rose-600', 'url' => route('wishlist.index')],
+    ];
+    $hasAddress = filled($user->address);
+@endphp
 
-    <!-- Stats Grid -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <!-- Total Orders -->
-        <div class="card p-6 sm:p-8 border-0 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden relative">
-            <div class="flex items-center justify-between relative z-10">
+<div class="space-y-6">
+    <header>
+        <p class="text-sm text-slate-500">{{ $greeting }},</p>
+        <h1 class="font-display text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">{{ $firstName }}</h1>
+    </header>
+
+    {{-- Stats --}}
+    <ul class="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+        @foreach($statCards as $stat)
+            <li>
+                <a href="{{ $stat['url'] }}" class="flex h-full flex-col gap-3 rounded-[var(--sf-radius-lg)] border border-[var(--sf-border)] bg-white p-4 transition-shadow hover:shadow-[var(--sf-shadow-sm)] sf-focus md:p-5">
+                    <span class="flex size-10 items-center justify-center rounded-full text-lg {{ $stat['tone'] }}" aria-hidden="true"><i class="bi {{ $stat['icon'] }}"></i></span>
+                    <span>
+                        <span class="block font-display text-2xl font-bold tabular-nums text-slate-900">{{ localized_number($stat['value']) }}</span>
+                        <span class="block text-sm text-slate-500">{{ $stat['label'] }}</span>
+                    </span>
+                </a>
+            </li>
+        @endforeach
+    </ul>
+
+    {{-- Latest active order --}}
+    @if($activeOrder)
+        <section class="{{ $card }}" aria-labelledby="active-order-title">
+            <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
                 <div>
-                    <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">{{ __('Total Orders') }}</p>
-                    <h4 class="text-4xl font-black text-slate-900 tracking-tighter">{{ $stats['total_orders'] }}</h4>
+                    <h2 id="active-order-title" class="text-lg font-semibold text-slate-900">{{ __('Your latest order') }}</h2>
+                    <p class="text-sm text-slate-500">
+                        <span class="font-mono">#{{ $activeOrder->order_id }}</span> · {{ $activeOrder->created_at->format('d M Y') }} ·
+                        {{ trans_choice(':count item|:count items', (int) $activeOrder->orderItems->sum('quantity'), ['count' => localized_number($activeOrder->orderItems->sum('quantity'))]) }}
+                    </p>
                 </div>
-                <div class="w-12 h-12 sm:w-14 sm:h-14 bg-sky-50 text-sky-500 rounded-[22px] flex items-center justify-center text-xl sm:text-2xl group-hover:bg-sky-500 group-hover:text-white transition-all duration-500 shadow-inner">
-                    <i class="bi bi-bag-check-fill"></i>
-                </div>
+                <a href="{{ route('user.orders.details', $activeOrder) }}" class="flex h-10 items-center gap-1.5 rounded-[var(--sf-radius-sm)] border border-slate-300 px-4 text-sm font-semibold text-slate-800 hover:border-brand-600 hover:text-brand-700 sf-focus">
+                    {{ __('Track order') }} <i class="bi bi-chevron-right text-xs" aria-hidden="true"></i>
+                </a>
             </div>
-            <div class="absolute -bottom-10 -right-10 w-32 h-32 bg-sky-500/5 rounded-full blur-3xl group-hover:bg-sky-500/10 transition-colors"></div>
-        </div>
+            <x-store.order-progress :order="$activeOrder" />
+        </section>
+    @endif
 
-        <!-- Pending -->
-        <div class="card p-6 sm:p-8 border-0 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden relative">
-            <div class="flex items-center justify-between relative z-10">
-                <div>
-                    <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">{{ __('Pending') }}</p>
-                    <h4 class="text-4xl font-black text-slate-900 tracking-tighter">{{ $stats['pending_orders'] }}</h4>
-                </div>
-                <div class="w-12 h-12 sm:w-14 sm:h-14 bg-amber-50 text-amber-500 rounded-[22px] flex items-center justify-center text-xl sm:text-2xl group-hover:bg-amber-500 group-hover:text-white transition-all duration-500 shadow-inner">
-                    <i class="bi bi-clock-history"></i>
-                </div>
-            </div>
-            <div class="absolute -bottom-10 -right-10 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl group-hover:bg-amber-500/10 transition-colors"></div>
-        </div>
-
-        <!-- Delivered -->
-        <div class="card p-6 sm:p-8 border-0 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden relative">
-            <div class="flex items-center justify-between relative z-10">
-                <div>
-                    <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">{{ __('Delivered') }}</p>
-                    <h4 class="text-4xl font-black text-slate-900 tracking-tighter">{{ $stats['delivered_orders'] }}</h4>
-                </div>
-                <div class="w-12 h-12 sm:w-14 sm:h-14 bg-green-50 text-green-500 rounded-[22px] flex items-center justify-center text-xl sm:text-2xl group-hover:bg-green-500 group-hover:text-white transition-all duration-500 shadow-inner">
-                    <i class="bi bi-truck"></i>
-                </div>
-            </div>
-            <div class="absolute -bottom-10 -right-10 w-32 h-32 bg-green-500/5 rounded-full blur-3xl group-hover:bg-green-500/10 transition-colors"></div>
-        </div>
-
-        <!-- Wishlist -->
-        <div class="card p-6 sm:p-8 border-0 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group overflow-hidden relative">
-            <div class="flex items-center justify-between relative z-10">
-                <div>
-                    <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">{{ __('Wishlist') }}</p>
-                    <h4 class="text-4xl font-black text-slate-900 tracking-tighter">{{ $stats['wishlist_count'] }}</h4>
-                </div>
-                <div class="w-12 h-12 sm:w-14 sm:h-14 bg-rose-50 text-rose-500 rounded-[22px] flex items-center justify-center text-xl sm:text-2xl group-hover:bg-rose-500 group-hover:text-white transition-all duration-500 shadow-inner">
-                    <i class="bi bi-heart-fill"></i>
-                </div>
-            </div>
-            <div class="absolute -bottom-10 -right-10 w-32 h-32 bg-rose-500/5 rounded-full blur-3xl group-hover:bg-rose-500/10 transition-colors"></div>
-        </div>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <!-- Recent Orders -->
-        <div class="lg:col-span-2 space-y-6">
-            <div class="card border-0 shadow-sm overflow-hidden bg-white">
-                <div class="px-6 sm:px-8 py-6 border-b border-slate-50 flex items-center justify-between">
-                    <h3 class="text-sm font-black text-slate-900 tracking-widest uppercase flex items-center gap-3">
-                        <i class="bi bi-list-stars text-primary"></i>
-                        {{ __('Recent Orders') }}
-                    </h3>
-                    <a href="{{ route('user.orders.index') }}" class="text-[10px] font-black text-primary uppercase tracking-widest hover:underline">{{ __('View All') }}</a>
-                </div>
-                
-                @if($recentOrders->isEmpty())
-                    <div class="p-12 sm:p-16 text-center">
-                        <div class="w-20 h-20 bg-slate-50 text-slate-200 rounded-[30px] flex items-center justify-center text-4xl mx-auto mb-6">
-                            <i class="bi bi-bag-x"></i>
-                        </div>
-                        <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest">{{ __('No recent orders found') }}</p>
-                    </div>
-                @else
-                    {{-- Desktop table --}}
-                    <div class="hidden sm:block overflow-x-auto">
-                        <table class="w-full text-left">
-                            <thead>
-                                <tr class="bg-slate-50/50">
-                                    <th class="px-8 py-4 text-[9px] font-black uppercase text-slate-400 tracking-widest">{{ __('Order ID') }}</th>
-                                    <th class="px-8 py-4 text-[9px] font-black uppercase text-slate-400 tracking-widest">{{ __('Date') }}</th>
-                                    <th class="px-8 py-4 text-[9px] font-black uppercase text-slate-400 tracking-widest">{{ __('Total') }}</th>
-                                    <th class="px-8 py-4 text-[9px] font-black uppercase text-slate-400 tracking-widest text-right">{{ __('Status') }}</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-50">
-                                @foreach($recentOrders as $order)
-                                    <tr class="hover:bg-slate-50/50 transition-colors cursor-pointer" onclick="window.location='{{ route('user.orders.details', $order->id) }}'">
-                                        <td class="px-8 py-5">
-                                            <span class="text-xs font-black text-slate-900 uppercase tracking-tighter">{{ $order->order_id }}</span>
-                                        </td>
-                                        <td class="px-8 py-5">
-                                            <span class="text-[11px] font-bold text-slate-500">{{ $order->created_at->format('d M, Y') }}</span>
-                                        </td>
-                                        <td class="px-8 py-5">
-                                            <span class="text-xs font-black text-slate-900">tk. {{ number_format($order->total_price, 2) }}</span>
-                                        </td>
-                                        <td class="px-8 py-5 text-right">
-                                            @php
-                                                $statusStyles = \App\Enums\OrderStatus::badge($order->status);
-                                            @endphp
-                                            <span class="px-3 py-1 rounded-full border text-[8px] font-black uppercase tracking-widest border {{ $statusStyles }}">
-                                                {{ $order->statusEnum()?->label() ?? $order->status }}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {{-- Mobile card list --}}
-                    <div class="block sm:hidden divide-y divide-slate-50">
-                        @foreach($recentOrders as $order)
-                            @php
-                                $statusStyles = \App\Enums\OrderStatus::badge($order->status);
-                            @endphp
-                            <a href="{{ route('user.orders.details', $order->id) }}" class="flex items-center justify-between px-5 py-4 hover:bg-slate-50/50 transition-colors">
-                                <div>
-                                    <p class="text-[10px] font-black text-slate-900 uppercase tracking-tighter">{{ $order->order_id }}</p>
-                                    <p class="text-[9px] font-bold text-slate-400 mt-0.5">{{ $order->created_at->format('d M, Y') }}</p>
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    <span class="text-xs font-black text-slate-900">tk. {{ number_format($order->total_price, 2) }}</span>
-                                    <span class="px-2.5 py-1 rounded-full border text-[8px] font-black uppercase tracking-widest {{ $statusStyles }}">{{ $order->statusEnum()?->label() ?? $order->status }}</span>
-                                </div>
-                            </a>
-                        @endforeach
-                    </div>
+    <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        {{-- Recent orders --}}
+        <section aria-labelledby="recent-title">
+            <div class="mb-3 flex items-center justify-between">
+                <h2 id="recent-title" class="text-lg font-semibold text-slate-900">{{ __('Recent orders') }}</h2>
+                @if($recentOrders->isNotEmpty())
+                    <a href="{{ route('user.orders.index') }}" class="flex min-h-10 items-center gap-1 rounded text-sm font-semibold text-brand-700 hover:underline sf-focus">{{ __('View all') }} <i class="bi bi-chevron-right text-xs" aria-hidden="true"></i></a>
                 @endif
             </div>
-        </div>
+            @forelse($recentOrders as $order)
+                <div @class(['mt-3' => !$loop->first])>@include('user.orders.partials.card', ['order' => $order])</div>
+            @empty
+                <div class="{{ $card }} text-center">
+                    <span class="mx-auto flex size-14 items-center justify-center rounded-full bg-brand-50 text-2xl text-brand-600" aria-hidden="true"><i class="bi bi-bag"></i></span>
+                    <p class="mt-3 font-semibold text-slate-900">{{ __('No orders yet') }}</p>
+                    <p class="mt-1 text-sm text-slate-500">{{ __('When you place an order, you can follow it here.') }}</p>
+                    <a href="{{ route('products.index') }}" class="mt-4 inline-flex h-11 items-center gap-2 rounded-full bg-navy-900 px-6 text-sm font-semibold text-white hover:bg-navy-800 sf-focus">{{ __('Start shopping') }}</a>
+                </div>
+            @endforelse
+        </section>
 
-        <!-- Quick Actions & Updates -->
-        <div class="space-y-8">
-            <div class="card border-0 shadow-sm p-8 bg-slate-900 text-white relative overflow-hidden group">
-                <div class="relative z-10">
-                    <h3 class="text-lg font-black tracking-tighter uppercase mb-4">{{ __('Quick Help') }}</h3>
-                    <p class="text-xs text-slate-400 font-medium leading-relaxed mb-8">{{ __('Having trouble with an order? Our support team is ready to help you 24/7.') }}</p>
-                    <a href="{{ route('user.messages.index') }}" class="block w-full py-4 bg-primary hover:bg-primary-dark text-white text-center font-black uppercase tracking-widest text-[10px] rounded-xl transition-all shadow-lg shadow-primary/20">
-                        {{ __('Contact Support') }}
-                    </a>
+        <div class="space-y-6">
+            {{-- Account details --}}
+            <section class="{{ $card }}" aria-labelledby="details-title">
+                <div class="flex items-center justify-between">
+                    <h2 id="details-title" class="font-semibold text-slate-900">{{ __('Account details') }}</h2>
+                    <a href="{{ route('user.profile') }}" class="rounded text-sm font-semibold text-brand-700 hover:underline sf-focus">{{ __('Edit') }}</a>
                 </div>
-                <div class="absolute -top-10 -right-10 w-32 h-32 bg-primary/20 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700"></div>
-            </div>
+                <dl class="mt-4 space-y-3 text-sm">
+                    <div class="flex gap-3">
+                        <dt class="sr-only">{{ __('Email') }}</dt>
+                        <i class="bi bi-envelope mt-0.5 text-slate-400" aria-hidden="true"></i>
+                        <dd class="min-w-0 break-all text-slate-700">
+                            {{ $user->email }}
+                            @if($user->is_email_verified)
+                                <span class="ml-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700"><i class="bi bi-patch-check-fill" aria-hidden="true"></i>{{ __('Verified') }}</span>
+                            @endif
+                        </dd>
+                    </div>
+                    <div class="flex gap-3">
+                        <dt class="sr-only">{{ __('Phone') }}</dt>
+                        <i class="bi bi-telephone mt-0.5 text-slate-400" aria-hidden="true"></i>
+                        <dd class="text-slate-700">{{ $user->phone ?: __('No phone number added') }}</dd>
+                    </div>
+                    <div class="flex gap-3">
+                        <dt class="sr-only">{{ __('Default address') }}</dt>
+                        <i class="bi bi-geo-alt mt-0.5 text-slate-400" aria-hidden="true"></i>
+                        <dd class="whitespace-pre-line text-slate-700">{{ $hasAddress ? collect([$user->address, collect([$user->state, $user->city === \App\Services\CheckoutOptions::OTHER_ZONE ? null : $user->city, $user->postal_code])->filter()->implode(', ')])->filter()->implode("\n") : __('No default address yet. It is saved when you tick "Save this information" at checkout.') }}</dd>
+                    </div>
+                </dl>
+            </section>
 
-            <div class="card border-0 shadow-sm p-8 space-y-6">
-                <h3 class="text-xs font-black text-slate-900 tracking-[0.2em] uppercase">{{ __('Account Security') }}</h3>
-                <div class="flex items-start gap-4">
-                    <div class="w-10 h-10 bg-green-50 text-green-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <i class="bi bi-shield-check"></i>
-                    </div>
-                    <div>
-                        <p class="text-[11px] font-black text-slate-900 uppercase tracking-tighter">{{ __('Email Verified') }}</p>
-                        <p class="text-[10px] font-medium text-slate-400 mt-1">{{ __('Your account is fully secured.') }}</p>
-                    </div>
-                </div>
-                <div class="pt-4 border-t border-slate-100">
-                    <a href="{{ route('user.profile') }}" class="text-[9px] font-black text-primary uppercase tracking-widest flex items-center justify-between group/link">
-                        {{ __('Manage Settings') }}
-                        <i class="bi bi-arrow-right group-hover/link:translate-x-1 transition-transform"></i>
-                    </a>
-                </div>
-            </div>
+            {{-- Help --}}
+            <section class="rounded-[var(--sf-radius-lg)] bg-navy-900 p-5 text-white md:p-6" aria-labelledby="help-title">
+                <h2 id="help-title" class="font-semibold">{{ __('Need help with an order?') }}</h2>
+                <p class="mt-1 text-sm text-slate-300">{{ __('Message our support team. We usually reply within minutes.') }}</p>
+                <a href="{{ route('user.messages.index') }}" class="mt-4 flex h-11 items-center justify-center gap-2 rounded-[var(--sf-radius-sm)] bg-white text-sm font-semibold text-navy-900 hover:bg-slate-100 sf-focus">
+                    <i class="bi bi-chat-dots" aria-hidden="true"></i> {{ __('Message support') }}
+                </a>
+            </section>
         </div>
     </div>
 </div>

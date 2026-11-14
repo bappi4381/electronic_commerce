@@ -151,12 +151,19 @@ Route::prefix('admin')->group(function () use ($adminResource, $can) {
         Route::middleware($can('orders.edit'))->group(function () {
             Route::post('orders/bulk-status', [OrderController::class, 'bulkStatus'])->name('orders.bulkStatus');
             Route::patch('orders/{order}/status', [OrderController::class, 'updateStatus'])->name('orders.updateStatus');
+            Route::post('orders/{order}/risk/recheck', [\App\Http\Controllers\Admin\Order\OrderRiskController::class, 'recheck'])->middleware('throttle:20,1')->name('orders.risk.recheck');
+            Route::post('orders/{order}/risk/safe', [\App\Http\Controllers\Admin\Order\OrderRiskController::class, 'markSafe'])->name('orders.risk.safe');
+            Route::post('orders/{order}/risk/blacklist', [\App\Http\Controllers\Admin\Order\OrderRiskController::class, 'blacklist'])->name('orders.risk.blacklist');
+            Route::post('phone-blacklist', [\App\Http\Controllers\Admin\Order\PhoneBlacklistController::class, 'store'])->name('admin.blacklist.store');
+            Route::delete('phone-blacklist/{blacklist}', [\App\Http\Controllers\Admin\Order\PhoneBlacklistController::class, 'destroy'])->name('admin.blacklist.destroy');
+            Route::post('orders/courier/bulk', [OrderCourierController::class, 'bulkStore'])->name('orders.courier.bulk');
             Route::post('orders/{order}/courier', [OrderCourierController::class, 'store'])->name('orders.courier.store');
             Route::post('orders/{order}/courier/refresh', [OrderCourierController::class, 'refresh'])->name('orders.courier.refresh');
             Route::get('orders/courier/pathao/cities', [OrderCourierController::class, 'pathaoCities'])->name('orders.courier.pathao.cities');
             Route::get('orders/courier/pathao/cities/{city}/zones', [OrderCourierController::class, 'pathaoZones'])->whereNumber('city')->name('orders.courier.pathao.zones');
         });
         Route::middleware($can('orders.view'))->group(function () {
+            Route::get('phone-blacklist', [\App\Http\Controllers\Admin\Order\PhoneBlacklistController::class, 'index'])->name('admin.blacklist.index');
             Route::get('/orders/{id}/generate-invoice', [OrderController::class, 'generateInvoice'])->name('admin.orders.invoice.generate');
             Route::get('/orders/{id}/download-invoice', [OrderController::class, 'downloadInvoice'])->name('admin.orders.invoice.download');
         });
@@ -213,12 +220,15 @@ Route::prefix('admin')->group(function () use ($adminResource, $can) {
         // ── Global Settings ─────────────────────────────────────────────────
         Route::get('/settings', [SettingController::class, 'index'])->middleware($can('settings.view'))->name('admin.settings.index');
         Route::post('/settings', [SettingController::class, 'update'])->middleware($can('settings.edit'))->name('admin.settings.update');
+        Route::post('/settings/facebook-test', [SettingController::class, 'facebookTest'])->middleware([$can('settings.edit'), 'throttle:6,1'])->name('admin.settings.facebook-test');
+        Route::post('/settings/courier-test/{courier}', [SettingController::class, 'courierTest'])->whereIn('courier', ['steadfast', 'pathao'])->middleware([$can('settings.edit'), 'throttle:6,1'])->name('admin.settings.courier-test');
 
         // ── Marketing & Coupons ─────────────────────────────────────────────
         Route::get('/marketing', [CouponController::class, 'index'])->middleware($can('marketing.view'))->name('marketing.index');
         Route::middleware($can('marketing.edit'))->group(function () {
             Route::post('/marketing/discount/{product}', [CouponController::class, 'updateProductDiscount'])->name('marketing.updateDiscount');
             Route::post('/marketing/flash-deal', [CouponController::class, 'updateFlashDeal'])->name('marketing.flashDeal');
+            Route::post('/marketing/flash-deal/end', [CouponController::class, 'endFlashDeal'])->name('marketing.flashDeal.end');
             Route::patch('coupons/{coupon}/toggle', [CouponController::class, 'toggleStatus'])->name('coupons.toggle');
         });
         $adminResource('coupons', CouponController::class, 'marketing', ['create', 'store', 'edit', 'update', 'destroy']);
@@ -298,12 +308,24 @@ Route::group(['prefix' => '{locale}', 'middleware' => 'set_locale'], function ()
     });
 
     Route::get('/orders/success/{order}', [CheckoutController::class, 'success'])->name('orders.success');
+    Route::get('/orders/{order}/payment/{result}', [CheckoutController::class, 'paymentResult'])->whereIn('result', ['failed', 'cancelled', 'pending'])->name('orders.payment.result');
+    Route::post('/orders/{order}/reorder', [CheckoutController::class, 'reorder'])->middleware('user')->name('orders.reorder');
     Route::get('/orders/{order}/invoice/download', [CheckoutController::class, 'downloadInvoice'])->name('orders.invoice.download')->middleware('user');
 
-    // Accept both GET and POST for success, fail, cancel
-    Route::match(['get', 'post'], '/ssl-success', [SslcommerzController::class, 'success'])->name('sslc.success');
-    Route::match(['get', 'post'], '/ssl-fail', [SslcommerzController::class, 'fail'])->name('sslc.failure');
-    Route::match(['get', 'post'], '/ssl-cancel', [SslcommerzController::class, 'cancel'])->name('sslc.cancel');
+    // The gateway posts these cross-site, so the browser omits the (SameSite=Lax) session cookie. Running them
+    // without a session stops Laravel from issuing a fresh cookie that would log the customer out; they only
+    // redirect to signed pages, which load with the customer's real session.
+    Route::withoutMiddleware([
+        \Illuminate\Session\Middleware\StartSession::class,
+        \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+        \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+        \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
+        \App\Http\Middleware\EnsureUserIsNotBlocked::class,
+    ])->group(function () {
+        Route::match(['get', 'post'], '/ssl-success', [SslcommerzController::class, 'success'])->name('sslc.success');
+        Route::match(['get', 'post'], '/ssl-fail', [SslcommerzController::class, 'fail'])->name('sslc.failure');
+        Route::match(['get', 'post'], '/ssl-cancel', [SslcommerzController::class, 'cancel'])->name('sslc.cancel');
+    });
 
     // IPN is always POST
     Route::post('/ssl-ipn', [SslcommerzController::class, 'ipn'])->name('sslc.ipn');

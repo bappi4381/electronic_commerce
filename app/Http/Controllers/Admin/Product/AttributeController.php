@@ -7,6 +7,7 @@ use App\Models\Attribute;
 use App\Models\AttributeValue;
 use App\Models\Category;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class AttributeController extends Controller
 {
@@ -55,7 +56,14 @@ class AttributeController extends Controller
 
     public function destroy(Attribute $attribute)
     {
+        if ($used = AttributeValue::variantUsage($attribute->values()->pluck('id'))) {
+            return redirect()->route('admin.attributes.index')->with('error',
+                "\"{$attribute->name}\" is used by {$used} product " . Str::plural('variant', $used) . ' (including ones with past orders), so it can\'t be deleted. Remove it from those variants first, or simply stop using it.');
+        }
+
         $attribute->delete();
+        $this->audit($attribute, "Deleted attribute \"{$attribute->name}\"");
+
         return redirect()->route('admin.attributes.index')
             ->with('success', 'Attribute deleted successfully!');
     }
@@ -68,7 +76,12 @@ class AttributeController extends Controller
             'value' => 'required|string|max:100',
         ]);
 
-        $attribute->values()->create(['value' => $request->value]);
+        // Reported as a page message: every attribute card has its own "value" input.
+        if ($attribute->values()->where('value', trim($request->value))->exists()) {
+            return redirect()->route('admin.attributes.index')->with('error', "{$attribute->name} already has the value \"" . trim($request->value) . '".');
+        }
+
+        $attribute->values()->create(['value' => trim($request->value)]);
 
         return redirect()->route('admin.attributes.index')
             ->with('success', '"' . $request->value . '" added to ' . $attribute->name);
@@ -76,9 +89,21 @@ class AttributeController extends Controller
 
     public function destroyValue(AttributeValue $value)
     {
+        if ($used = AttributeValue::variantUsage([$value->id])) {
+            return redirect()->route('admin.attributes.index')->with('error',
+                "\"{$value->value}\" is used by {$used} product " . Str::plural('variant', $used) . ' (including ones with past orders), so it can\'t be removed.');
+        }
+
         $value->delete();
+        $this->audit($value->attribute, "Removed value \"{$value->value}\" from attribute \"{$value->attribute?->name}\"");
+
         return redirect()->route('admin.attributes.index')
             ->with('success', 'Attribute value removed.');
+    }
+
+    private function audit(?Attribute $attribute, string $description): void
+    {
+        activity('catalog')->causedBy(auth('admin')->user())->withProperties(['attribute_id' => $attribute?->id])->log($description);
     }
 
     // Get attributes for a specific category

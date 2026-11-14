@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Models\Order;
@@ -89,10 +90,14 @@ class SslcommerzController extends Controller
         $order = $this->confirmPayment($request->input('val_id'), $request->input('tran_id'), 'success');
 
         if (!$order) {
-            return response('Payment could not be verified. If you were charged, it will be confirmed automatically or our team will contact you.', 400);
+            $order = Order::where('order_id', (string) $request->input('tran_id'))->first();
+
+            return $order
+                ? $this->resultRedirect($order, 'pending')
+                : response('Payment could not be verified. If you were charged, it will be confirmed automatically or our team will contact you.', 400);
         }
 
-        return redirect()->route('orders.success', ['locale' => app()->getLocale(), 'order' => $order->id]);
+        return redirect()->to(URL::temporarySignedRoute('orders.success', now()->addDays(7), ['locale' => app()->getLocale(), 'order' => $order->id]));
     }
 
     /**
@@ -100,10 +105,7 @@ class SslcommerzController extends Controller
      */
     public function fail(Request $request)
     {
-        $tran_id = (string) $request->input('tran_id');
-        $this->releaseReservation($tran_id, 'failed', 'Payment failure released reservation');
-
-        return response('Payment Failed! Transaction ID: ' . e($tran_id));
+        return $this->closeUnpaid((string) $request->input('tran_id'), 'failed', 'Payment failure released reservation');
     }
 
     /**
@@ -111,10 +113,23 @@ class SslcommerzController extends Controller
      */
     public function cancel(Request $request)
     {
-        $tran_id = (string) $request->input('tran_id');
-        $this->releaseReservation($tran_id, 'cancelled', 'Payment cancellation released reservation');
+        return $this->closeUnpaid((string) $request->input('tran_id'), 'cancelled', 'Payment cancellation released reservation');
+    }
 
-        return response('Payment Cancelled! Transaction ID: ' . e($tran_id));
+    private function closeUnpaid(string $tranId, string $result, string $reason)
+    {
+        $this->releaseReservation($tranId, $result, $reason);
+
+        $order = $tranId !== '' ? Order::where('order_id', $tranId)->first() : null;
+
+        return $order ? $this->resultRedirect($order, $result) : redirect()->route('cart.index', ['locale' => app()->getLocale()]);
+    }
+
+    private function resultRedirect(Order $order, string $result)
+    {
+        return redirect()->to(URL::temporarySignedRoute('orders.payment.result', now()->addDays(7), [
+            'locale' => app()->getLocale(), 'order' => $order->id, 'result' => $result,
+        ]));
     }
 
     /**
@@ -212,7 +227,10 @@ class SslcommerzController extends Controller
             );
         });
 
-        return $order->fresh();
+        $order = $order->fresh();
+        app(\App\Services\FacebookTracking::class)->purchase($order);
+
+        return $order;
     }
 
     private function validateTransaction(string $valId, array $context): ?array
