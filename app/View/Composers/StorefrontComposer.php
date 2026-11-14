@@ -18,7 +18,7 @@ use Illuminate\View\View;
  */
 class StorefrontComposer
 {
-    public const DEPARTMENTS_CACHE_KEY = 'store.departments.v1';
+    public const DEPARTMENTS_CACHE_KEY = 'store.departments.v2';
 
     private ?array $data = null;
 
@@ -45,32 +45,35 @@ class StorefrontComposer
         ];
     }
 
-    /** Top-level product categories with subcategories, product counts and their leading brands. */
+    /** Top-level product categories with their nested tree, product counts and leading brands. */
     public static function departments(): array
     {
         return Cache::remember(self::DEPARTMENTS_CACHE_KEY, 600, function () {
-            $categories = Category::where('type', 'product')->whereNull('parent_id')->with('children')->orderBy('id')->get();
+            $present = function (Category $category) use (&$present): array {
+                return [
+                    'id' => $category->id,
+                    'name' => $category->getTranslations('name'),
+                    'icon' => $category->icon ? Storefront::categoryIcon($category) : null,
+                    'count' => (int) $category->total_count,
+                    'children' => $category->children
+                        ->map(fn (Category $child) => $present($child))
+                        ->filter(fn (array $child) => $child['count'] > 0 || $child['children'] !== [])
+                        ->values()
+                        ->all(),
+                ];
+            };
 
-            return $categories->map(function (Category $category) {
-                $ids = $category->children->pluck('id')->push($category->id);
-                $count = Product::whereIn('category_id', $ids)->count();
+            return Category::nested('product')->map(function (Category $category) use ($present) {
+                $ids = $category->loadedIds();
 
                 $brands = Brand::where('status', true)
                     ->whereHas('products', fn ($q) => $q->whereIn('category_id', $ids))
                     ->withCount(['products' => fn ($q) => $q->whereIn('category_id', $ids)])
                     ->orderByDesc('products_count')->take(4)->get();
 
-                return [
-                    'id' => $category->id,
-                    'name' => $category->getTranslations('name'),
+                return $present($category) + [
                     'icon' => Storefront::categoryIcon($category),
                     'image' => Storefront::imageUrl($category->image),
-                    'count' => $count,
-                    'children' => $category->children->map(fn ($child) => [
-                        'id' => $child->id,
-                        'name' => $child->getTranslations('name'),
-                        'icon' => $child->icon ? Storefront::categoryIcon($child) : null,
-                    ])->values()->all(),
                     'brands' => $brands->map(fn ($b) => ['id' => $b->id, 'name' => $b->name, 'slug' => $b->slug, 'logo' => Storefront::imageUrl($b->logo)])->all(),
                 ];
             })->filter(fn ($d) => $d['count'] > 0 || $d['children'])->values()->all();
@@ -88,8 +91,8 @@ class StorefrontComposer
     private function localize(array $department, string $locale): array
     {
         $pick = fn (array $names) => $names[$locale] ?? $names['en'] ?? reset($names) ?: '';
-        $department['name'] = $pick($department['name']);
-        $department['children'] = array_map(fn ($c) => ['name' => $pick($c['name'])] + $c, $department['children']);
+        $department['name'] = is_array($department['name']) ? $pick($department['name']) : $department['name'];
+        $department['children'] = array_map(fn (array $child) => $this->localize($child, $locale), $department['children'] ?? []);
 
         return $department;
     }

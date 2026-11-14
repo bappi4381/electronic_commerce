@@ -68,7 +68,7 @@ class SearchController extends Controller
         $categoryCounts = $facets['category_ids'] ?? [];
         $brandCounts = $facets['brand_id'] ?? [];
 
-        $categories = Category::where('type', 'product')->whereNull('parent_id')->with('children')->get();
+        $categories = Category::nested('product');
         $brands = Brand::where('status', true)
             ->when($brandCounts, fn ($q) => $q->whereIn('id', array_keys($brandCounts)), fn ($q) => $q->whereHas('products'))
             ->orderBy('name')->get();
@@ -99,8 +99,7 @@ class SearchController extends Controller
         $query = \App\Models\Product::query()->with(['images', 'brand', 'category', 'variants']);
 
         if (!empty($filters['category'])) {
-            $ids = Category::where('id', $filters['category'])->orWhere('parent_id', $filters['category'])->pluck('id');
-            $query->whereIn('category_id', $ids);
+            $query->whereIn('category_id', Category::branchIds((int) $filters['category']));
         }
         if (!empty($filters['brand'])) {
             $query->where('brand_id', $filters['brand']);

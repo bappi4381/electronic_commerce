@@ -32,13 +32,14 @@
         !empty($filters['on_sale']) ? ['label' => __('On sale'), 'url' => $catalogUrl(['on_sale' => null])] : null,
     ]));
 
-    // Department chips when browsing everything; sibling subcategories once a department is chosen.
-    $rootCategory = $activeCategory?->parent ?? $activeCategory;
-    $rootDepartment = $rootCategory ? $departments->firstWhere('id', $rootCategory->id) : null;
-    $subcategories = $rootDepartment ? $rootDepartment->children->where('products_count', '>', 0)->values() : collect();
-    $subcategoryChips = $subcategories->isEmpty() ? [] : collect([['id' => $rootDepartment->id, 'name' => __('All :category', ['category' => $rootDepartment->name]), 'count' => $rootDepartment->total_count]])
-        ->concat($subcategories->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'count' => $c->products_count]))
-        ->all();
+    // Chips follow the current branch: its children when it has some, otherwise its siblings.
+    $activeNode = $activeCategory ? \App\Models\Category::findNested($departments, $activeCategory->id) : null;
+    $chipRoot = $activeNode && $activeNode->children->contains(fn ($child) => $child->total_count > 0)
+        ? $activeNode
+        : ($activeNode?->parent_id ? \App\Models\Category::findNested($departments, (int) $activeNode->parent_id) : null);
+    $subcategoryChips = $chipRoot ? collect([['id' => $chipRoot->id, 'name' => __('All :category', ['category' => $chipRoot->name]), 'count' => $chipRoot->total_count]])
+        ->concat($chipRoot->children->where('total_count', '>', 0)->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'count' => $c->total_count]))
+        ->all() : [];
 
     $priceRanges = [
         [null, 1000, __('Under :amount', ['amount' => money(1000)])],
@@ -70,12 +71,14 @@
             <li aria-hidden="true"><i class="bi bi-chevron-right text-[10px]"></i></li>
             @if($activeCategory)
                 <li><a href="{{ route('products.index') }}" class="rounded hover:text-brand-700 sf-focus">{{ __('Shop') }}</a></li>
-                @if($activeCategory->parent)
+                @foreach($activeCategory->lineage() as $crumb)
                     <li aria-hidden="true"><i class="bi bi-chevron-right text-[10px]"></i></li>
-                    <li><a href="{{ route('products.index', ['category' => $activeCategory->parent->id]) }}" class="rounded hover:text-brand-700 sf-focus">{{ $activeCategory->parent->name }}</a></li>
-                @endif
-                <li aria-hidden="true"><i class="bi bi-chevron-right text-[10px]"></i></li>
-                <li aria-current="page" class="font-medium text-slate-700">{{ $activeCategory->name }}</li>
+                    @if($loop->last)
+                        <li aria-current="page" class="font-medium text-slate-700">{{ $crumb->name }}</li>
+                    @else
+                        <li><a href="{{ route('products.index', ['category' => $crumb->id]) }}" class="rounded hover:text-brand-700 sf-focus">{{ $crumb->name }}</a></li>
+                    @endif
+                @endforeach
             @else
                 <li aria-current="page" class="font-medium text-slate-700">{{ __('Shop') }}</li>
             @endif
@@ -167,39 +170,7 @@
                                 <input type="radio" name="category" value="" @checked(!$activeCategory) class="size-4 shrink-0 accent-brand-600">
                                 <span class="flex-1">{{ __('All categories') }}</span>
                             </label>
-                            @foreach($departments as $department)
-                                @php($children = $department->children->where('products_count', '>', 0))
-                                @php($expanded = $activeCategory && ($activeCategory->id === $department->id || $activeCategory->parent_id === $department->id))
-                                <div x-data="{ open: @js($expanded) }">
-                                    <div class="flex items-center">
-                                        <label class="{{ $option }} min-w-0 flex-1">
-                                            <input type="radio" name="category" value="{{ $department->id }}" @checked($activeCategory?->id === $department->id) class="size-4 shrink-0 accent-brand-600">
-                                            <span class="flex-1 truncate">{{ $department->name }}</span>
-                                            <span class="text-xs font-normal tabular-nums text-slate-400">{{ localized_number($department->total_count) }}</span>
-                                        </label>
-                                        @if($children->isNotEmpty())
-                                            <button type="button" @click="open = !open" :aria-expanded="open.toString()" aria-expanded="{{ $expanded ? 'true' : 'false' }}"
-                                                    class="flex size-10 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-50 hover:text-slate-700 sf-focus">
-                                                <span class="sr-only">{{ __('Subcategories of :category', ['category' => $department->name]) }}</span>
-                                                <i class="bi bi-chevron-down text-xs transition-transform" :class="open && 'rotate-180'" aria-hidden="true"></i>
-                                            </button>
-                                        @else
-                                            <span class="size-10 shrink-0" aria-hidden="true"></span>
-                                        @endif
-                                    </div>
-                                    @if($children->isNotEmpty())
-                                        <div x-show="open" @unless($expanded) style="display: none" @endunless class="mb-1 ml-4 space-y-0.5 border-l border-[var(--sf-border)] pl-2">
-                                            @foreach($children as $child)
-                                                <label class="{{ $option }} mr-10">
-                                                    <input type="radio" name="category" value="{{ $child->id }}" @checked($activeCategory?->id === $child->id) class="size-4 shrink-0 accent-brand-600">
-                                                    <span class="flex-1 truncate">{{ $child->name }}</span>
-                                                    <span class="text-xs font-normal tabular-nums text-slate-400">{{ localized_number($child->products_count) }}</span>
-                                                </label>
-                                            @endforeach
-                                        </div>
-                                    @endif
-                                </div>
-                            @endforeach
+                            @include('frontend.partials.catalog-category', ['nodes' => $departments, 'depth' => 0])
                         </div>
                     </details>
 

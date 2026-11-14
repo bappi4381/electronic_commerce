@@ -15,9 +15,7 @@ class ProductAttributeService
 
     public function getRootCategoriesWithAttributes(): Collection
     {
-        return Category::whereNull('parent_id')
-            ->with(['children.attributes', 'attributes'])
-            ->get();
+        return Category::nested(null, ['attributes']);
     }
 
     public function getAttributesForCategory(?int $categoryId): Collection
@@ -50,24 +48,11 @@ class ProductAttributeService
     public function categoryAttributeMappings(Collection $categories): array
     {
         return $categories->flatMap(function ($category) {
-            $mapping = [
-                [
-                    'id' => $category->id,
-                    'attribute_ids' => $category->attributes->pluck('id')->toArray(),
-                ],
-            ];
-
-            if ($category->children->isNotEmpty()) {
-                return array_merge($mapping, $category->children->map(function ($child) {
-                    return [
-                        'id' => $child->id,
-                        'attribute_ids' => $child->attributes->pluck('id')->toArray(),
-                    ];
-                })->toArray());
-            }
-
-            return $mapping;
-        })->toArray();
+            return collect([[
+                'id' => $category->id,
+                'attribute_ids' => $category->attributes->pluck('id')->all(),
+            ]])->concat($this->categoryAttributeMappings($category->children));
+        })->all();
     }
 
     public function makeJsPayload(Collection $categories, Collection $attributes, int $initialVariantIndex = 0): array

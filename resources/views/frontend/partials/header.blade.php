@@ -165,16 +165,32 @@
                                     <a href="{{ route('products.index', ['category' => $department['id']]) }}" class="text-xs font-semibold text-[var(--sf-accent-strong)] hover:underline">{{ __('View all (:count)', ['count' => localized_number($department['count'])]) }}</a>
                                 </div>
                                 @if($department['children'])
-                                    <ul class="grid grid-cols-2 gap-1">
+                                    <div class="columns-2 gap-x-8">
                                         @foreach($department['children'] as $child)
-                                            <li>
-                                                <a href="{{ route('products.index', ['category' => $child['id']]) }}" class="flex min-h-11 items-center gap-3 rounded-[var(--sf-radius-sm)] px-3 text-sm text-slate-700 hover:bg-slate-50 hover:text-brand-700 sf-focus">
-                                                    <span class="flex size-8 items-center justify-center rounded-[var(--sf-radius-sm)] bg-slate-100 text-slate-500" aria-hidden="true"><i class="bi {{ $child['icon'] ?? $department['icon'] }}"></i></span>
-                                                    {{ $child['name'] }}
+                                            <section class="mb-5 break-inside-avoid">
+                                                <a href="{{ route('products.index', ['category' => $child['id']]) }}" class="flex items-baseline justify-between gap-3 rounded text-sm font-semibold text-slate-900 hover:text-brand-700 sf-focus">
+                                                    <span>{{ $child['name'] }}</span>
+                                                    @if($child['count'])<span class="text-xs font-normal tabular-nums text-slate-400">{{ localized_number($child['count']) }}</span>@endif
                                                 </a>
-                                            </li>
+                                                @if($child['children'])
+                                                    <ul class="mt-1.5 space-y-1.5">
+                                                        @foreach($child['children'] as $grand)
+                                                            <li>
+                                                                <a href="{{ route('products.index', ['category' => $grand['id']]) }}" class="rounded text-sm text-slate-600 hover:text-brand-700 sf-focus">{{ $grand['name'] }}</a>
+                                                                @if($grand['children'])
+                                                                    <span class="mt-0.5 flex flex-wrap gap-x-2 text-xs text-slate-500">
+                                                                        @foreach($grand['children'] as $great)
+                                                                            <a href="{{ route('products.index', ['category' => $great['id']]) }}" class="rounded hover:text-brand-700 sf-focus">{{ $great['name'] }}</a>
+                                                                        @endforeach
+                                                                    </span>
+                                                                @endif
+                                                            </li>
+                                                        @endforeach
+                                                    </ul>
+                                                @endif
+                                            </section>
                                         @endforeach
-                                    </ul>
+                                    </div>
                                 @else
                                     <p class="text-sm text-slate-500">{{ __('Browse every product in :name.', ['name' => $department['name']]) }}</p>
                                 @endif

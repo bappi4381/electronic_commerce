@@ -296,7 +296,7 @@ class DatabaseEngine implements SearchEngine
 
     private function passes(array $doc, array $filters): bool
     {
-        return (empty($filters['category']) || in_array((int) $filters['category'], $doc['category_ids'], true))
+        return (empty($filters['category']) || array_intersect(\App\Models\Category::branchIds((int) $filters['category']), array_map('intval', $doc['category_ids'] ?? [])))
             && (empty($filters['brand']) || (int) $doc['brand_id'] === (int) $filters['brand'])
             && (!isset($filters['min_price']) || $doc['sale_price'] >= (float) $filters['min_price'])
             && (!isset($filters['max_price']) || $doc['sale_price'] <= (float) $filters['max_price'])

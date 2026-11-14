@@ -14,7 +14,7 @@ class AttributeController extends Controller
     public function index(Request $request)
     {
         $attributes = Attribute::with(['values', 'categories'])->withCount('values')->orderBy('name')->get();
-        $categories = Category::whereNull('parent_id')->with('children.attributes', 'attributes')->orderBy('name')->get();
+        $categories = Category::nested(null, ['attributes']);
         return view('admin.product.attributes.index', compact('attributes', 'categories'));
     }
 

@@ -6,8 +6,18 @@
 @php
     $name = fn ($model, $locale = 'en') => $model->getTranslation('name', $locale, false) ?: $model->getTranslation('name', 'en');
     $iconOf = fn ($category) => $category->icon ? (str_starts_with($category->icon, 'bi-') ? $category->icon : 'bi-' . $category->icon) : 'bi-tag';
-    $parentOptions = $categories->mapWithKeys(fn ($c) => [$c->id => $name($c)])->all();
-    $subTotal = $categories->sum(fn ($c) => $c->children->count());
+    $flattenParents = function ($nodes, string $prefix = '', int $depth = 1) use (&$flattenParents, $name) {
+        $options = [];
+        foreach ($nodes as $node) {
+            if ($depth < \App\Models\Category::MAX_DEPTH) {
+                $options[$node->id] = $prefix . $name($node);
+            }
+            $options += $flattenParents($node->children, $prefix . $name($node) . ' / ', $depth + 1);
+        }
+        return $options;
+    };
+    $parentOptions = $flattenParents($categories);
+    $subTotal = $categories->sum(fn ($c) => $c->loadedDescendantCount());
     $admin = auth()->user();
 @endphp
 
@@ -17,7 +27,7 @@
         editCategory(data) { this.category = data; this.$dispatch('open-modal', 'edit-category'); },
         editSub(data) { this.sub = data; this.$dispatch('open-modal', 'edit-subcategory'); },
      }">
-    <x-admin.page-header title="Categories" :description="$categories->count() . ' categories and ' . $subTotal . ' subcategories organise your catalog.'" />
+    <x-admin.page-header title="Categories" :description="$categories->count() . ' categories and ' . $subTotal . ' nested categories, up to ' . \App\Models\Category::MAX_DEPTH . ' levels. For example Fashion → Cloth → Winter → Men.'" />
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         @can('products.create')
@@ -40,13 +50,13 @@
                     </form>
                 </x-admin.card>
 
-                <x-admin.card title="Add subcategory">
+                <x-admin.card title="Add inside a category" description="Put it under any category that is not already {{ \App\Models\Category::MAX_DEPTH }} levels deep.">
                     <form method="POST" action="{{ route('subcategories.store') }}" class="space-y-4">
                         @csrf
                         <x-admin.select name="category_id" label="Parent category" required placeholder="Select a category" :options="$parentOptions" id="new-sub-parent" />
-                        <x-admin.input name="name" label="Name (English)" required maxlength="255" placeholder="e.g. Flagship phones" :old="false" id="new-sub-name" />
+                        <x-admin.input name="name" label="Name (English)" required maxlength="255" placeholder="e.g. Men" :old="false" id="new-sub-name" />
                         <x-admin.input name="name_bn" label="নাম (বাংলা)" optional maxlength="255" :old="false" id="new-sub-name-bn" />
-                        <x-admin.button type="submit" variant="secondary" icon="bi-plus-lg" class="w-full">Add subcategory</x-admin.button>
+                        <x-admin.button type="submit" variant="secondary" icon="bi-plus-lg" class="w-full">Add category</x-admin.button>
                     </form>
                 </x-admin.card>
             </div>
@@ -68,8 +78,8 @@
                         <div class="min-w-0 flex-1">
                             <p class="truncate font-medium text-gray-900 dark:text-white">{{ $name($category) }}</p>
                             <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                                {{ $category->products_count }} {{ \Illuminate\Support\Str::plural('product', $category->products_count) }}
-                                · {{ $category->children->count() }} {{ \Illuminate\Support\Str::plural('subcategory', $category->children->count()) }}
+                                {{ $category->products_count }} {{ \Illuminate\Support\Str::plural('product', $category->products_count) }} here
+                                · {{ $category->loadedDescendantCount() }} nested
                             </p>
                         </div>
                         <div class="flex shrink-0 items-center gap-1">
@@ -88,25 +98,7 @@
                     </div>
                     @if($category->children->isNotEmpty())
                         <ul class="divide-y divide-gray-100 border-t border-gray-200 dark:divide-gray-800 dark:border-gray-800">
-                            @foreach($category->children as $sub)
-                                <li class="flex items-center gap-3 py-2.5 pl-[4.75rem] pr-6">
-                                    <i class="bi bi-arrow-return-right text-xs text-gray-300 dark:text-gray-600" aria-hidden="true"></i>
-                                    <span class="min-w-0 flex-1 truncate text-sm text-gray-700 dark:text-gray-300">{{ $name($sub) }}</span>
-                                    <div class="flex shrink-0 items-center gap-1">
-                                        @can('products.edit')
-                                            <x-admin.button variant="ghost" size="sm" icon="bi-pencil" title="Edit" aria-label="Edit {{ $name($sub) }}"
-                                                            @click="editSub({{ \Illuminate\Support\Js::from(['id' => $sub->id, 'name' => $sub->getTranslation('name', 'en'), 'name_bn' => $sub->getTranslation('name', 'bn', false), 'category_id' => (string) $category->id]) }})" />
-                                        @endcan
-                                        @can('products.delete')
-                                            <form method="POST" action="{{ route('subcategories.destroy', $sub->id) }}"
-                                                  data-confirm="Subcategories that still have products can't be deleted." data-confirm-title="Delete {{ $name($sub) }}?" data-confirm-button="Delete">
-                                                @csrf @method('DELETE')
-                                                <x-admin.button type="submit" variant="ghost" size="sm" icon="bi-trash" :loading="false" class="text-red-600 dark:text-red-400" title="Delete" aria-label="Delete {{ $name($sub) }}" />
-                                            </form>
-                                        @endcan
-                                    </div>
-                                </li>
-                            @endforeach
+                            @include('admin.product.partials.category-branch', ['nodes' => $category->children, 'depth' => 1])
                         </ul>
                     @endif
                 </x-admin.card>
@@ -138,7 +130,7 @@
             </x-slot:footer>
         </x-admin.modal>
 
-        <x-admin.modal name="edit-subcategory" title="Edit subcategory">
+        <x-admin.modal name="edit-subcategory" title="Edit category">
             <form id="edit-subcategory-form" method="POST" class="space-y-4"
                   :action="@js(route('subcategories.update', ['subcategory' => '__ID__'])).replace('__ID__', sub.id)">
                 @csrf @method('PUT')
@@ -155,7 +147,7 @@
             </form>
             <x-slot:footer>
                 <x-admin.button variant="secondary" @click="$dispatch('close-modal', 'edit-subcategory')">Cancel</x-admin.button>
-                <x-admin.button type="submit" form="edit-subcategory-form">Save subcategory</x-admin.button>
+                <x-admin.button type="submit" form="edit-subcategory-form">Save category</x-admin.button>
             </x-slot:footer>
         </x-admin.modal>
     @endcan

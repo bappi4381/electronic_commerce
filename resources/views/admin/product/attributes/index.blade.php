@@ -138,12 +138,7 @@
                             <select id="map-category" name="category_id" required
                                     class="block h-10 w-full rounded-lg border border-gray-300 bg-white pl-3 pr-9 text-sm shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-gray-700 dark:bg-gray-900">
                                 <option value="">Choose a category</option>
-                                @foreach($categories as $cat)
-                                    <option value="{{ $cat->id }}">{{ $cat->getTranslation('name', 'en') }}</option>
-                                    @foreach($cat->children as $child)
-                                        <option value="{{ $child->id }}">&nbsp;&nbsp;↳ {{ $child->getTranslation('name', 'en') }}</option>
-                                    @endforeach
-                                @endforeach
+                                @include('admin.product.partials.category-options', ['nodes' => $categories, 'depth' => 0, 'selected' => 0])
                             </select>
                         </x-admin.field>
                         <fieldset>
@@ -163,11 +158,10 @@
 
             <x-admin.card title="Current assignments" :padding="false" :class="auth()->user()->can('products.edit') ? 'min-w-0 lg:col-span-2' : 'min-w-0 lg:col-span-3'">
                 <ul class="divide-y divide-gray-200 dark:divide-gray-800">
-                    @forelse($categories as $cat)
-                        @foreach(collect([$cat])->concat($cat->children) as $node)
-                            <li @class(['flex flex-col gap-2 px-6 py-3 sm:flex-row sm:items-center', 'sm:pl-12' => $node->parent_id])>
+                    @forelse(\App\Models\Category::flatten($categories) as $node)
+                            <li class="flex flex-col gap-2 px-6 py-3 sm:flex-row sm:items-center" style="padding-left: {{ 1.5 + max(0, ($node->tree_depth ?? 1) - 1) * 1.25 }}rem">
                                 <p class="w-48 shrink-0 text-sm font-medium text-gray-900 dark:text-white">
-                                    @if($node->parent_id)<span class="text-gray-400" aria-hidden="true">↳ </span>@endif{{ $node->getTranslation('name', 'en') }}
+                                    @if(($node->tree_depth ?? 1) > 1)<span class="text-gray-400" aria-hidden="true">↳ </span>@endif{{ $node->getTranslation('name', 'en') }}
                                 </p>
                                 <div class="flex flex-wrap gap-1.5">
                                     @forelse($node->attributes as $attribute)
@@ -177,7 +171,6 @@
                                     @endforelse
                                 </div>
                             </li>
-                        @endforeach
                     @empty
                         <li><x-admin.empty-state title="No categories yet" icon="bi-diagram-3" /></li>
                     @endforelse

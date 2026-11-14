@@ -77,19 +77,12 @@ class HomeController extends Controller
         $inStock = $request->boolean('in_stock');
         $onSale = $request->boolean('on_sale');
 
-        $departments = Category::where('type', 'product')->whereNull('parent_id')
-            ->with(['children' => fn ($q) => $q->withCount('products')->orderBy('id')])
-            ->withCount('products')
-            ->orderBy('id')
-            ->get()
-            ->each(fn ($c) => $c->total_count = $c->products_count + $c->children->sum('products_count'))
-            ->filter(fn ($c) => $c->total_count > 0)
-            ->values();
+        $departments = Category::nested('product')->filter(fn ($c) => $c->total_count > 0)->values();
 
         $activeCategory = $request->filled('category')
-            ? Category::where('type', 'product')->with(['parent', 'children'])->find((int) $request->get('category'))
+            ? Category::where('type', 'product')->with('parent.parent.parent')->find((int) $request->get('category'))
             : null;
-        $categoryIds = $activeCategory ? $activeCategory->children->pluck('id')->push($activeCategory->id)->all() : null;
+        $categoryIds = $activeCategory?->selfAndDescendantIds();
 
         $activeBrand = $request->filled('brand') ? \App\Models\Brand::where('slug', $request->get('brand'))->first() : null;
 
@@ -157,7 +150,7 @@ class HomeController extends Controller
     }
     public function show($id)
     {
-        $product = Product::with(['images', 'category.parent', 'brand', 'variants.attributeValues.attribute'])->withCount('reactions')->findOrFail($id);
+        $product = Product::with(['images', 'category.parent.parent.parent', 'brand', 'variants.attributeValues.attribute'])->withCount('reactions')->findOrFail($id);
 
         // Public reviews are approved ones; authors also see their own pending/rejected reviews.
         $reviews = $product->comments()
@@ -169,7 +162,7 @@ class HomeController extends Controller
         $product->setRelation('comments', $reviews);
         
         // Same category first, topped up with the same brand.
-        $relatedProducts = Product::where('category_id', $product->category_id)
+        $relatedProducts = Product::whereIn('category_id', $product->category?->selfAndDescendantIds() ?? [$product->category_id])
             ->where('id', '!=', $product->id)
             ->with(self::CARD_RELATIONS)
             ->latest()
@@ -314,11 +307,11 @@ class HomeController extends Controller
         $percent = 'ROUND((price - ' . self::EFFECTIVE_PRICE . ') * 100.0 / price)';
         $onSale = fn ($query) => $query->where('discount', '>', 0)->where('price', '>', 0)->whereRaw(self::EFFECTIVE_PRICE . ' < price');
 
-        $departments = Category::where('type', 'product')->whereNull('parent_id')->with('children:id,parent_id')->orderBy('id')->get(['id', 'name']);
-        $activeCategory = $request->filled('category') ? $departments->firstWhere('id', (int) $request->query('category')) : null;
+        $departments = Category::nested('product');
+        $activeCategory = $request->filled('category') ? Category::findNested($departments, (int) $request->query('category')) : null;
 
         $discounts = $onSale(Product::query())
-            ->when($activeCategory, fn ($q) => $q->whereIn('category_id', $activeCategory->children->pluck('id')->push($activeCategory->id)))
+            ->when($activeCategory, fn ($q) => $q->whereIn('category_id', $activeCategory->loadedIds()))
             ->when($band, fn ($q) => $q->whereRaw("{$percent} BETWEEN ? AND ?", self::DISCOUNT_BANDS[$band]))
             ->with(self::CARD_RELATIONS)
             ->orderByRaw("{$percent} DESC")
@@ -332,7 +325,7 @@ class HomeController extends Controller
             ->map(fn (Category $department) => [
                 'id' => $department->id,
                 'name' => $department->name,
-                'count' => (int) $countsByCategory->only($department->children->pluck('id')->push($department->id)->all())->sum(),
+                'count' => (int) $countsByCategory->only($department->loadedIds())->sum(),
             ])
             ->filter(fn ($department) => $department['count'] > 0)
             ->values();
@@ -356,7 +349,7 @@ class HomeController extends Controller
 
         $query = Product::query();
         if ($category = (int) $request->get('category')) {
-            $query->whereIn('category_id', Category::where('id', $category)->orWhere('parent_id', $category)->pluck('id'));
+            $query->whereIn('category_id', Category::branchIds($category));
         }
 
         $total = (clone $query)->count();

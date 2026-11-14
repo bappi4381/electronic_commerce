@@ -88,12 +88,7 @@
                                 <select id="category" name="category_id" required x-model.number="categoryId"
                                         class="block h-10 w-full rounded-lg border border-gray-300 bg-white pl-3 pr-9 text-sm text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
                                     <option value="">Select a category</option>
-                                    @foreach($categories as $category)
-                                        <option value="{{ $category->id }}" @selected($config['categoryId'] === $category->id)>{{ $category->getTranslation('name', 'en') }}</option>
-                                        @foreach($category->children ?? [] as $child)
-                                            <option value="{{ $child->id }}" @selected($config['categoryId'] === $child->id)>&nbsp;&nbsp;&nbsp;{{ $child->getTranslation('name', 'en') }}</option>
-                                        @endforeach
-                                    @endforeach
+                                    @include('admin.product.partials.category-options', ['nodes' => $categories, 'depth' => 0, 'selected' => $config['categoryId']])
                                 </select>
                             </x-admin.field>
 

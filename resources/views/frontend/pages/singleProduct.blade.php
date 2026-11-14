@@ -95,7 +95,7 @@
             <li><a href="{{ route('home') }}" class="rounded hover:text-brand-700 sf-focus">{{ __('Home') }}</a></li>
             <li aria-hidden="true"><i class="bi bi-chevron-right text-[10px]"></i></li>
             <li><a href="{{ route('products.index') }}" class="rounded hover:text-brand-700 sf-focus">{{ __('Shop') }}</a></li>
-            @foreach(array_filter([$product->category?->parent, $product->category]) as $crumb)
+            @foreach($product->category?->lineage() ?? [] as $crumb)
                 <li aria-hidden="true"><i class="bi bi-chevron-right text-[10px]"></i></li>
                 <li><a href="{{ route('products.index', ['category' => $crumb->id]) }}" class="rounded hover:text-brand-700 sf-focus">{{ $crumb->name }}</a></li>
             @endforeach

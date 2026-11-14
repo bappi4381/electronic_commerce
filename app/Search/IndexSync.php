@@ -46,7 +46,7 @@ class IndexSync
                     if ($event === 'updated' && ($item->wasChanged('name') || $item->wasChanged('parent_id'))) {
                         static::reindex($item instanceof Brand
                             ? Product::where('brand_id', $item->id)
-                            : Product::where('category_id', $item->id)->orWhereIn('category_id', Category::where('parent_id', $item->id)->select('id')));
+                            : Product::whereIn('category_id', $item->selfAndDescendantIds()));
                     }
                 });
             }

@@ -167,7 +167,10 @@ class MeilisearchEngine implements SearchEngine
     {
         $out = [];
         if (!empty($filters['category'])) {
-            $out[] = 'category_ids = ' . (int) $filters['category'];
+            $ids = array_map('intval', \App\Models\Category::branchIds((int) $filters['category']));
+            $out[] = count($ids) === 1
+                ? 'category_ids = ' . $ids[0]
+                : 'category_ids IN [' . implode(', ', $ids) . ']';
         }
         if (!empty($filters['brand'])) {
             $out[] = 'brand_id = ' . (int) $filters['brand'];

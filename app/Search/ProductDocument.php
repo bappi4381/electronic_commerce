@@ -18,7 +18,7 @@ class ProductDocument
 
     public function make(Product $product): array
     {
-        $product->loadMissing(['brand', 'category.parent', 'images', 'allVariants']);
+        $product->loadMissing(['brand', 'category.parent.parent.parent', 'images', 'allVariants']);
         $activeVariants = $product->allVariants->where('is_active', true);
 
         $nameEn = (string) $product->getTranslation('name', 'en', false);
@@ -30,7 +30,7 @@ class ProductDocument
         $brand = (string) ($product->brand?->name ?? '');
         $brandBn = implode(' ', $this->dictionary->banglaFor($brand));
 
-        $categories = collect([$product->category, $product->category?->parent])->filter();
+        $categories = $product->category?->lineage() ?? collect();
         $categoryEn = $categories->map(fn ($c) => $c->getTranslation('name', 'en', false))->filter()->unique()->values();
         $categoryBn = $categories->map(fn ($c) => $c->getTranslation('name', 'bn', false))
             ->filter(fn ($n) => BanglaText::hasBangla($n))->unique()->values();

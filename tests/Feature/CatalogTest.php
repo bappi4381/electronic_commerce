@@ -158,19 +158,39 @@ class CatalogTest extends TestCase
 
     // ── Categories ─────────────────────────────────────────────────
 
-    public function test_subcategories_need_a_top_level_parent_and_keep_a_bangla_name(): void
+    public function test_categories_nest_four_levels_and_keep_a_bangla_name(): void
     {
-        $this->actingAs($this->admin, 'admin')->post(route('subcategories.store'), ['category_id' => $this->category->id, 'name' => 'Flagship', 'name_bn' => 'ফ্ল্যাগশিপ'])
+        $this->actingAs($this->admin, 'admin')->post(route('subcategories.store'), ['category_id' => $this->category->id, 'name' => 'Cloth', 'name_bn' => 'কাপড়'])
             ->assertSessionHasNoErrors();
-        $sub = Category::where('parent_id', $this->category->id)->sole();
-        $this->assertSame('ফ্ল্যাগশিপ', $sub->getTranslation('name', 'bn'));
+        $cloth = Category::where('parent_id', $this->category->id)->sole();
+        $this->assertSame('কাপড়', $cloth->getTranslation('name', 'bn'));
 
-        $this->actingAs($this->admin, 'admin')->put(route('subcategories.update', $sub), ['category_id' => $sub->id, 'name' => 'Loop'])
+        $this->actingAs($this->admin, 'admin')->post(route('subcategories.store'), ['category_id' => $cloth->id, 'name' => 'Winter'])
+            ->assertSessionHasNoErrors();
+        $winter = Category::where('parent_id', $cloth->id)->sole();
+        $this->actingAs($this->admin, 'admin')->post(route('subcategories.store'), ['category_id' => $winter->id, 'name' => 'Men'])
+            ->assertSessionHasNoErrors();
+        $men = Category::where('parent_id', $winter->id)->sole();
+
+        $this->actingAs($this->admin, 'admin')->post(route('subcategories.store'), ['category_id' => $men->id, 'name' => 'Too deep'])
             ->assertSessionHasErrors('category_id');
-        $this->actingAs($this->admin, 'admin')->post(route('subcategories.store'), ['category_id' => $sub->id, 'name' => 'Third level'])
+        $this->actingAs($this->admin, 'admin')->put(route('subcategories.update', $cloth), ['category_id' => $men->id, 'name' => 'Loop'])
             ->assertSessionHasErrors('category_id');
 
-        $this->assertSame($this->category->id, $sub->fresh()->parent_id);
+        $this->assertSame($this->category->id, $cloth->fresh()->parent_id);
+        $this->assertSame([$this->category->id, $cloth->id, $winter->id, $men->id], $men->lineage()->pluck('id')->all());
+    }
+
+    public function test_browsing_a_category_includes_products_nested_under_it(): void
+    {
+        $cloth = Category::create(['type' => 'product', 'parent_id' => $this->category->id, 'name' => ['en' => 'Cloth', 'bn' => 'কাপড়']]);
+        $winter = Category::create(['type' => 'product', 'parent_id' => $cloth->id, 'name' => ['en' => 'Winter', 'bn' => 'শীত']]);
+        $men = Category::create(['type' => 'product', 'parent_id' => $winter->id, 'name' => ['en' => 'Men', 'bn' => 'পুরুষ']]);
+        $deep = $this->product(sku: 'DEEP-1');
+        $deep->update(['category_id' => $men->id]);
+
+        $this->get('/en/products?category=' . $this->category->id)->assertOk()->assertSee('Test Phone DEEP-1')->assertSee('Men');
+        $this->get('/en/products?category=' . $winter->id)->assertOk()->assertSee('Test Phone DEEP-1');
     }
 
     // ── Helpers ────────────────────────────────────────────────────

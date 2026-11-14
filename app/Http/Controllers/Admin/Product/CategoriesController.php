@@ -12,10 +12,7 @@ class CategoriesController extends Controller
     // Show categories & subcategories (only top-level parent categories)
     public function index()
     {
-        $categories = Category::with('children')
-            ->withCount('products')
-            ->whereNull('parent_id')
-            ->get();
+        $categories = Category::nested();
         return view('admin.product.category_subcategory', compact('categories'));
     }
 

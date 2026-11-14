@@ -18,7 +18,14 @@
     $base = array_filter(['q' => $query, 'sort' => $sort !== 'relevance' ? $sort : null]);
     $clearUrl = route('search.index', $base);
     $control = 'h-11 w-full rounded-[var(--sf-radius-sm)] border border-[var(--sf-border)] bg-white px-3 text-sm text-slate-800 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30';
-    $categoryName = $activeCategory ? $categories->flatMap(fn ($c) => collect([$c])->concat($c->children))->firstWhere('id', $activeCategory)?->name : null;
+    $categoryName = $activeCategory ? \App\Models\Category::flatten($categories)->firstWhere('id', (int) $activeCategory)?->name : null;
+    $countOf = function ($node) use (&$countOf, $categoryCounts) {
+        $total = (int) ($categoryCounts[$node->id] ?? 0);
+        foreach ($node->children as $child) {
+            $total += $countOf($child);
+        }
+        return $total;
+    };
     $brandName = $activeBrand ? $brands->firstWhere('id', $activeBrand)?->name : null;
     $heading = $query !== '' ? __('Results for “:query”', ['query' => $query]) : ($categoryName ?? $brandName ?? __('All products'));
 @endphp
@@ -83,24 +90,7 @@
                         <label class="flex min-h-10 cursor-pointer items-center gap-2.5 rounded px-1 text-sm text-slate-700 hover:bg-slate-50">
                             <input type="radio" name="category" value="" @checked(!$activeCategory) class="size-4 border-slate-300 text-primary focus:ring-primary/40"> {{ __('All categories') }}
                         </label>
-                        @foreach($categories as $category)
-                            @php($count = $categoryCounts[$category->id] ?? null)
-                            @continue($categoryCounts && !$count)
-                            <label class="flex min-h-10 cursor-pointer items-center gap-2.5 rounded px-1 text-sm text-slate-700 hover:bg-slate-50">
-                                <input type="radio" name="category" value="{{ $category->id }}" @checked($activeCategory == $category->id) class="size-4 border-slate-300 text-primary focus:ring-primary/40">
-                                <span class="flex-1">{{ $category->name }}</span>
-                                @if($count)<span class="text-xs tabular-nums text-slate-400">{{ $count }}</span>@endif
-                            </label>
-                            @foreach($category->children as $child)
-                                @php($childCount = $categoryCounts[$child->id] ?? null)
-                                @continue($categoryCounts && !$childCount)
-                                <label class="flex min-h-10 cursor-pointer items-center gap-2.5 rounded py-0 pl-7 pr-1 text-sm text-slate-600 hover:bg-slate-50">
-                                    <input type="radio" name="category" value="{{ $child->id }}" @checked($activeCategory == $child->id) class="size-4 border-slate-300 text-primary focus:ring-primary/40">
-                                    <span class="flex-1">{{ $child->name }}</span>
-                                    @if($childCount)<span class="text-xs tabular-nums text-slate-400">{{ $childCount }}</span>@endif
-                                </label>
-                            @endforeach
-                        @endforeach
+                        @include('frontend.partials.search-category', ['nodes' => $categories, 'depth' => 0])
                     </div>
                 </fieldset>
 

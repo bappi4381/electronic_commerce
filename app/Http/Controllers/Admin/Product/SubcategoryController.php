@@ -5,7 +5,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * SubcategoryController
@@ -67,20 +67,19 @@ class SubcategoryController extends Controller
         return back()->with('success', 'Subcategory deleted successfully.');
     }
 
-    /** The parent must be a top-level category other than the subcategory itself (two levels only). */
+    /** A parent can be any category, up to Category::MAX_DEPTH, and never one of its own descendants. */
     private function validated(Request $request, ?Category $subcategory = null): array
     {
-        return $request->validate([
-            'category_id' => [
-                'required',
-                Rule::exists('categories', 'id')->whereNull('parent_id'),
-                Rule::notIn(array_filter([$subcategory?->id])),
-            ],
-            'name'    => 'required|string|max:255',
-            'name_bn' => 'nullable|string|max:255',
-        ], [
-            'category_id.exists' => 'Choose a top-level category as the parent.',
-            'category_id.not_in' => 'A category cannot be its own parent.',
+        $data = $request->validate([
+            'category_id' => 'required|integer|exists:categories,id',
+            'name'        => 'required|string|max:255',
+            'name_bn'     => 'nullable|string|max:255',
         ]);
+
+        if ($reason = ($subcategory ?? new Category())->parentRejection((int) $data['category_id'])) {
+            throw ValidationException::withMessages(['category_id' => $reason]);
+        }
+
+        return $data;
     }
 }
